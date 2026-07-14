@@ -1,165 +1,178 @@
 ![ieeecs-template-header](https://github.com/user-attachments/assets/c3c40c85-51a2-4a5e-82a4-c32a0223e336)
 
-<h1 align="center">Project Name</h1>
+<h1 align="center">CICADA 2067 - Frontend</h1>
 
-<h4 align="center">One-line description of the project.</h4>
+<h4 align="center">A futuristic sci-fi mission interface for an immersive cybersecurity challenge experience.</h4>
 
 ---
 
 ## Overview
 
-Provide a concise description of:
+CICADA 2067 is a story-driven cybersecurity challenge platform designed around a futuristic spacecraft operating system experience.
 
-- The problem being addressed  
-- Why it is relevant  
-- What this project aims to achieve  
+This repository contains the frontend application responsible for delivering an immersive user interface with:
+
+- Mission dashboards
+- Interactive challenge interfaces
+- Story archives and recovered logs
+- Terminal-style system interfaces
+- Futuristic animations and visual effects
+
+The goal is to provide participants with an engaging experience where they uncover mission data, solve challenges, and progress through the storyline.
 
 ---
 
 ## Architecture Overview
 
-Provide a high-level explanation of the system design.
+The frontend follows a modular React-based architecture.
 
-Include:
+Core components include:
 
-- Core components  
-- Data flow between components  
-- External integrations (if applicable)  
+- UI Components
+- Pages and Routing
+- Animation Modules
+- API Integration Layer
+- Asset Handling System
 
-(Optional) Include an architecture diagram if available.
+Data flow:
+
+\`\`\`
+User
+  |
+  v
+React Components
+  |
+  v
+Application State
+  |
+  v
+API Services
+  |
+  v
+Backend Services
+\`\`\`
+
+This repository only contains the frontend implementation. Backend services and APIs will be integrated separately.
 
 ---
 
 ## Tech Stack
 
-| Layer        | Technology Used |
-|-------------|-----------------|
-| Frontend    |                 |
-| Backend     |                 |
-| Database    |                 |
-| DevOps      |                 |
-| Other Tools |                 |
+| Layer      | Technology Used     |
+|------------|----------------------|
+| Frontend   | React + Vite         |
+| Styling    | CSS / Tailwind CSS   |
+| Animations | Framer Motion        |
+| Icons      | Lucide React         |
+| Language   | JavaScript           |
+| Build Tool | Vite                 |
 
 ---
 
 ## Project Structure
 
-Briefly describe the key directories and their purpose.
+\`\`\`bash
+frontend/
+├── public/
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── pages/          # Application pages
+│   ├── hooks/          # Custom React hooks
+│   ├── utils/          # Utility functions
+│   ├── assets/         # Static assets
+│   ├── App.jsx         # Root application component
+│   ├── main.jsx        # Application entry point
+│   └── index.css       # Global styles
+│
+├── package.json
+├── vite.config.js
+└── README.md
+\`\`\`
 
-Example:
-
-```bash
-src/
-├── components/
-├── services/
-├── utils/
-├── routes/
-└── main.js
-```
 ---
 
 ## ⚙️ Setup Instructions
 
 ### 1. Clone the Repository
 
-```bash
+\`\`\`bash
 git clone <repository-url>
-cd <project-folder>
-```
+cd CICADA-Frontend
+\`\`\`
 
-### 2. Install Dependencies
+### 2. Navigate to Frontend Directory
 
-Example:
+\`\`\`bash
+cd frontend
+\`\`\`
 
-```bash
+### 3. Install Dependencies
+
+\`\`\`bash
 npm install
-```
+\`\`\`
 
-### 3. Configure Environment Variables
+### 4. Run Development Server
 
-Create a `.env` file in the root directory and define the required variables.
-
-Refer to `.env.example` for the list of required keys.
-
-### 4. Run the Project
-
-Example:
-
-```bash
+\`\`\`bash
 npm run dev
-```
+\`\`\`
 
----
+The application will be available at:
 
-## Docker Setup
-
-### Build Image
-
-```bash
-docker build -t <project-name> .
-```
-
-### Run Container
-
-```bash
-docker run -p <port>:<port> <project-name>
-```
----
-
-## Git Hooks Setup
-
-This repository uses custom Git hooks to enforce commit standards and branch discipline.
-
-After cloning the repository, run the following command once:
-
-```bash
-git config core.hooksPath .hooks
-```
-This enables:
-- Commit message validation
-- Blocking direct pushes to `main`
+\`\`\`
+http://localhost:5173/
+\`\`\`
 
 ---
 
 ## Environment Variables
 
-List all required environment variables and briefly explain their purpose.
+Create a \`.env\` file in the frontend directory when required.
 
-| Variable Name | Description |
-|--------------|------------|
-| DATABASE_URL | Database connection string |
-| API_KEY      | Third-party API key |
-| PORT         | Application port |
+Example:
+
+\`\`\`env
+VITE_API_URL=<backend-api-url>
+\`\`\`
 
 ---
 
 ## Deployment
 
-Describe:
+The frontend can be deployed on any platform supporting Vite applications.
 
-- Deployment platform  
-- Build steps  
-- Production considerations  
+Recommended:
+
+- Vercel
+- Netlify
+
+Production build:
+
+\`\`\`bash
+npm run build
+\`\`\`
+
+Preview production build:
+
+\`\`\`bash
+npm run preview
+\`\`\`
 
 ---
 
-## Testing (If Applicable)
+## Testing
 
-Provide instructions to run tests.
+Testing setup will be added as the project evolves.
 
-Example:
-
-```bash
-npm test
-```
 ---
 
 ## Project Status
 
-- 🟢 In Development  
-- 🟡 Maintenance Mode  
-- 🔵 Completed  
-- 🔴 Archived  
+🟢 In Development
 
+---
 
+## Contributors
 
+Developed by IEEE Computer Society VIT
