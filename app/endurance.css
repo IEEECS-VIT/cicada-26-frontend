@@ -1,0 +1,1284 @@
+/* =====================================================
+   ENDURANCE SPACECRAFT — CSS-only 3D model
+   Adapted from josetxu's CodePen (gORKrgR)
+   Interstellar "Endurance" spacecraft
+   All SCSS @for loops expanded to flat CSS.
+   Native CSS nesting used where applicable.
+   ===================================================== */
+
+/* Scope preserve-3d to spacecraft only */
+.spacecraft-wrapper,
+.spacecraft-wrapper * {
+  transform-style: preserve-3d;
+}
+
+/* --------------------------------------------------
+   CSS VARIABLES (spacecraft palette)
+   -------------------------------------------------- */
+.spacecraft-wrapper {
+  --sat: 5%;
+  --hue: 200;
+  --sp0: #b9c0c3;
+  --sp1: #9cabb2;
+  --sp2: #949dad;
+  --sp3: #838ea0;
+  --sp4: #737d8e;
+  --sp5: #6a7484;
+  --sp6: #575e6b;
+  --sp7: #464c56;
+  --sp8: #353a42;
+  --luz-05: hsl(200, 5%, 5%);
+  --luz-10: hsl(200, 5%, 10%);
+  --luz-15: hsl(200, 5%, 15%);
+  --luz-20: hsl(200, 5%, 20%);
+  --luz-25: hsl(200, 5%, 25%);
+  --luz-30: hsl(200, 5%, 30%);
+  --luz-35: hsl(200, 5%, 35%);
+  --luz-40: hsl(200, 5%, 40%);
+  --luz-45: hsl(200, 5%, 45%);
+  --luz-50: hsl(200, 5%, 50%);
+  --luz-55: hsl(200, 5%, 55%);
+  --luz-60: hsl(200, 5%, 60%);
+  --luz-65: hsl(200, 5%, 65%);
+  --luz-70: hsl(200, 5%, 70%);
+  --luz-75: hsl(200, 5%, 75%);
+  --luz-80: hsl(200, 5%, 80%);
+  --luz-85: hsl(200, 5%, 85%);
+  --luz-90: hsl(200, 5%, 90%);
+  --dot-spb: conic-gradient(from 90deg at 0% 0%, var(--luz-20) 0% 25%, #fff0 0% 100%) no-repeat;
+  --dot-spl: conic-gradient(from 90deg at 0% 0%, var(--sp0) 0% 25%, #fff0 0% 100%) no-repeat;
+  --dot-spm: conic-gradient(from 90deg at 0% 0%, var(--sp3) 0% 25%, #fff0 0% 100%) no-repeat;
+  --dot-spd: conic-gradient(from 90deg at 0% 0%, var(--sp4) 0% 25%, #fff0 0% 100%) no-repeat;
+  --w1: conic-gradient(from 180deg at 50% 50%, #fff0 0%, var(--sp8) 1% 32%, #fff0 33%) no-repeat;
+  --w2: conic-gradient(from 245deg at 50% 50%, #fff0 0%, var(--sp8) 1% 32%, #fff0 33%) no-repeat;
+  --w3: conic-gradient(from 65deg at 50% 50%, #fff0 0%, var(--sp8) 1% 32%, #fff0 33%) no-repeat;
+  --w4: conic-gradient(from 0deg at 50% 50%, #fff0 0%, var(--sp8) 1% 32%, #fff0 33%) no-repeat;
+  --w5: conic-gradient(from 0deg at 50% 50%, #fff0 0%, var(--sp8) 0% 25%, #fff0 0 100%) no-repeat;
+  --white: #ffffff;
+  --yellow: #f1edb6;
+  --black: #000000;
+}
+
+/* --------------------------------------------------
+   CONTENT & ENDURANCE
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .content {
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  perspective: 150vmin;
+  perspective-origin: center;
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.spacecraft-wrapper .endurance {
+  width: 90vmin;
+  height: 90vmin;
+  transform: rotateX(40deg) rotateZ(-70deg);
+  border-radius: 100%;
+  transition: 0.5s;
+  animation: endurance-spin 5s ease 0s 1, endurance-orbit 30s linear 5s infinite;
+}
+
+@keyframes endurance-spin {
+  0%   { transform: rotateX(142.5deg) rotateZ(47deg); }
+  100% { transform: rotateX(40deg) rotateZ(-70deg); }
+}
+
+@keyframes endurance-orbit {
+  from { transform: rotateX(40deg) rotateZ(-70deg); }
+  to   { transform: rotateX(40deg) rotateZ(290deg); }
+}
+
+/* --------------------------------------------------
+   MODULES
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .modules {
+  width: 100%;
+  height: 100%;
+  border-radius: 100%;
+  position: absolute;
+}
+
+.spacecraft-wrapper .module {
+  --height: 15;
+  --width: 10;
+  --depth: 15;
+  transform: translate3d(0vmin, 0vmin, 0vmin);
+  transform-origin: left center;
+  height: calc(var(--height) * 1vmin);
+  width: calc(var(--width) * 1vmin);
+  position: absolute;
+  bottom: 0;
+}
+
+.spacecraft-wrapper .module .side {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 2px;
+  border: 1px solid var(--luz-35);
+}
+
+.spacecraft-wrapper .module > .side:nth-of-type(2) {
+  clip-path: polygon(0% 0%, 0% 100%, 10% 100%, 10% 40%, 90% 40%, 90% 90%, 10% 90%, 10% 100%, 100% 100%, 100% 0%);
+}
+
+/* --------------------------------------------------
+   TYPE 1
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .type-1 .side:nth-of-type(1) {
+  width: calc(100% - 3vmin);
+  transform: translate3d(-50%, -50%, calc(var(--depth) * 0.5vmin));
+  background-color: var(--luz-85);
+}
+.spacecraft-wrapper .type-1 .side:nth-of-type(2) {
+  transform: translate3d(-50%, -50%, calc(var(--depth) * -0.5vmin));
+  background-color: var(--luz-25);
+}
+.spacecraft-wrapper .type-1 .side:nth-of-type(3) {
+  width: calc(var(--depth) * 1vmin - 1.5vmin);
+  transform: translate(-50%, -50%) rotateY(90deg) translate3d(0.75vmin, 0, calc(var(--width) * 0.5vmin));
+  background-color: var(--luz-40);
+}
+.spacecraft-wrapper .type-1 .side:nth-of-type(4) {
+  width: calc(var(--depth) * 1vmin - 1.5vmin);
+  transform: translate(-50%, -50%) rotateY(-90deg) translate3d(-0.75vmin, 0, calc(var(--width) * 0.5vmin));
+  background-color: var(--luz-60);
+}
+.spacecraft-wrapper .type-1 .side:nth-of-type(5) {
+  height: calc(var(--depth) * 1vmin);
+  transform: translate(-50%, -50%) rotateX(90deg) translate3d(0, 0, calc(var(--height) * 0.5vmin));
+  background-color: var(--luz-80);
+}
+.spacecraft-wrapper .type-1 .side:nth-of-type(6) {
+  height: calc(var(--depth) * 1vmin);
+  clip-path: polygon(15% 0%, 0% 9.5%, 0% 100%, 100% 100%, 100% 9.5%, 85% 0%);
+  transform: translate(-50%, -50%) rotateX(-90deg) translate3d(0, 0, calc(var(--height) * 0.5vmin));
+  background-color: var(--luz-35);
+}
+.spacecraft-wrapper .type-1 .side:nth-of-type(7) {
+  height: calc(var(--height) * 1vmin);
+  width: calc(var(--width) * 1vmin / 4.625);
+  transform: translate3d(63%, -50%, calc(var(--depth) * 0.5vmin)) rotateY(225deg);
+  transform-origin: right center;
+  background-color: var(--luz-55);
+}
+.spacecraft-wrapper .type-1 .side:nth-of-type(8) {
+  height: calc(var(--height) * 1vmin);
+  width: calc(var(--width) * 1vmin / 4.625);
+  transform: translate3d(-260%, -50%, calc(var(--depth) * 0.5vmin)) rotateY(-44deg);
+  transform-origin: right center;
+  background-color: var(--luz-70);
+}
+
+/* --------------------------------------------------
+   TYPE 2
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .type-2 .side:nth-of-type(1) {
+  height: calc(100% / 1.495);
+  transform: translate3d(-50%, -50%, calc(var(--depth) * 0.5vmin)) translate3d(0, calc(var(--width) / 4 * -1vmin), 0);
+  background:
+    linear-gradient(-135deg, var(--luz-15) 0 5%, #fff0 0 100%),
+    linear-gradient(-220deg, var(--luz-15) 0 5%, #fff0 0 100%),
+    conic-gradient(from 90deg at 48% 75%, var(--luz-85) 0% 25%, #fff0 0% 100%) no-repeat,
+    var(--dot-spb),
+    conic-gradient(from 90deg at 48% 75%, var(--luz-80) 0% 25%, #fff0 0% 100%) no-repeat,
+    repeating-linear-gradient(180deg, #fff0 0 10%, #fff8 0 11%, var(--luz-75) 0 12%, #fff0 0 66%, #fff8 0 67%, var(--luz-75) 0 68%, #fff0 0 89%, #fff8 0 90%, var(--luz-75) 0 91%, #fff0 0 100%),
+    repeating-linear-gradient(90deg, #fff0 0 97%, #fff8 0 98%, #b3b3b3 0 100%), var(--luz-85);
+  background-position: 0 0, 0 0, 48% 32.5%, 68% 36%, 60% -150%, -20% top, -20% top, -20% top;
+  background-size: 100% 100%, 100% 100%, 5% 83%, 12% 9%, 38% 80%, 100% 100%, 32% 50%, 32% 50%;
+}
+.spacecraft-wrapper .type-2 .side:nth-of-type(2) {
+  height: calc(100% / 1.5);
+  transform: translate3d(-50%, -25%, calc(var(--depth) * -0.5vmin)) rotateY(180deg);
+  background-color: var(--luz-25);
+  clip-path: polygon(0% 0%, 0% 100%, 10% 100%, 10% 10%, 90% 10%, 90% 90%, 10% 90%, 10% 100%, 100% 100%, 100% 0%);
+}
+.spacecraft-wrapper .type-2 .side:nth-of-type(3) {
+  width: calc(var(--depth) * 1vmin);
+  clip-path: polygon(74% 0, 100% 33%, 100% 100%, 26% 100%, 0 67%, 0 0);
+  transform: translate(-50%, -50%) rotateY(90deg) translate3d(0vmin, 0, calc(var(--width) * 0.5vmin));
+  background-color: var(--luz-40);
+}
+.spacecraft-wrapper .type-2 .side:nth-of-type(4) {
+  width: calc(var(--depth) * 1vmin);
+  clip-path: polygon(26% 0, 100% 0, 100% 67%, 74% 100%, 0 100%, 0 33%);
+  transform: translate(-50%, -50%) rotateY(-90deg) translate3d(0vmin, 0, calc(var(--width) * 0.5vmin));
+  background-color: var(--luz-60);
+}
+.spacecraft-wrapper .type-2 .side:nth-of-type(5) {
+  height: calc(var(--depth) * 1vmin - 3.9vmin);
+  transform: translate(-50%, -50%) rotateX(90deg) translate3d(0, 1.9vmin, calc(var(--height) * 0.5vmin));
+  background:
+    conic-gradient(from 90deg at 0% 0%, var(--luz-80) 0 25%, #fff0 0 100%) no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-80) 0 25%, #fff0 0 100%) no-repeat,
+    repeating-linear-gradient(0deg, #fff0 0 15.5%, #fff8 0 16%, var(--luz-60) 0 17%, #fff0 0 84.5%, #fff8 0 85%, var(--luz-60) 0 86%, #fff0 0 100%),
+    repeating-linear-gradient(90deg, #fff0 0 96.75%, #fff8 0 97.75%, var(--luz-60) 0 100%), var(--luz-80);
+  background-position: 100% 85%, 0% 85%, -20% top, -20% top;
+  background-size: 17.5% 3%, 18% 3%, 100% 100%, 32% 50%;
+}
+.spacecraft-wrapper .type-2 .side:nth-of-type(6) {
+  height: calc(var(--depth) * 1vmin - 3.9vmin);
+  transform: translate(-50%, -50%) rotateX(-90deg) translate3d(0vmin, 1.9vmin, calc(var(--height) * 0.5vmin));
+  background:
+    conic-gradient(from -22.5deg at 50% 30%, var(--luz-35) 0 10%, #fff0 0 100%),
+    repeating-linear-gradient(0deg, #fff0 0 69%, var(--luz-40) 0 70%, var(--luz-25) 0 71%, #fff0 0 100%),
+    repeating-linear-gradient(90deg, #fff0 0 95%, var(--luz-40) 0 98%, var(--luz-25) 0 100%), var(--luz-35);
+  background-position: 50% 30%, -20% top, -20% top;
+  background-size: 100% 100%, 100% 100%, 32% 50%;
+}
+.spacecraft-wrapper .type-2 .side:nth-of-type(7) {
+  transform-origin: center top;
+  transform: translate3d(-50%, -50%, calc(var(--depth) * 0.5vmin)) translate3d(0, 5.7vmin, 0vmin) rotateX(-38.5deg);
+  height: calc(100% - var(--width) * 0.875vmin);
+  background:
+    repeating-linear-gradient(180deg, #fff0 0 89.75%, #fff8 0 90%, var(--luz-60) 0 91%, #fff0 0 100%),
+    repeating-linear-gradient(90deg, #fff0 0 96.75%, #fff8 0 97.75%, var(--luz-60) 0 100%), var(--luz-75);
+  background-position: -20% top;
+  background-size: 100% 100%, 32% 50%;
+}
+.spacecraft-wrapper .type-2 .side:nth-of-type(8) {
+  transform-origin: center top;
+  transform: translate3d(-50%, -50%, calc(var(--depth) * 0.5vmin)) translate3d(0, -4.3vmin, -11.1vmin) rotateX(-38.5deg);
+  background:
+    repeating-linear-gradient(0deg, #fff0 0 69%, #fff3 0 70%, var(--luz-30) 0 71%, #fff0 0 100%),
+    repeating-linear-gradient(90deg, #fff0 0 96.3%, #fff5 0 97.6%, var(--luz-30) 0 100%),
+    var(--luz-35);
+  height: calc(100% - var(--width) * 0.875vmin);
+  background-position: -20% top;
+  background-size: 100% 100%, 32% 50%;
+}
+
+/* Black corners on type-2 */
+.spacecraft-wrapper .type-2 > .side:nth-of-type(1):before,
+.spacecraft-wrapper .type-2 > .side:nth-of-type(1):after,
+.spacecraft-wrapper .type-2 > .side:nth-of-type(3):before,
+.spacecraft-wrapper .type-2 > .side:nth-of-type(4):before,
+.spacecraft-wrapper .type-2 > .side:nth-of-type(5):before,
+.spacecraft-wrapper .type-2 > .side:nth-of-type(5):after {
+  content: "";
+  position: absolute;
+  width: 1.25vmin;
+  height: 1.25vmin;
+  border-radius: 2px;
+}
+.spacecraft-wrapper .type-2 > .side:nth-of-type(1):before {
+  left: -1px; top: -1px;
+  background: linear-gradient(135deg, var(--luz-10) 0 50%, #fff0 0 50%);
+}
+.spacecraft-wrapper .type-2 > .side:nth-of-type(1):after {
+  left: calc(100% - 1.25vmin + 1px); top: -1px;
+  background: linear-gradient(-135deg, var(--luz-10) 0 50%, #fff0 0 50%);
+}
+.spacecraft-wrapper .type-2 > .side:nth-of-type(5):before {
+  right: -1px; bottom: -1px;
+  background: linear-gradient(-45deg, var(--luz-10) 0 50%, #fff0 0 50%);
+}
+.spacecraft-wrapper .type-2 > .side:nth-of-type(5):after {
+  left: -1px; bottom: -1px;
+  background: linear-gradient(45deg, var(--luz-10) 0 50%, #fff0 0 50%);
+}
+.spacecraft-wrapper .type-2 > .side:nth-of-type(4):before {
+  right: -1px; top: -1px;
+  background: linear-gradient(-135deg, var(--luz-10) 0 50%, #fff0 0 50%);
+}
+.spacecraft-wrapper .type-2 > .side:nth-of-type(3):before {
+  left: -1px; top: -1px;
+  background: linear-gradient(135deg, var(--luz-10) 0 50%, #fff0 0 50%);
+}
+.spacecraft-wrapper .type-2 .cuboid.hole > .side {
+  border-color: #000000f0 !important;
+}
+
+/* Module 2 overrides */
+.spacecraft-wrapper .module.type-2 .side,
+.spacecraft-wrapper .module.type-2.type-3 .side {
+  border-color: var(--luz-60);
+}
+.spacecraft-wrapper .module.type-2.type-3 .side:nth-child(6) {
+  background: var(--luz-60);
+}
+.spacecraft-wrapper .type-2.type-3 > .side:before,
+.spacecraft-wrapper .type-2.type-3 > .side:after {
+  display: none;
+}
+
+/* --------------------------------------------------
+   TYPE 3
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .type-3 {
+  transform: rotateX(90deg);
+}
+.spacecraft-wrapper .type-3 > .side:nth-of-type(1) {
+  background-color: var(--luz-80);
+}
+.spacecraft-wrapper .type-3 > .side:nth-of-type(2) {
+  clip-path: none;
+  transform: translate3d(-50%, -50%, calc(var(--depth) * -0.5vmin)) rotateY(0deg) rotateZ(180deg);
+  background-color: var(--luz-35);
+}
+.spacecraft-wrapper .type-3 > .side:nth-of-type(4):before {
+  content: "";
+  background: var(--luz-60);
+  position: absolute;
+  top: calc(100% - 10%);
+  right: 75%;
+  width: 10%;
+  height: 10%;
+}
+.spacecraft-wrapper .type-3 > .side:nth-of-type(5) {
+  clip-path: polygon(0% 0%, 0 90%, 10% 97%, 10% 6%, 90% 6%, 90% 60%, 10% 60%, 10% 97%, 15% 100%, 86% 100%, 100% 90%, 100% 0%);
+  background-color: var(--luz-25);
+}
+.spacecraft-wrapper .type-3 > .side:nth-of-type(6) {
+  background:
+    conic-gradient(from 90deg at 0% 0%, var(--luz-85) 0 25%, #fff0 0 100%) 100% 38% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-85) 0 25%, #fff0 0 100%) 100% 70% no-repeat,
+    var(--w1) 15% 1.5%, var(--w2) 15% 10%, var(--w3) 80% 1%, var(--w4) 80% 9%, var(--w5) 92% 9%,
+    var(--dot-spb) 100% 100%,
+    linear-gradient(180deg, var(--luz-85) 0 23.4%, #fff0 0 91.5%, var(--luz-85) 0 100%),
+    linear-gradient(90deg, var(--luz-85) 0 10%, #fff0 0 77%, var(--luz-85) 0 82%, var(--luz-20) 0 95%, var(--luz-85) 0 100%),
+    repeating-conic-gradient(from 90deg at 12% 5%, var(--sp1) 0% 25%, #fff0 0% 100%) 12% 5%,
+    repeating-conic-gradient(from 90deg at 12% 3%, var(--sp3) 0% 25%, #fff0 0% 100%) 11% 6%;
+  background-color: var(--luz-85);
+  background-size: 20% 10%, 20% 10%, 15% 6%, 15% 6%, 15% 6%, 15% 6%, 15% 10%, 18% 9%, 100% 100%, 100% 100%, 35% 17.25%, 35% 17.25%;
+}
+.spacecraft-wrapper .type-3 > .side:nth-of-type(7) {
+  background-color: var(--luz-50);
+}
+.spacecraft-wrapper .type-3 > .side:nth-of-type(8) {
+  background-color: var(--luz-65);
+}
+.spacecraft-wrapper .type-3 .cuboid.hole {
+  transform: translate3d(1vmin, -9.1vmin, -2.5vmin) rotateX(-90deg);
+}
+
+/* --------------------------------------------------
+   TYPE 2-3
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .type-2.type-3 {
+  --height: 10;
+  --width: 3;
+  --depth: 5;
+  transform: translate3d(4.91vmin, -9.975vmin, 7vmin) rotate(90deg);
+}
+.spacecraft-wrapper .type-2.type-3 > .side:nth-of-type(1) {
+  transform: translate3d(-50%, -50%, calc(var(--depth) * 0.5vmin)) translate3d(0, calc(var(--width) / 1.9 * -1vmin), 0);
+  height: calc(100% / 1.45);
+  background: var(--w1) 15% 28%, var(--w4) -24% 20%, var(--w3) -30% 0%, var(--w2) 65% 3%, var(--w1) 60% 96%, var(--w4) -35% 99%;
+  background-size: 45% 15%;
+  background-color: var(--luz-85);
+}
+.spacecraft-wrapper .type-2.type-3 > .side:nth-of-type(4) {
+  clip-path: polygon(0% 0, 100% 0, 100% 67%, 74% 100%, 0 100%, 0 33%);
+  background-color: var(--luz-80);
+}
+.spacecraft-wrapper .type-2.type-3 > .side:nth-of-type(5) {
+  height: 100%;
+  transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg) translate3d(0, 0, calc(var(--height) * -0.25vmin));
+  background-color: var(--luz-25);
+}
+.spacecraft-wrapper .type-2.type-3 > .side:nth-of-type(6) {
+  height: calc(var(--depth) * 0.75vmin);
+  transform: translate(-50%, -50%) rotateX(-90deg) translate3d(0vmin, 0.65vmin, calc(var(--height) * 0.5vmin));
+  background-color: var(--luz-60);
+}
+.spacecraft-wrapper .type-2.type-3 > .side:nth-of-type(7) {
+  height: calc(100% - var(--width) * 2.15vmin);
+  transform-origin: center top;
+  transform: translate3d(-50%, -50%, calc(var(--depth) * 0.5vmin)) translate3d(0, 3.5vmin, 0vmin) rotateX(-22deg);
+  background: var(--w1) 10% 5%, var(--w2) 65% 7%;
+  background-color: var(--luz-75);
+  background-size: 50% 25%;
+}
+.spacecraft-wrapper .type-2.type-3 > .side:nth-of-type(8) {
+  height: calc(var(--depth) * 1vmin);
+  transform: translate(-50%, -50%) rotateX(-90deg) translate3d(0vmin, -2.5vmin, calc(var(--height) * -0.25vmin));
+  background-color: var(--luz-40);
+}
+
+/* --------------------------------------------------
+   MOD-3 SPECIFIC OVERRIDES
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .mod-3 .module .side:nth-child(5) {
+  background:
+    var(--w1) 36% 84%, var(--w2) 36% 94%,
+    var(--w3) 16% 83%, var(--w4) 16% 94%,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-25) 0% 25%, #fff0 0% 100%) 88% 88% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-30) 0% 25%, #fff0 0% 100%) 89% 89% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-25) 0% 25%, #fff0 0% 100%) 67% 93% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-30) 0% 25%, #fff0 0% 100%) 67% 95% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 10% 69% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 27% 69% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 42% 69% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 58% 69% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 73% 69% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 90% 69% no-repeat;
+  background-size: 15% 7.5%, 15% 7.5%, 15% 7.5%, 15% 7.5%, 13% 10%, 15% 13%, 13% 16%, 17% 19%, 13.5% 10%, 13% 10%, 12.5% 10%, 12.5% 10%, 12.5% 10%, 13.5% 10%;
+  background-color: var(--luz-25);
+}
+
+.spacecraft-wrapper .mod-3 .type-1.type-3 > .side:nth-child(1) {
+  clip-path: polygon(0% 0%, 0% 100%, 0 100%, 0 27.5%, 100% 27.5%, 100% 52.5%, 0 52.5%, 0 100%, 100% 100%, 100% 0%);
+  border-color: var(--luz-35) transparent transparent transparent;
+  background:
+    conic-gradient(from 90deg at 0% 0%, var(--luz-85) 0% 25%, #fff0 0% 100%) no-repeat, var(--dot-spb),
+    conic-gradient(from 90deg at 0% 0%, var(--sp4) 0% 25%, #fff0 0% 100%) no-repeat, var(--dot-spb),
+    var(--w1), var(--w3), var(--w1), var(--w1), var(--w3), var(--w3),
+    conic-gradient(from 90deg at 0% 0%, var(--sp4) 0% 25%, #fff0 0% 100%) no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--sp4) 0% 25%, #fff0 0% 100%) no-repeat,
+    var(--luz-80);
+  background-size: 90% 8%, 15% 18%, 15% 18%, 15% 18%, 21% 7%, 21% 7%, 21% 7%, 21% 7%, 21% 7%, 21% 7%, 29% 6%, 29% 6%;
+  background-position: 110% 93%, 90% 6%, 50% 6%, 10% 6%, 72% 100%, 20% 100%, 90% 83%, 32% 83%, 58% 83%, 1% 83%, 77% 75%, 12% 75%;
+}
+
+.spacecraft-wrapper .mod-3 .type-1.type-3 > .side:nth-of-type(6) {
+  background:
+    conic-gradient(from 90deg at 0% 0%, var(--luz-55) 0 25%, #fff0 0 100%) 24% 26% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-50) 0 25%, #fff0 0 100%) 10% 26% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-85) 0 25%, #fff0 0 100%) 30% 25% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-85) 0 25%, #fff0 0 100%) 100% 70% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-85) 0 25%, #fff0 0 100%) 100% 38% no-repeat,
+    var(--dot-spb) 100% 100%,
+    linear-gradient(180deg, var(--luz-85) 0 23.4%, #fff0 0 91.5%, var(--luz-85) 0 100%),
+    linear-gradient(90deg, var(--luz-85) 0 10%, #fff0 0 77%, var(--luz-85) 0 82%, var(--luz-20) 0 95%, var(--luz-85) 0 100%),
+    repeating-conic-gradient(from 90deg at 15% 2%, var(--sp1) 0% 25%, #fff0 0% 100%) 12% 5%,
+    repeating-conic-gradient(from 90deg at 15% 4%, var(--sp2) 0% 25%, #fff0 0% 100%) 11% 6%;
+  background-color: var(--luz-85);
+  background-size: 11% 15%, 11% 15%, 70% 20%, 20% 10%, 20% 10%, 18% 9%, 100% 100%, 100% 100%, 35% 17.75%, 35% 17.75%;
+}
+
+.spacecraft-wrapper .mod-3 .type-1.type-3 .window {
+  transform: rotateX(-90deg) translate3d(1.5vmin, -6.5vmin, -8vmin);
+}
+
+.spacecraft-wrapper .mod-3 .type-2.type-3 > .side:nth-of-type(4) {
+  background: var(--w1), var(--w2), var(--w3), var(--w4), var(--luz-80);
+  background-size: 30% 13%, 30% 13%, 30% 13%, 30% 13%;
+  background-position: 90% 64%, 90% 40%, 70% 23%, 70% 81%;
+}
+
+/* --------------------------------------------------
+   GROUPS — expanded from @for $g from 1 through 12
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .group {
+  transform-origin: center top;
+  width: 10vmin;
+  height: 50%;
+  position: absolute;
+  top: 50%;
+  left: calc(50% - 5vmin);
+}
+
+.spacecraft-wrapper .mod-1  { transform: rotate(30deg);  }
+.spacecraft-wrapper .mod-2  { transform: rotate(60deg);  }
+.spacecraft-wrapper .mod-3  { transform: rotate(90deg);  }
+.spacecraft-wrapper .mod-4  { transform: rotate(120deg); }
+.spacecraft-wrapper .mod-5  { transform: rotate(150deg); }
+.spacecraft-wrapper .mod-6  { transform: rotate(180deg); }
+.spacecraft-wrapper .mod-7  { transform: rotate(210deg); }
+.spacecraft-wrapper .mod-8  { transform: rotate(240deg); }
+.spacecraft-wrapper .mod-9  { transform: rotate(270deg); }
+.spacecraft-wrapper .mod-10 { transform: rotate(300deg); }
+.spacecraft-wrapper .mod-11 { transform: rotate(330deg); }
+.spacecraft-wrapper .mod-12 { transform: rotate(360deg); }
+
+.spacecraft-wrapper .cyl-1  { transform: rotate(15deg);  }
+.spacecraft-wrapper .cyl-2  { transform: rotate(45deg);  }
+.spacecraft-wrapper .cyl-3  { transform: rotate(75deg);  }
+.spacecraft-wrapper .cyl-4  { transform: rotate(105deg); }
+.spacecraft-wrapper .cyl-5  { transform: rotate(135deg); }
+.spacecraft-wrapper .cyl-6  { transform: rotate(165deg); }
+.spacecraft-wrapper .cyl-7  { transform: rotate(195deg); }
+.spacecraft-wrapper .cyl-8  { transform: rotate(225deg); }
+.spacecraft-wrapper .cyl-9  { transform: rotate(255deg); }
+.spacecraft-wrapper .cyl-10 { transform: rotate(285deg); }
+.spacecraft-wrapper .cyl-11 { transform: rotate(315deg); }
+.spacecraft-wrapper .cyl-12 { transform: rotate(345deg); }
+
+/* --------------------------------------------------
+   CUBOID
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .cuboid {
+  height: calc(var(--height) * 1vmin);
+  width: calc(var(--width) * 1vmin);
+}
+.spacecraft-wrapper .cuboid .side {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 100%;
+  width: 100%;
+}
+.spacecraft-wrapper .cuboid .side:nth-of-type(1) {
+  transform: translate3d(-50%, -50%, calc(var(--depth) * 0.5vmin));
+  background-color: var(--luz-80);
+}
+.spacecraft-wrapper .cuboid .side:nth-of-type(2) {
+  transform: translate3d(-50%, -50%, calc(var(--depth) * -0.5vmin)) rotateY(180deg);
+  background-color: var(--luz-25);
+}
+.spacecraft-wrapper .cuboid .side:nth-of-type(3) {
+  width: calc(var(--depth) * 1vmin);
+  transform: translate(-50%, -50%) rotateY(90deg) translate3d(0, 0, calc(var(--width) * 0.5vmin));
+  background-color: var(--luz-40);
+}
+.spacecraft-wrapper .cuboid .side:nth-of-type(4) {
+  width: calc(var(--depth) * 1vmin);
+  transform: translate(-50%, -50%) rotateY(-90deg) translate3d(0, 0, calc(var(--width) * 0.5vmin));
+  background-color: var(--luz-60);
+}
+.spacecraft-wrapper .cuboid .side:nth-of-type(5) {
+  height: calc(var(--depth) * 1vmin);
+  transform: translate(-50%, -50%) rotateX(90deg) translate3d(0, 0, calc(var(--height) * 0.5vmin));
+  background-color: var(--luz-70);
+}
+.spacecraft-wrapper .cuboid .side:nth-of-type(6) {
+  height: calc(var(--depth) * 1vmin);
+  transform: translate(-50%, -50%) rotateX(-90deg) translate3d(0, 0, calc(var(--height) * 0.5vmin));
+  background-color: hsl(200, 5%, 32.5%);
+}
+
+/* --------------------------------------------------
+   CYLINDER
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .cylinders {
+  width: 80%;
+  height: 80%;
+  border-radius: 100%;
+  position: absolute;
+  left: 10%;
+  top: 10%;
+}
+.spacecraft-wrapper .cylinders .group {
+  padding-left: 3.5vmin;
+  box-sizing: border-box;
+}
+
+.spacecraft-wrapper .cylinder {
+  --height: 3;
+  --width: 3;
+  --depth: 4;
+  height: calc(var(--height) * 1vmin);
+  width: calc(var(--width) * 1vmin);
+  position: absolute;
+  bottom: 0;
+}
+.spacecraft-wrapper .cylinder .side {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 100%;
+  width: 100%;
+}
+.spacecraft-wrapper .cylinder .side:nth-of-type(1) {
+  clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+  transform: translate3d(-50%, -50%, calc(var(--depth) * 0.5vmin));
+  background: radial-gradient(var(--luz-75) 0 35%, #fff0 45% 100%), conic-gradient(from 180deg at 50% 50%, var(--luz-60), #fff0, var(--luz-60)), var(--luz-90);
+}
+.spacecraft-wrapper .cylinder .side:nth-of-type(2) {
+  clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+  transform: translate3d(-50%, -50%, calc(var(--depth) * -0.5vmin)) rotateY(180deg);
+  background: radial-gradient(var(--luz-35) 0 35%, #fff0 45% 100%), conic-gradient(from 180deg at 50% 50%, var(--luz-35), var(--luz-60), var(--luz-35)), var(--luz-85);
+}
+.spacecraft-wrapper .cylinder .side:nth-of-type(3) {
+  width: calc(var(--depth) * 1vmin);
+  height: calc(calc(calc(var(--width) * 41.17) / 100) * 1vmin);
+  transform: translate(-50%, -50%) rotateY(90deg) translate3d(0, 0, calc(var(--width) * 0.5vmin));
+  background-color: var(--luz-45);
+}
+.spacecraft-wrapper .cylinder .side:nth-of-type(4) {
+  width: calc(var(--depth) * 1vmin);
+  height: calc(calc(calc(var(--width) * 41.17) / 100) * 1vmin);
+  transform: translate(-50%, -50%) rotateY(-90deg) translate3d(0, 0, calc(var(--width) * 0.5vmin));
+  background-color: var(--luz-50);
+}
+.spacecraft-wrapper .cylinder .side:nth-of-type(5) {
+  height: calc(var(--depth) * 1vmin);
+  width: calc(calc(calc(var(--width) * 41.17) / 100) * 1vmin);
+  transform: translate(-50%, -50%) rotateX(90deg) translate3d(0, 0, calc(var(--height) * 0.5vmin));
+  background-color: var(--luz-80);
+}
+.spacecraft-wrapper .cylinder .side:nth-of-type(6) {
+  height: calc(var(--depth) * 1vmin);
+  width: calc(calc(calc(var(--width) * 41.17) / 100) * 1vmin);
+  transform: translate(-50%, -50%) rotateX(-90deg) translate3d(0, 0, calc(var(--height) * 0.5vmin));
+  background-color: var(--luz-35);
+}
+.spacecraft-wrapper .cylinder .side:nth-of-type(7) {
+  height: calc(var(--depth) * 1vmin);
+  width: calc(calc(calc(var(--width) * 41.17) / 100) * 1vmin);
+  transform: translate(-50%, -50%) rotateX(-90deg) rotateY(45deg) translate3d(0, 0, calc(var(--height) * 0.5vmin));
+  background-color: var(--luz-40);
+}
+.spacecraft-wrapper .cylinder .side:nth-of-type(8) {
+  height: calc(var(--depth) * 1vmin);
+  width: calc(calc(calc(var(--width) * 41.17) / 100) * 1vmin);
+  transform: translate(-50%, -50%) rotateX(-90deg) rotateY(-45deg) translate3d(0, 0, calc(var(--height) * 0.5vmin));
+  background-color: var(--luz-45);
+}
+.spacecraft-wrapper .cylinder .side:nth-of-type(9) {
+  height: calc(var(--depth) * 1vmin);
+  width: calc(calc(calc(var(--width) * 41.17) / 100) * 1vmin);
+  transform: translate(-50%, -50%) rotateX(-90deg) rotateY(135deg) translate3d(0, 0, calc(var(--height) * 0.5vmin));
+  background-color: var(--luz-70);
+}
+.spacecraft-wrapper .cylinder .side:nth-of-type(10) {
+  height: calc(var(--depth) * 1vmin);
+  width: calc(calc(calc(var(--width) * 41.17) / 100) * 1vmin);
+  transform: translate(-50%, -50%) rotateX(-90deg) rotateY(-135deg) translate3d(0, 0, calc(var(--height) * 0.5vmin));
+  background-color: var(--luz-75);
+}
+
+/* Second cylinder (sibling) */
+.spacecraft-wrapper .cylinder + .cylinder {
+  --height: 3;
+  --width: 3;
+  --depth: 4;
+  transform: rotateX(-90deg) rotateY(180deg);
+}
+.spacecraft-wrapper .cylinder + .cylinder .side:nth-of-type(3),
+.spacecraft-wrapper .cylinder + .cylinder .side:nth-of-type(4) {
+  background: hsl(200, 5%, 67.5%);
+}
+.spacecraft-wrapper .cylinder + .cylinder .side:nth-of-type(7),
+.spacecraft-wrapper .cylinder + .cylinder .side:nth-of-type(8) {
+  background: hsl(200, 5%, 38.5%);
+}
+.spacecraft-wrapper .cylinder + .cylinder.port {
+  --depth: 5;
+  transform: rotateX(-90deg) rotateY(180deg) translateZ(-0.5vmin);
+}
+
+/* Exterior cylinder details */
+.spacecraft-wrapper .cylinders .cylinder:nth-child(1) .side:nth-child(1) {
+  background:
+    conic-gradient(from 90deg at 0% 0%, var(--luz-40) 0% 25%, #fff0 0% 100%) 50% 50% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-30) 0% 25%, #fff0 0% 100%) 50% 50% no-repeat,
+    var(--luz-85);
+  background-size: 28% 66%, 34% 60%, 100% 100%;
+}
+.spacecraft-wrapper .cylinders .cylinder:nth-child(1) .side:nth-child(2) {
+  background:
+    conic-gradient(from 90deg at 0% 0%, var(--luz-40) 0% 25%, #fff0 0% 100%) 50% 50% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-30) 0% 25%, #fff0 0% 100%) 50% 50% no-repeat,
+    var(--luz-35);
+  background-size: 28% 60%, 35% 66%, 100% 100%;
+}
+.spacecraft-wrapper .cylinders .cylinder:nth-child(2) .side:nth-child(1) {
+  background:
+    radial-gradient(var(--luz-85) 0 30%, #fff0 35% 45%, var(--luz-85) 50% 100%),
+    conic-gradient(from 0deg at 50% 50%, var(--luz-25) 0 42deg, #fff0 0 72deg, var(--luz-25) 0 114deg, #fff0 0 144deg, var(--luz-25) 0 186deg, #fff0 0 216deg, var(--luz-25) 0 258deg, #fff0 0 288deg, var(--luz-25) 0 330deg, #fff0 0 360deg) 0% 0% no-repeat,
+    var(--luz-80);
+}
+.spacecraft-wrapper .cylinders .cylinder:nth-child(2) .side:nth-child(2) {
+  background:
+    radial-gradient(var(--luz-45) 0 30%, #fff0 35% 45%, var(--luz-45) 50% 100%),
+    conic-gradient(from 0deg at 50% 50%, var(--luz-25) 0 42deg, #fff0 0 72deg, var(--luz-25) 0 114deg, #fff0 0 144deg, var(--luz-25) 0 186deg, #fff0 0 216deg, var(--luz-25) 0 258deg, #fff0 0 288deg, var(--luz-25) 0 330deg, #fff0 0 360deg) 0% 0% no-repeat,
+    var(--luz-40);
+}
+.spacecraft-wrapper .cylinders .cylinder:nth-child(2) .side:nth-child(2).ring {
+  background:
+    radial-gradient(var(--luz-35) 0 20%, #fff0 30% 45%, var(--luz-25) 50% 60%, #fff0 65% 100%),
+    conic-gradient(from 180deg at 50% 50%, var(--luz-35), var(--luz-60), var(--luz-35)), var(--luz-85);
+}
+
+/* --------------------------------------------------
+   CHAINS
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .chains {
+  width: 79%;
+  height: 79%;
+  border-radius: 100%;
+  position: absolute;
+  left: 10.5%;
+  top: 10.5%;
+}
+.spacecraft-wrapper .chains .group {
+  padding-left: 2.5vmin;
+  box-sizing: border-box;
+}
+.spacecraft-wrapper .chain {
+  --height: 2;
+  --width: 5;
+  --depth: 2;
+  bottom: 0;
+  position: absolute;
+}
+.spacecraft-wrapper .chain .group:nth-child(odd) .cuboid {
+  transform: rotate(-10deg);
+}
+.spacecraft-wrapper .chain .group:nth-child(even) .cuboid {
+  transform: rotate(10deg);
+}
+
+.spacecraft-wrapper .cha-1  { transform: rotate(12deg);  }
+.spacecraft-wrapper .cha-2  { transform: rotate(18deg);  }
+.spacecraft-wrapper .cha-3  { transform: rotate(42deg);  }
+.spacecraft-wrapper .cha-4  { transform: rotate(48deg);  }
+.spacecraft-wrapper .cha-5  { transform: rotate(72deg);  }
+.spacecraft-wrapper .cha-6  { transform: rotate(78deg);  }
+.spacecraft-wrapper .cha-7  { transform: rotate(102deg); }
+.spacecraft-wrapper .cha-8  { transform: rotate(108deg); }
+.spacecraft-wrapper .cha-9  { transform: rotate(132deg); }
+.spacecraft-wrapper .cha-10 { transform: rotate(138deg); }
+.spacecraft-wrapper .cha-11 { transform: rotate(162deg); }
+.spacecraft-wrapper .cha-12 { transform: rotate(168deg); }
+.spacecraft-wrapper .cha-13 { transform: rotate(192deg); }
+.spacecraft-wrapper .cha-14 { transform: rotate(198deg); }
+.spacecraft-wrapper .cha-15 { transform: rotate(222deg); }
+.spacecraft-wrapper .cha-16 { transform: rotate(228deg); }
+.spacecraft-wrapper .cha-17 { transform: rotate(252deg); }
+.spacecraft-wrapper .cha-18 { transform: rotate(258deg); }
+.spacecraft-wrapper .cha-19 { transform: rotate(282deg); }
+.spacecraft-wrapper .cha-20 { transform: rotate(288deg); }
+.spacecraft-wrapper .cha-21 { transform: rotate(312deg); }
+.spacecraft-wrapper .cha-22 { transform: rotate(318deg); }
+.spacecraft-wrapper .cha-23 { transform: rotate(342deg); }
+.spacecraft-wrapper .cha-24 { transform: rotate(348deg); }
+
+/* --------------------------------------------------
+   HATCHES
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .hatch {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  transform: translateZ(-3vmin) translateX(0.05vmin);
+  border-radius: 100%;
+}
+.spacecraft-wrapper .hatch span {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+}
+.spacecraft-wrapper .hatch span + span {
+  transform: rotate(120deg);
+}
+.spacecraft-wrapper .hatch span + span + span {
+  transform: rotate(240deg);
+}
+.spacecraft-wrapper .hatch span::before {
+  content: "";
+  border: 0.5vmin solid transparent;
+  border-top: 0.85vmin solid var(--luz-20);
+  position: absolute;
+  transform: rotateX(-45deg) translate3d(0.95vmin, 0vmin, 0.35vmin);
+  transform-style: preserve-3d;
+  transform-origin: center top;
+  border-radius: 2px;
+  width: 0.25vmin;
+}
+.spacecraft-wrapper .hatch span::after {
+  width: 0.75vmin;
+  border-right: 0.25vmin solid var(--luz-50);
+  border-left: 0.25vmin solid var(--luz-50);
+  height: 0.35vmin;
+  position: absolute;
+  content: "";
+  transform: rotateX(-90deg) translate3d(0vmin, -0.35vmin, 0.2vmin);
+  top: -0.15vmin;
+  left: 1.25vmin;
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------
+   LOWER HOLES (CUBOID.HOLE)
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .cuboid.hole {
+  --height: 8;
+  --width: 8;
+  --depth: 4;
+  transform: translate3d(1vmin, -1vmin, -5.5vmin);
+  position: absolute;
+  bottom: 0;
+}
+.spacecraft-wrapper .cuboid.hole .side:nth-of-type(1) {
+  background: #131313 !important;
+  clip-path: none !important;
+  height: 100%;
+  width: 100%;
+}
+.spacecraft-wrapper .cuboid.hole .side:nth-of-type(2) {
+  display: none;
+}
+.spacecraft-wrapper .cuboid.hole .side:nth-of-type(3),
+.spacecraft-wrapper .cuboid.hole .side:nth-of-type(4) {
+  clip-path: none;
+  background: var(--luz-20) !important;
+}
+.spacecraft-wrapper .cuboid.hole .side:nth-of-type(5) {
+  background: var(--luz-10) !important;
+  clip-path: none !important;
+}
+.spacecraft-wrapper .cuboid.hole .side:nth-of-type(6) {
+  background: var(--luz-10) !important;
+}
+
+/* Window + hole combinations */
+.spacecraft-wrapper .window + .cuboid.hole > .side:nth-child(2),
+.spacecraft-wrapper .type-1.type-3 .cuboid.hole > .side:nth-child(2) {
+  display: block;
+  background: var(--luz-30);
+  clip-path: polygon(10% 1%, 90% 1%, 99% 11%, 99% 35%, 1% 35%, 1% 10%);
+  overflow: visible;
+}
+.spacecraft-wrapper .window + .cuboid.hole > span,
+.spacecraft-wrapper .type-1.type-3 .cuboid.hole > span {
+  background: var(--luz-25);
+  content: "";
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  transform: rotateX(90deg) translate3d(0vmin, 2vmin, -1.5vmin);
+}
+.spacecraft-wrapper .window + .cuboid.hole > span::before,
+.spacecraft-wrapper .type-1.type-3 .cuboid.hole > span::before {
+  content: "";
+  background: var(--luz-30);
+  clip-path: polygon(10% 1%, 90% 1%, 99% 11%, 99% 35%, 1% 35%, 1% 10%);
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  transform: rotateX(-90deg) translate3d(0vmin, 1.2vmin, -4.01vmin);
+}
+.spacecraft-wrapper .window + .cuboid.hole > span::after,
+.spacecraft-wrapper .type-1.type-3 .cuboid.hole > span::after {
+  content: "";
+  background: var(--luz-25);
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  transform: rotateX(0deg) translate3d(0vmin, 0, 2.8vmin);
+}
+
+/* --------------------------------------------------
+   NOZZLES
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .nozzle {
+  border-radius: 100%;
+  width: 35%;
+  height: 35%;
+  box-sizing: border-box;
+  position: absolute;
+  left: 10%;
+  top: 50%;
+  background: #111;
+  transform: translateZ(1.9vmin);
+}
+.spacecraft-wrapper .nozzle + .nozzle {
+  left: inherit;
+  right: 10%;
+}
+.spacecraft-wrapper .nozzle + .nozzle + .nozzle {
+  left: 32%;
+  top: 11%;
+}
+.spacecraft-wrapper .nozzle span {
+  position: absolute;
+  width: 102%;
+  height: 102%;
+  border-radius: 100%;
+  box-sizing: border-box;
+  background: radial-gradient(#fff0 50%, #111 55%, var(--luz-40) 60% 100%);
+  left: -1%;
+  top: -1%;
+  transform: translateZ(-0.3vmin);
+  border: 1px solid #101010;
+}
+.spacecraft-wrapper .nozzle span::before,
+.spacecraft-wrapper .nozzle span::after {
+  content: "";
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  background: radial-gradient(#fff0 50%, #111 55%, var(--luz-40) 60% 100%);
+  border-radius: 100%;
+  transform: translateZ(0.1vmin);
+  border: 1px solid #333;
+  transition: all 0.5s ease 0s;
+}
+.spacecraft-wrapper .nozzle span::after {
+  transform: translateZ(-0.1vmin);
+}
+.spacecraft-wrapper .nozzle div,
+.spacecraft-wrapper .nozzle::before,
+.spacecraft-wrapper .nozzle::after {
+  width: 80%;
+  height: 200%;
+  background: radial-gradient(#c2ecff 40%, #dcf4ff 55%, #dbf4ff 60% 100%);
+  box-shadow: 0 0 0.5vmin 0.5vmin #d7ebfb;
+  border-color: #dcf4ff;
+  opacity: 0;
+  transition: all 0.5s ease 0s;
+  transform: translate3d(0.25vmin, -1.25vmin, 5vmin) rotateX(90deg) rotateY(210deg);
+  border-radius: 50%;
+  position: absolute;
+}
+.spacecraft-wrapper .nozzle::before {
+  content: "";
+  transform: translate3d(0.25vmin, -1.25vmin, 5vmin) rotateX(90deg) rotateY(90deg);
+  position: absolute;
+}
+.spacecraft-wrapper .nozzle::after {
+  content: "";
+  transform: translate3d(0.25vmin, -1.25vmin, 5vmin) rotateX(90deg) rotateY(320deg);
+}
+
+/* Nozzle children — expanded from @for $n from 2 through 15 */
+/* $s = $n * 2 + 100%, $p = $n * -1%, $t = $n * -0.3vmin */
+.spacecraft-wrapper .nozzle span:nth-child(2)  { width: 104%; height: 104%; left:  -2%; top:  -2%; transform: translateZ(-0.6vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(3)  { width: 106%; height: 106%; left:  -3%; top:  -3%; transform: translateZ(-0.9vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(4)  { width: 108%; height: 108%; left:  -4%; top:  -4%; transform: translateZ(-1.2vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(5)  { width: 110%; height: 110%; left:  -5%; top:  -5%; transform: translateZ(-1.5vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(6)  { width: 112%; height: 112%; left:  -6%; top:  -6%; transform: translateZ(-1.8vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(7)  { width: 114%; height: 114%; left:  -7%; top:  -7%; transform: translateZ(-2.1vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(8)  { width: 116%; height: 116%; left:  -8%; top:  -8%; transform: translateZ(-2.4vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(9)  { width: 118%; height: 118%; left:  -9%; top:  -9%; transform: translateZ(-2.7vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(10) { width: 120%; height: 120%; left: -10%; top: -10%; transform: translateZ(-3.0vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(11) { width: 122%; height: 122%; left: -11%; top: -11%; transform: translateZ(-3.3vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(12) { width: 124%; height: 124%; left: -12%; top: -12%; transform: translateZ(-3.6vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(13) { width: 126%; height: 126%; left: -13%; top: -13%; transform: translateZ(-3.9vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(14) { width: 128%; height: 128%; left: -14%; top: -14%; transform: translateZ(-4.2vmin); }
+.spacecraft-wrapper .nozzle span:nth-child(15) { width: 130%; height: 130%; left: -15%; top: -15%; transform: translateZ(-4.5vmin); }
+
+/* --------------------------------------------------
+   ENGINES ON (cam :active trick)
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .cam:active ~ .content .nozzle span:nth-child(13)::before,
+.spacecraft-wrapper .cam:active ~ .content .nozzle span:nth-child(13)::after,
+.spacecraft-wrapper .cam:active ~ .content .nozzle span:nth-child(14)::before,
+.spacecraft-wrapper .cam:active ~ .content .nozzle span:nth-child(14)::after,
+.spacecraft-wrapper .cam:active ~ .content .nozzle span:nth-child(15)::before,
+.spacecraft-wrapper .cam:active ~ .content .nozzle span:nth-child(15)::after {
+  background: #dcf4ff;
+  box-shadow: 0 0 0.5vmin 0.5vmin #d7ebfb;
+  border-color: #dcf4ff;
+  opacity: 0.5;
+  transition: all 0.5s ease 0s;
+  transform: translateZ(-0.5vmin);
+}
+.spacecraft-wrapper .cam:active ~ .content .nozzle div,
+.spacecraft-wrapper .cam:active ~ .content .nozzle::before,
+.spacecraft-wrapper .cam:active ~ .content .nozzle::after {
+  transform: translate3d(0.25vmin, -1.25vmin, -5vmin) rotateX(90deg) rotateY(210deg);
+  animation: endurance-vibration 0.2s linear 0s infinite;
+  opacity: 0.75;
+}
+.spacecraft-wrapper .cam:active ~ .content .nozzle::before {
+  transform: translate3d(0.25vmin, -1.25vmin, -5vmin) rotateX(90deg) rotateY(90deg);
+  animation: endurance-vibration 0.2s linear 0s infinite;
+}
+.spacecraft-wrapper .cam:active ~ .content .nozzle::after {
+  transform: translate3d(0.25vmin, -1.25vmin, -5vmin) rotateX(90deg) rotateY(320deg);
+  animation: endurance-vibration 0.2s linear 0s infinite;
+}
+
+@keyframes endurance-vibration {
+  0%   { top: 0;    left: 0;    }
+  25%  { top: 1px;  left: 0;    }
+  50%  { top: 0px;  left: -1px; }
+  75%  { top: 0px;  left: 1px;  }
+  100% { top: -1px; left: 0;    }
+}
+
+/* --------------------------------------------------
+   RADIUS
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .radius {
+  width: 66%;
+  height: 66%;
+  border-radius: 100%;
+  position: absolute;
+  left: 17%;
+  top: 17%;
+}
+.spacecraft-wrapper .radius .group {
+  padding-left: 3.25vmin;
+  box-sizing: border-box;
+  transform: rotate(270deg);
+}
+
+/* Radius cylinder 1 (rc=0) */
+.spacecraft-wrapper .radius .cylinder:nth-child(1) {
+  transform: rotateX(90deg) translate3d(0, 0, 19.5vmin) rotateZ(180deg);
+  --height: 3; --width: 3; --depth: 44;
+}
+.spacecraft-wrapper .radius .cylinder:nth-child(1) .hatch {
+  transform: translateZ(22.5vmin) translateX(0.05vmin) rotateX(180deg);
+}
+/* Radius cylinder 2 (rc=1) */
+.spacecraft-wrapper .radius .cylinder:nth-child(2) {
+  --height: 5; --width: 5; --depth: 7;
+  transform: rotateX(90deg) rotateZ(180deg) translate3d(1vmin, 0vmin, 0.5vmin);
+}
+/* Radius cylinder 3 (rc=2) */
+.spacecraft-wrapper .radius .cylinder:nth-child(3) {
+  transform: rotateX(90deg) rotateZ(180deg) translate3d(1vmin, 0vmin, 10vmin);
+}
+/* Radius cylinder 4 (rc=3) */
+.spacecraft-wrapper .radius .cylinder:nth-child(4) {
+  transform: rotateX(90deg) rotateZ(180deg) translate3d(1vmin, 0vmin, 19.5vmin);
+}
+/* Radius cylinder 5 (rc=4) */
+.spacecraft-wrapper .radius .cylinder:nth-child(5) {
+  transform: rotateX(90deg) rotateZ(180deg) translate3d(1vmin, 0vmin, 35vmin);
+}
+/* Radius cylinder 6 (rc=5) */
+.spacecraft-wrapper .radius .cylinder:nth-child(6) {
+  transform: rotateX(90deg) rotateZ(180deg) translate3d(1vmin, 0vmin, 27.25vmin);
+  --depth: 4;
+}
+/* Radius cylinder 7 (rc=6) */
+.spacecraft-wrapper .radius .cylinder:nth-child(7) {
+  transform: rotateX(0deg) rotateY(90deg) rotateZ(0deg) translate3d(0vmin, -28.25vmin, 0vmin);
+  --height: 3; --width: 3; --depth: 18;
+}
+.spacecraft-wrapper .radius .cylinder:nth-child(7) .hatch {
+  transform: translateZ(9.5vmin) translateX(0.05vmin) rotateX(180deg);
+}
+.spacecraft-wrapper .radius .cylinder:nth-child(7) .hatch + .hatch {
+  transform: translateZ(-9.5vmin) translateX(0.05vmin);
+}
+/* Radius cylinder 8 (rc=7) */
+.spacecraft-wrapper .radius .cylinder:nth-child(8) {
+  transform: rotateX(0deg) rotateY(90deg) rotateZ(0deg) translate3d(0vmin, -27.25vmin, 4.5vmin);
+  --depth: 4;
+}
+/* Radius cylinder 9 (rc=8) */
+.spacecraft-wrapper .radius .cylinder:nth-child(9) {
+  transform: rotateX(0deg) rotateY(90deg) rotateZ(0deg) translate3d(0vmin, -27.25vmin, -6.5vmin);
+  --depth: 4;
+}
+/* Radius cylinder 10 (rc=9) */
+.spacecraft-wrapper .radius .cylinder:nth-child(10) {
+  transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) translate3d(0vmin, -28.25vmin, -3.75vmin);
+  --height: 3; --width: 3; --depth: 27.5;
+}
+.spacecraft-wrapper .radius .cylinder:nth-child(10) .hatch {
+  transform: translateZ(14.15vmin) translateX(0.05vmin) rotateX(180deg);
+}
+.spacecraft-wrapper .radius .cylinder:nth-child(10) .hatch + .hatch {
+  transform: translateZ(-14.15vmin) translateX(0.05vmin);
+}
+/* Radius cylinder 11 (rc=10) */
+.spacecraft-wrapper .radius .cylinder:nth-child(11) {
+  transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) translate3d(-1vmin, -27.25vmin, 6.5vmin);
+  --depth: 4;
+}
+/* Radius cylinder 12 (rc=11) */
+.spacecraft-wrapper .radius .cylinder:nth-child(12) {
+  transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) translate3d(-1vmin, -27.25vmin, -10vmin);
+  --depth: 12;
+}
+
+/* Radius cylinder 17, 18 hatch overrides */
+.spacecraft-wrapper .radius .cylinder:nth-child(17) .hatch,
+.spacecraft-wrapper .radius .cylinder:nth-child(18) .hatch {
+  transform: translateZ(0.85vmin) translateX(0.05vmin) rotateX(180deg) scale3d(0.75, 0.75, 0.75);
+  width: 115%;
+  height: 115%;
+  top: -5%;
+  left: -7.5%;
+}
+
+/* Ranger ports in radius */
+.spacecraft-wrapper .radius .cylinder ~ .cuboid.chain {
+  transform: translate3d(0.25vmin, -21.9vmin, 2vmin) rotateY(0) rotateX(-190deg);
+  --width: 2.4; --height: 2.4; --depth: 5;
+}
+.spacecraft-wrapper .radius .cylinder ~ .cuboid.chain .side:nth-child(3) {
+  background: hsl(200, 5%, 67.5%);
+}
+.spacecraft-wrapper .radius .cylinder ~ .cuboid.chain + .cylinder {
+  --depth: 1; --width: 2.4; --height: 2.4;
+  transform: translate3d(0.25vmin, -34.95vmin, 6.85vmin) rotateX(-15deg);
+}
+.spacecraft-wrapper .radius .cylinder ~ .cuboid.chain + .cylinder + .cylinder {
+  --depth: 1; --width: 2.4; --height: 2.4;
+  transform: translate3d(0.25vmin, -22.3vmin, 6.85vmin) rotateX(15deg);
+}
+
+/* Radius chain additional transforms */
+.spacecraft-wrapper .radius .cylinder + .cuboid.chain + .cuboid.chain {
+  transform: translate3d(0.25vmin, -35.25vmin, 2vmin) rotateY(0deg) rotateX(10deg);
+}
+.spacecraft-wrapper .radius .cylinder + .cuboid.chain + .cuboid.chain + .cuboid.chain {
+  transform: translate3d(0.25vmin, -21.76vmin, 5.15vmin) rotateY(0deg) rotateX(-165deg);
+  --depth: 2.5;
+}
+.spacecraft-wrapper .radius .cylinder + .cuboid.chain + .cuboid.chain + .cuboid.chain .side:nth-child(2) {
+  background: var(--luz-80);
+}
+.spacecraft-wrapper .radius .cylinder + .cuboid.chain + .cuboid.chain + .cuboid.chain + .cuboid.chain {
+  transform: translate3d(0.25vmin, -35.4vmin, 5.15vmin) rotateY(0deg) rotateX(-15deg);
+  --depth: 2.5;
+}
+
+/* Ring sides in radius */
+.spacecraft-wrapper .radius .cylinder .side.ring {
+  background:
+    radial-gradient(var(--luz-75) 0 45%, var(--luz-40) 50% 60%, #fff0 65% 100%),
+    conic-gradient(from 180deg at 50% 50%, var(--luz-60), #fff0, var(--luz-60)), var(--luz-90);
+}
+.spacecraft-wrapper .radius .cylinder .side.ring-dark {
+  background:
+    radial-gradient(var(--luz-35) 0 45%, var(--luz-25) 50% 60%, #fff0 65% 100%),
+    conic-gradient(from 180deg at 50% 50%, var(--luz-25), var(--luz-60), var(--luz-25)), var(--luz-85);
+}
+
+/* --------------------------------------------------
+   WINDOW HOLES (MOD-SPECIFIC)
+   -------------------------------------------------- */
+
+.spacecraft-wrapper .group.mod-1 .module .side:nth-child(5),
+.spacecraft-wrapper .group.mod-7 .module .side:nth-child(5) {
+  clip-path: polygon(0% 0%, 0 90%, 15% 100%, 15% 10%, 85% 10%, 85% 35%, 15% 35%, 15% 100%, 85% 100%, 100% 90%, 100% 0%);
+  background:
+    conic-gradient(from 90deg at 48% 75%, var(--luz-85) 0% 25%, #fff0 0% 100%) no-repeat,
+    var(--dot-spb),
+    var(--dot-spb),
+    conic-gradient(from 90deg at 48% 75%, var(--luz-75) 0% 25%, #fff0 0% 100%) no-repeat,
+    conic-gradient(from 90deg at 48% 75%, var(--luz-75) 0% 25%, #fff0 0% 100%) no-repeat,
+    conic-gradient(from 90deg at 48% 75%, var(--sp4) 0% 25%, #fff0 0% 100%) no-repeat,
+    conic-gradient(from 90deg at 48% 75%, var(--sp4) 0% 25%, #fff0 0% 100%) no-repeat,
+    conic-gradient(from 90deg at 48% 75%, var(--sp0) 0% 25%, #fff0 0% 100%) no-repeat,
+    var(--luz-80);
+  background-size: 46% 70%, 7% 3%, 7% 3%, 30% 25%, 30% 25%, 16% 70%, 18% 52%, 18% 52%;
+  background-position: 4% 68%, 67% 76%, 67% 83%, 65% 80%, 65% 71%, 8% 68%, 84% 46%, 84% 76%;
+}
+
+.spacecraft-wrapper .group.mod-5 .module .side:nth-child(5),
+.spacecraft-wrapper .group.mod-11 .module .side:nth-child(5) {
+  clip-path: polygon(0% 0%, 0 90%, 15% 100%, 15% 10%, 85% 10%, 85% 35%, 15% 35%, 15% 100%, 85% 100%, 100% 90%, 100% 0%);
+  background:
+    conic-gradient(from 90deg at 48% 75%, var(--sp4) 0% 25%, #fff0 0% 100%) no-repeat, var(--dot-spb),
+    var(--dot-spb),
+    conic-gradient(from 90deg at 48% 75%, var(--luz-75) 0% 25%, #fff0 0% 100%) no-repeat,
+    conic-gradient(from 90deg at 48% 75%, var(--luz-75) 0% 25%, #fff0 0% 100%) no-repeat,
+    conic-gradient(from 90deg at 48% 75%, var(--luz-85) 0% 25%, #fff0 0% 100%) no-repeat,
+    conic-gradient(from 90deg at 48% 75%, var(--luz-85) 0% 25%, #fff0 0% 100%) no-repeat,
+    conic-gradient(from 90deg at 48% 75%, var(--sp4) 0% 25%, #fff0 0% 100%) no-repeat,
+    var(--luz-80);
+  background-size: 46% 70%, 7% 3%, 7% 3%, 30% 25%, 30% 25%, 16% 70%, 18% 52%, 18% 52%;
+  background-position: 4% 68%, 67% 76%, 67% 83%, 65% 80%, 65% 71%, 8% 68%, 84% 46%, 84% 76%;
+}
+
+.spacecraft-wrapper .group.mod-9 .module > .side:nth-child(1),
+.spacecraft-wrapper .group.mod-6 .module > .side:nth-child(5),
+.spacecraft-wrapper .group.mod-12 .module > .side:nth-child(5) {
+  clip-path: polygon(0% 0%, 0 90%, 15% 100%, 15% 35%, 85% 35%, 85% 60%, 15% 60%, 15% 100%, 85% 100%, 100% 90%, 100% 0%);
+  background:
+    var(--dot-spb), var(--dot-spb), var(--dot-spb),
+    conic-gradient(from 90deg at 0% 0%, var(--luz-80) 0% 25%, #fff0 0% 100%) no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-75) 0% 25%, #fff0 0% 100%) no-repeat,
+    var(--dot-spb), var(--dot-spb), var(--dot-spb),
+    conic-gradient(from 90deg at 0% 0%, var(--luz-80) 0% 25%, #fff0 0% 100%) no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-75) 0% 25%, #fff0 0% 100%) no-repeat,
+    var(--luz-80);
+  background-size: 12% 5%, 12% 5%, 12% 5%, 15% 21%, 19% 24%, 12% 5%, 12% 5%, 12% 5%, 15% 21%, 19% 24%;
+  background-position: 50% 23%, 50% 16%, 50% 9%, 51% 10%, 51% 8%, 50% 88%, 50% 82%, 50% 75%, 51% 88%, 51% 89%;
+}
+.spacecraft-wrapper .group.mod-9 .module > .side:nth-child(1) {
+  background-size: 12% 5%, 12% 7%, 12% 5%, 18% 22%, 21% 24%, 12% 5%, 12% 7%, 12% 5%, 18% 22%, 21% 24%;
+  background-position: 51% 23%, 51% 15%, 51% 9%, 50% 9%, 50% 8%, 51% 88%, 51% 81.5%, 51% 74%, 50% 88%, 50% 89%;
+  clip-path: none;
+}
+
+/* Underside panels */
+.spacecraft-wrapper .group.mod-1 .module > .side:nth-child(2),
+.spacecraft-wrapper .group.mod-3 .module .side:nth-child(5),
+.spacecraft-wrapper .group.mod-5 .module > .side:nth-child(2),
+.spacecraft-wrapper .group.mod-6 .module > .side:nth-child(2),
+.spacecraft-wrapper .group.mod-7 .module > .side:nth-child(2),
+.spacecraft-wrapper .group.mod-9 .module .side:nth-child(5),
+.spacecraft-wrapper .group.mod-11 .module > .side:nth-child(2),
+.spacecraft-wrapper .group.mod-12 .module > .side:nth-child(2) {
+  --w1: conic-gradient(from 180deg at 50% 50%, #fff0 0%, var(--luz-10) 1% 32%, #fff0 33%) no-repeat;
+  --w2: conic-gradient(from 245deg at 50% 50%, #fff0 0%, var(--luz-10) 1% 32%, #fff0 33%) no-repeat;
+  --w3: conic-gradient(from 65deg at 50% 50%, #fff0 0%, var(--luz-10) 1% 32%, #fff0 33%) no-repeat;
+  --w4: conic-gradient(from 0deg at 50% 50%, #fff0 0%, var(--luz-10) 1% 32%, #fff0 33%) no-repeat;
+  --w5: conic-gradient(from 0deg at 50% 50%, #fff0 0%, var(--luz-10) 0% 25%, #fff0 0 100%) no-repeat;
+}
+
+.spacecraft-wrapper .group.mod-1 .module > .side:nth-child(2),
+.spacecraft-wrapper .group.mod-5 .module > .side:nth-child(2),
+.spacecraft-wrapper .group.mod-6 .module > .side:nth-child(2),
+.spacecraft-wrapper .group.mod-7 .module > .side:nth-child(2),
+.spacecraft-wrapper .group.mod-11 .module > .side:nth-child(2),
+.spacecraft-wrapper .group.mod-12 .module > .side:nth-child(2) {
+  background:
+    var(--w1) 85% 5%, var(--w5) 76% 15%, var(--w2) 85% 21%,
+    var(--w3) 15% 5%, var(--w5) 15% 15%, var(--w4) 15% 21%,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-20) 0% 25%, #fff0 0% 100%) 5% 7.5% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 94% 7.5% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-40) 0% 25%, #fff0 0% 100%) 51% 7.5% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 10% 31% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 26% 31% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 41% 31% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 57% 31% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 73% 31% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 90% 31% no-repeat;
+  background-color: var(--luz-25);
+  background-size:
+    15% 7.5%, 15% 7.5%, 15% 7.5%, 15% 7.5%, 15% 7.5%, 15% 7.5%,
+    10% 20%, 10% 20%, 26% 16%,
+    13% 9%, 12.5% 9%, 12.5% 9%, 12.5% 9%, 12.5% 9%, 13% 9%;
+}
+
+/* mod-9 underside */
+.spacecraft-wrapper .group.mod-9 .module .side:nth-child(5) {
+  background:
+    var(--w1) 85% 81%, var(--w5) 77% 91%, var(--w2) 85% 97%,
+    var(--w3) 15% 81%, var(--w5) 15% 91%, var(--w4) 15% 97%,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-25) 0% 25%, #fff0 0% 100%) 50% 93% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-30) 0% 25%, #fff0 0% 100%) 50% 95% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 10% 69% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 27% 69% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 42% 69% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 58% 69% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 73% 69% no-repeat,
+    conic-gradient(from 90deg at 0% 0%, var(--luz-35) 0% 25%, #fff0 0% 100%) 90% 69% no-repeat;
+  background-size: 15% 7.5%, 15% 7.5%, 15% 7.5%, 15% 7.5%, 15% 7.5%, 15% 7.5%, 13% 16%, 17% 19%, 13.5% 10%, 13% 10%, 12.5% 10%, 12.5% 10%, 12.5% 10%, 13.5% 10%;
+  background-color: var(--luz-25);
+}
+
+/* Cam divs (hidden off-screen, used for :active CSS trick) */
+.spacecraft-wrapper .cam {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  left: -9999px;
+  top: -9999px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: all;
+  cursor: crosshair;
+  z-index: 1000;
+}
