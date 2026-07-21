@@ -1,0 +1,538 @@
+import * as THREE from 'three';
+
+const IS_MOBILE = window.matchMedia('(max-width: 767px)').matches;
+const HOVER_CAPABLE = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+const PALETTE = {
+  amber: 0xdba263,
+  amberBright: 0xf3c88a,
+  coolBlueA: 0x3a4a78,
+  coolBlueB: 0x584a86,
+  debris: 0x555a68,
+  starWarm: 0xd8b380,
+  starCool: 0xffffff,
+};
+
+const ROUNDS = [
+  { code: 'ROUND 01', title: 'FIRST CONTACT', date: '14 MAR 2067', status: 'COMPLETE',
+    summary: 'Initial transmission decoded. Entry accepted.',
+    briefing: 'A single burst signal repeated for six days before it was caught. Once isolated, the payload resolved into an invitation, not a threat.',
+    objectives: [['ISOLATE SIGNAL', 'COMPLETE'], ['DECODE PAYLOAD', 'COMPLETE'], ['CONFIRM ENTRY', 'COMPLETE']] },
+  { code: 'ROUND 02', title: 'CIPHER PROTOCOL', date: '02 APR 2067', status: 'ACTIVE',
+    summary: 'Decode the transmission. Uncover the next coordinate.',
+    briefing: 'A looping numeric transmission repeats every eleven seconds. Isolate the pattern, invert it, and the next coordinate resolves.',
+    objectives: [['DECODE PAYLOAD', 'IN PROGRESS'], ['VERIFY CHECKSUM', 'PENDING'], ['SUBMIT COORDINATE', 'LOCKED']] },
+  { code: 'ROUND 03', title: 'DEEP FIELD SCAN', date: '21 APR 2067', status: 'LOCKED',
+    summary: 'Coordinates unlock at close of Round 02.',
+    briefing: 'Long range scan protocols are staged and waiting on authorization from the prior round.',
+    objectives: [['SCAN ARRAY', 'LOCKED'], ['TRIANGULATE', 'LOCKED'], ['LOG COORDINATE', 'LOCKED']] },
+  { code: 'ROUND 04', title: 'SIGNAL TRIANGULATION', date: '09 MAY 2067', status: 'LOCKED',
+    summary: 'Three signals converge on a single origin.',
+    briefing: 'Details classified until the prior round clears.',
+    objectives: [['CROSS REFERENCE', 'LOCKED'], ['PLOT VECTOR', 'LOCKED'], ['LOG COORDINATE', 'LOCKED']] },
+  { code: 'ROUND 05', title: 'THE LONG SILENCE', date: '28 MAY 2067', status: 'LOCKED',
+    summary: 'No transmission is still a transmission.',
+    briefing: 'Details classified until the prior round clears.',
+    objectives: [['MONITOR FREQUENCY', 'LOCKED'], ['INTERPRET SILENCE', 'LOCKED'], ['LOG COORDINATE', 'LOCKED']] },
+  { code: 'ROUND 06', title: 'FINAL DESCENT', date: '16 JUN 2067', status: 'LOCKED',
+    summary: 'Last coordinate. No return signal past this point.',
+    briefing: 'Details classified until the prior round clears.',
+    objectives: [['CONFIRM DESCENT', 'LOCKED'], ['BRACE', 'LOCKED'], ['ARRIVE', 'LOCKED']] },
+];
+
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const clampRange = (v, min, max) => Math.max(min, Math.min(max, v));
+
+function statusClass(status) {
+  if (status === 'ACTIVE') return 'active';
+  if (status === 'COMPLETE') return 'complete';
+  return 'locked';
+}
+
+function buildCardDOM(round, index) {
+  const el = document.createElement('div');
+  el.className = `round-card round-card--${statusClass(round.status)}`;
+  el.dataset.index = String(index);
+
+  const objectivesHTML = round.objectives.map(([label, status]) => `
+    <div class="round-card__objective">
+      <span class="round-card__objective-label">${label}</span>
+      <span class="round-card__objective-status ${status === 'IN PROGRESS' || status === 'COMPLETE' ? 'round-card__objective-status--live' : ''}">${status}</span>
+    </div>
+  `).join('');
+
+  el.innerHTML = `
+    <div class="round-card__panel" tabindex="0" role="button" aria-expanded="false" aria-label="${round.code}, ${round.title}, ${round.status}">
+      <div class="round-card__top">
+        <span class="round-card__code">${round.code}</span>
+        <span class="round-card__date">${round.status === 'LOCKED' ? 'TBD' : round.date}</span>
+      </div>
+      <div class="round-card__title">${round.title}</div>
+      <p class="round-card__summary">${round.summary}</p>
+      <div class="round-card__status">
+        <span class="round-card__dot"></span>
+        <span class="round-card__statustext">${round.status}</span>
+        <span class="round-card__hint">${HOVER_CAPABLE ? 'HOVER FOR BRIEFING' : 'TAP FOR BRIEFING'}</span>
+      </div>
+      <div class="round-card__detail">
+        <div class="round-card__detail-inner">
+          <p class="round-card__briefing">${round.briefing}</p>
+          ${objectivesHTML}
+        </div>
+      </div>
+    </div>
+  `;
+  return el;
+}
+
+function wireCardInteraction(el) {
+  const panel = el.querySelector('.round-card__panel');
+  const open = () => { el.classList.add('round-card--open'); panel.setAttribute('aria-expanded', 'true'); };
+  const close = () => { el.classList.remove('round-card--open'); panel.setAttribute('aria-expanded', 'false'); };
+
+  if (HOVER_CAPABLE) {
+    panel.addEventListener('mouseenter', open);
+    panel.addEventListener('mouseleave', close);
+    panel.addEventListener('focus', open);
+    panel.addEventListener('blur', close);
+  } else {
+    panel.addEventListener('click', () => {
+      const isOpen = el.classList.contains('round-card--open');
+      document.querySelectorAll('.round-card--open').forEach((c) => { if (c !== el) c.classList.remove('round-card--open'); });
+      if (isOpen) close(); else open();
+    });
+  }
+}
+
+function tickClock(el) {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  el.textContent = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function makeGlowTexture(colorRGB) {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  grad.addColorStop(0, `rgba(${colorRGB}, 1)`);
+  grad.addColorStop(0.4, `rgba(${colorRGB}, 0.5)`);
+  grad.addColorStop(1, `rgba(${colorRGB}, 0)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+  return new THREE.CanvasTexture(canvas);
+}
+
+class TunnelScene {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.clock = new THREE.Clock();
+    this.targetProgress = 0;
+    this.smoothProgress = 0;
+    this.active = false;
+
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1 : 1.5));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    this.scene = new THREE.Scene();
+    this.scene.fog = new THREE.FogExp2(0x0a0e18, 0.011);
+
+    this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1400);
+
+    this.scene.add(new THREE.HemisphereLight(0x5a6a92, 0x0a0a0f, 0.9));
+    const key = new THREE.DirectionalLight(PALETTE.amber, 0.6);
+    key.position.set(6, 10, 4);
+    this.scene.add(key);
+
+    this.buildCurve();
+    this.buildThread();
+    this.buildStarfields();
+    this.buildDust();
+    this.buildDebris();
+    this.buildMist();
+    this.buildPlanet();
+
+    this.cardAnchors = ROUNDS.map((_, i) => this.anchorForRound(i));
+    this.snapUs = this.cardAnchors.map((a) => clamp01(a.u - this.snapLeadU));
+    this._forward = new THREE.Vector3();
+    this.mouseX = 0; this.mouseY = 0;
+    this.targetMouseX = 0; this.targetMouseY = 0;
+
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+  }
+
+  setMouse(nx, ny) { this.targetMouseX = nx; this.targetMouseY = ny; }
+
+  buildCurve() {
+    const pad = 1;
+    const count = ROUNDS.length + pad * 2 + 1;
+    const spacing = 30;
+    const pts = [];
+    for (let k = 0; k < count; k++) {
+      const a = k * 0.62;
+      const x = Math.sin(a) * 15 + Math.sin(a * 0.41 + 1.4) * 8;
+      const y = Math.cos(a * 0.7) * 8 + Math.sin(a * 1.3 + 0.8) * 5;
+      const z = -k * spacing;
+      pts.push(new THREE.Vector3(x, y, z));
+    }
+    this.curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.5);
+    this.pointCount = count;
+    this.pad = pad;
+    this.totalLength = this.curve.getLength();
+    this.snapLeadU = 14 / this.totalLength;
+  }
+
+  tAt(u) { return this.curve.getPointAt(clamp01(u)); }
+  tangentAt(u) { return this.curve.getTangentAt(clamp01(u)).normalize(); }
+
+  anchorForRound(i) {
+    const u = (i + this.pad + 0.5) / (this.pointCount - 1);
+    const center = this.tAt(u);
+    const tangent = this.tangentAt(u);
+    let right = new THREE.Vector3().crossVectors(tangent, new THREE.Vector3(0, 1, 0));
+    if (right.lengthSq() < 0.001) right.set(1, 0, 0);
+    right.normalize();
+    const side = i % 2 === 0 ? 1 : -1;
+    const lateral = 8.5;
+    const vertical = i % 2 === 0 ? 0.8 : -0.8;
+    const pos = center.clone().addScaledVector(right, lateral * side).add(new THREE.Vector3(0, vertical, 0));
+    return { u, world: pos };
+  }
+
+  buildThread() {
+    const layers = [
+      { radius: 0.22, opacity: 0.85, color: PALETTE.amberBright },
+      { radius: 0.6, opacity: 0.16, color: PALETTE.amber },
+      { radius: 1.3, opacity: 0.06, color: PALETTE.amber },
+    ];
+    this.threadGroup = new THREE.Group();
+    layers.forEach((l) => {
+      const geo = new THREE.TubeGeometry(this.curve, this.pointCount * 5, l.radius, 5, false);
+      const mat = new THREE.MeshBasicMaterial({ color: l.color, transparent: true, opacity: l.opacity, blending: THREE.AdditiveBlending, depthWrite: false });
+      this.threadGroup.add(new THREE.Mesh(geo, mat));
+    });
+    this.scene.add(this.threadGroup);
+  }
+
+  buildStarfields() {
+    const count = IS_MOBILE ? 500 : 1500;
+    const geo = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      const r = 500 + Math.random() * 500;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random() * 2 - 1);
+      positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      positions[i * 3 + 2] = r * Math.cos(phi) - this.pointCount * 15;
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({ size: 2.4, color: PALETTE.starCool, transparent: true, opacity: 0.75, map: makeGlowTexture('255,255,255'), depthWrite: false, blending: THREE.AdditiveBlending });
+    this.farStars = new THREE.Points(geo, mat);
+    this.scene.add(this.farStars);
+  }
+
+  buildDust() {
+    const count = IS_MOBILE ? 380 : 1200;
+    const geo = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const warm = new THREE.Color(PALETTE.starWarm);
+    const cool = new THREE.Color(0xffffff);
+    for (let i = 0; i < count; i++) {
+      const u = Math.random();
+      const center = this.tAt(u);
+      const radius = 4 + Math.random() * 30;
+      const angle = Math.random() * Math.PI * 2;
+      positions[i * 3] = center.x + Math.cos(angle) * radius;
+      positions[i * 3 + 1] = center.y + Math.sin(angle) * radius * 0.6;
+      positions[i * 3 + 2] = center.z + (Math.random() - 0.5) * 20;
+      const c = Math.random() < 0.12 ? warm : cool;
+      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    const mat = new THREE.PointsMaterial({ size: 0.9, vertexColors: true, transparent: true, opacity: 0.8, map: makeGlowTexture('255,255,255'), depthWrite: false, blending: THREE.AdditiveBlending });
+    this.dust = new THREE.Points(geo, mat);
+    this.scene.add(this.dust);
+  }
+
+  buildDebris() {
+    this.debris = new THREE.Group();
+    const count = IS_MOBILE ? 10 : 26;
+    const geoBase = new THREE.IcosahedronGeometry(1, 0);
+    const mat = new THREE.MeshStandardMaterial({ color: PALETTE.debris, roughness: 0.85, metalness: 0.15, flatShading: true });
+    for (let i = 0; i < count; i++) {
+      const u = Math.random();
+      const center = this.tAt(u);
+      const radius = 10 + Math.random() * 34;
+      const angle = Math.random() * Math.PI * 2;
+      const mesh = new THREE.Mesh(geoBase, mat);
+      const scale = 0.4 + Math.random() * 1.6;
+      mesh.scale.setScalar(scale);
+      mesh.position.set(
+        center.x + Math.cos(angle) * radius,
+        center.y + Math.sin(angle) * radius * 0.5,
+        center.z + (Math.random() - 0.5) * 26
+      );
+      mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      mesh.userData.spin = (Math.random() - 0.5) * 0.15;
+      this.debris.add(mesh);
+    }
+    this.scene.add(this.debris);
+  }
+
+  buildMist() {
+    this.mistStops = [
+      new THREE.Color(0x222c4c), new THREE.Color(0x2c3a5e), new THREE.Color(0x3a3468),
+      new THREE.Color(0x4a3a72), new THREE.Color(0x3d4c74), new THREE.Color(0x2c4a5c),
+    ];
+    const tex = makeGlowTexture('255,255,255');
+    this.mistLayers = [0, 1, 2].map((i) => {
+      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.34 - i * 0.06, depthWrite: false, blending: THREE.AdditiveBlending });
+      const sprite = new THREE.Sprite(mat);
+      sprite.scale.setScalar(190 + i * 90);
+      this.scene.add(sprite);
+      return sprite;
+    });
+    this._mistColor = new THREE.Color();
+  }
+
+  updateMist(u) {
+    const stops = this.mistStops;
+    const segments = stops.length - 1;
+    const scaled = clamp01(u) * segments;
+    const idx = Math.min(Math.floor(scaled), segments - 1);
+    const localT = scaled - idx;
+    this._mistColor.copy(stops[idx]).lerp(stops[idx + 1], localT);
+    this.mistLayers.forEach((sprite, i) => {
+      sprite.material.color.copy(this._mistColor);
+      sprite.position.copy(this.camera.position).addScaledVector(this._forward, 50 + i * 40);
+    });
+  }
+
+  buildPlanet() {
+    const center = this.tAt(0.48);
+    const geo = new THREE.SphereGeometry(12, 32, 32);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x4a5468, roughness: 1, metalness: 0 });
+    this.planet = new THREE.Mesh(geo, mat);
+    this.planet.position.set(center.x - 34, center.y + 6, center.z - 4);
+    this.scene.add(this.planet);
+
+    const ringGeo = new THREE.RingGeometry(16, 19, 64);
+    const ringMat = new THREE.MeshBasicMaterial({ color: PALETTE.amber, transparent: true, opacity: 0.28, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI / 2.3;
+    ring.rotation.y = 0.3;
+    this.planet.add(ring);
+  }
+
+  resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    this.renderer.setSize(w, h);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+  }
+
+  setActive(v) { this.active = v; }
+
+  setTargetProgress(p) { this.targetProgress = clamp01(p); }
+
+  frame(cardEls, depthEl) {
+    const dt = Math.min(this.clock.getDelta(), 0.05);
+    this.elapsed = (this.elapsed || 0) + dt;
+
+    let u;
+    if (this.active) {
+      const lerpFactor = IS_MOBILE ? 0.14 : 0.09;
+      this.smoothProgress = lerp(this.smoothProgress, this.targetProgress, lerpFactor);
+      u = clamp01(this.smoothProgress);
+      if (depthEl) depthEl.textContent = String(Math.round(this.targetProgress * 100)).padStart(3, '0') + '%';
+    } else {
+      this.smoothProgress = lerp(this.smoothProgress, 0, 0.05);
+      const wobble = 0.007 + Math.sin(this.elapsed * 0.3) * 0.006;
+      u = clamp01(this.smoothProgress + wobble);
+    }
+
+    const camPos = this.tAt(u);
+    const lookPos = this.tAt(clamp01(u + 0.012));
+    this.camera.position.copy(camPos);
+
+    const roll = Math.sin(u * Math.PI * 6) * 0.06;
+    this.camera.up.set(Math.sin(roll), Math.cos(roll), 0);
+    this.camera.lookAt(lookPos);
+    this._forward.copy(lookPos).sub(camPos).normalize();
+
+    this.farStars.rotation.y += dt * 0.004;
+    this.debris.children.forEach((m) => { m.rotation.x += m.userData.spin * dt; m.rotation.y += m.userData.spin * dt * 0.7; });
+
+    this.mouseX = lerp(this.mouseX, this.targetMouseX, 0.08);
+    this.mouseY = lerp(this.mouseY, this.targetMouseY, 0.08);
+
+    this.updateMist(u);
+    if (this.active) this.projectCards(cardEls);
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  projectCards(cardEls) {
+    const w = window.innerWidth, h = window.innerHeight;
+    this.camera.updateMatrixWorld();
+    const viewMatrix = this.camera.matrixWorldInverse;
+
+    this.cardAnchors.forEach((anchor, i) => {
+      const el = cardEls[i];
+      if (!el) return;
+
+      const local = anchor.world.clone().applyMatrix4(viewMatrix);
+      const frontDist = -local.z;
+
+      if (frontDist <= 0.4) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; return; }
+
+      const ndc = anchor.world.clone().project(this.camera);
+      if (ndc.z > 1) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; return; }
+
+      const x = (ndc.x * 0.5 + 0.5) * w;
+      const y = (1 - (ndc.y * 0.5 + 0.5)) * h;
+
+      let opacity;
+      if (frontDist > 46) opacity = 0;
+      else if (frontDist > 24) opacity = (46 - frontDist) / 22;
+      else if (frontDist > 5) opacity = 1;
+      else opacity = clamp01((frontDist - 0.4) / 4.6);
+
+      const scale = clampRange(16 / frontDist, 0.32, 1.5);
+
+      const isFocused = Math.abs(this.snapUs[i] - this.smoothProgress) < 0.03;
+      el.classList.toggle('round-card--focused', isFocused);
+      const pullX = isFocused ? this.mouseX * 24 : 0;
+      const pullY = isFocused ? this.mouseY * 16 : 0;
+      const pullScale = isFocused ? 1.07 : 1;
+
+      el.style.opacity = opacity.toFixed(3);
+      el.style.pointerEvents = opacity > 0.08 ? 'auto' : 'none';
+      el.style.transform = `translate3d(${(x + pullX).toFixed(1)}px, ${(y + pullY).toFixed(1)}px, 0) translate(-50%, -50%) scale(${(scale * pullScale).toFixed(3)})`;
+    });
+  }
+}
+
+function boot() {
+  const canvas = document.getElementById('tunnel-canvas');
+  const cardLayer = document.getElementById('card-layer');
+  const tunnelTrack = document.getElementById('tunnel-track');
+  const depthEl = document.getElementById('depth-value');
+  const clockEl = document.getElementById('clock-value');
+
+  document.body.classList.remove('is-loading');
+  tickClock(clockEl);
+  setInterval(() => tickClock(clockEl), 1000);
+
+  const perRoundVh = IS_MOBILE ? 72 : 96;
+  tunnelTrack.style.height = `${ROUNDS.length * perRoundVh + (IS_MOBILE ? 40 : 60)}vh`;
+
+  const scene = new TunnelScene(canvas);
+  requestAnimationFrame(() => canvas.classList.add('is-visible'));
+
+  const cardEls = ROUNDS.map((round, i) => {
+    const el = buildCardDOM(round, i);
+    el.style.opacity = '0';
+    el.style.pointerEvents = 'none';
+    wireCardInteraction(el);
+    cardLayer.appendChild(el);
+    return el;
+  });
+
+  const rail = document.getElementById('progress-rail');
+  const railTicksWrap = document.getElementById('progress-rail-ticks');
+  const railTickEls = ROUNDS.map((round) => {
+    const tick = document.createElement('div');
+    tick.className = 'progress-rail__tick';
+    const label = document.createElement('span');
+    label.className = 'progress-rail__label';
+    label.textContent = round.code;
+    tick.appendChild(label);
+    railTicksWrap.appendChild(tick);
+    return tick;
+  });
+
+  const heroEl = document.querySelector('.hero');
+
+  if (HOVER_CAPABLE) {
+    window.addEventListener('pointermove', (e) => {
+      scene.setMouse((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
+    });
+  }
+
+  function computeProgress() {
+    const journeyEnd = tunnelTrack.offsetTop + tunnelTrack.offsetHeight - window.innerHeight;
+    if (journeyEnd <= 0) return 0;
+    return clamp01(window.scrollY / journeyEnd);
+  }
+
+  const MAX_WHEEL_STEP = 80;
+  const MAX_SCROLL_SPEED = 950;
+  const scrollMax = () => Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  let scrollTarget = window.scrollY;
+  let lastFrameTime = performance.now();
+
+  window.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    scrollTarget = clampRange(scrollTarget + clampRange(e.deltaY, -MAX_WHEEL_STEP, MAX_WHEEL_STEP), 0, scrollMax());
+  }, { passive: false });
+
+  function raf(now) {
+    const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
+    lastFrameTime = now;
+    const scrollDiff = scrollTarget - window.scrollY;
+    const maxStep = MAX_SCROLL_SPEED * dt;
+    const move = clampRange(scrollDiff, -maxStep, maxStep);
+    if (Math.abs(move) > 0.05) window.scrollTo(0, window.scrollY + move);
+
+    const scrollY = window.scrollY;
+    const idle = scrollY <= 1;
+    scene.setActive(!idle);
+
+    const rect = tunnelTrack.getBoundingClientRect();
+    const trueInView = rect.top <= 1 && rect.bottom > 0;
+    rail.classList.toggle('is-visible', trueInView);
+
+    if (!idle) {
+      const progress = computeProgress();
+      scene.setTargetProgress(progress);
+
+      if (trueInView) {
+        let nearest = 0, best = Infinity;
+        scene.snapUs.forEach((u, i) => {
+          const dist = Math.abs(u - progress);
+          if (dist < best) { best = dist; nearest = i; }
+        });
+        railTickEls.forEach((t, i) => t.classList.toggle('progress-rail__tick--active', i === nearest));
+      }
+    }
+
+    const heroFadeDistance = Math.max(window.innerHeight * 0.62, 1);
+    const heroT = clamp01(scrollY / heroFadeDistance);
+    heroEl.style.opacity = (1 - heroT).toFixed(3);
+    heroEl.style.filter = `blur(${(heroT * 14).toFixed(1)}px)`;
+    heroEl.style.transform = `translate3d(0, ${(-heroT * 40).toFixed(1)}px, 0)`;
+
+    scene.frame(cardEls, depthEl);
+    requestAnimationFrame(raf);
+  }
+  requestAnimationFrame(raf);
+
+  window.addEventListener('resize', () => {
+    const nowMobile = window.matchMedia('(max-width: 767px)').matches;
+    tunnelTrack.style.height = `${ROUNDS.length * (nowMobile ? 72 : 96) + (nowMobile ? 40 : 60)}vh`;
+    scrollTarget = clampRange(scrollTarget, 0, scrollMax());
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
