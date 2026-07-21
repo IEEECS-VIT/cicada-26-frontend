@@ -4,11 +4,10 @@ const IS_MOBILE = window.matchMedia('(max-width: 767px)').matches;
 const HOVER_CAPABLE = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
 const PALETTE = {
-  amber: 0xdba263,
-  amberBright: 0xf3c88a,
-  coolBlueA: 0x3a4a78,
-  coolBlueB: 0x584a86,
-  debris: 0x555a68,
+  amber: 0xd69977,
+  amberBright: 0xeec6a8,
+  brown: 0x63493a,
+  debris: 0x545662,
   starWarm: 0xd8b380,
   starCool: 0xffffff,
 };
@@ -138,11 +137,11 @@ class TunnelScene {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x0a0e18, 0.011);
+    this.scene.fog = new THREE.FogExp2(0x0e0c0c, 0.011);
 
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1400);
 
-    this.scene.add(new THREE.HemisphereLight(0x5a6a92, 0x0a0a0f, 0.9));
+    this.scene.add(new THREE.HemisphereLight(0x6b5a52, 0x0a0908, 0.9));
     const key = new THREE.DirectionalLight(PALETTE.amber, 0.6);
     key.position.set(6, 10, 4);
     this.scene.add(key);
@@ -288,8 +287,8 @@ class TunnelScene {
 
   buildMist() {
     this.mistStops = [
-      new THREE.Color(0x222c4c), new THREE.Color(0x2c3a5e), new THREE.Color(0x3a3468),
-      new THREE.Color(0x4a3a72), new THREE.Color(0x3d4c74), new THREE.Color(0x2c4a5c),
+      new THREE.Color(0x201e22), new THREE.Color(0x3a3238), new THREE.Color(0x63493a),
+      new THREE.Color(0x8a5f45), new THREE.Color(0x6b5648), new THREE.Color(0x3f3c42),
     ];
     const tex = makeGlowTexture('255,255,255');
     this.mistLayers = [0, 1, 2].map((i) => {
@@ -318,7 +317,7 @@ class TunnelScene {
   buildPlanet() {
     const center = this.tAt(0.48);
     const geo = new THREE.SphereGeometry(12, 32, 32);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x4a5468, roughness: 1, metalness: 0 });
+    const mat = new THREE.MeshStandardMaterial({ color: 0x4a4650, roughness: 1, metalness: 0 });
     this.planet = new THREE.Mesh(geo, mat);
     this.planet.position.set(center.x - 34, center.y + 6, center.z - 4);
     this.scene.add(this.planet);
@@ -472,25 +471,7 @@ function boot() {
     return clamp01(window.scrollY / journeyEnd);
   }
 
-  const MAX_WHEEL_STEP = 80;
-  const MAX_SCROLL_SPEED = 950;
-  const scrollMax = () => Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-  let scrollTarget = window.scrollY;
-  let lastFrameTime = performance.now();
-
-  window.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    scrollTarget = clampRange(scrollTarget + clampRange(e.deltaY, -MAX_WHEEL_STEP, MAX_WHEEL_STEP), 0, scrollMax());
-  }, { passive: false });
-
-  function raf(now) {
-    const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
-    lastFrameTime = now;
-    const scrollDiff = scrollTarget - window.scrollY;
-    const maxStep = MAX_SCROLL_SPEED * dt;
-    const move = clampRange(scrollDiff, -maxStep, maxStep);
-    if (Math.abs(move) > 0.05) window.scrollTo(0, window.scrollY + move);
-
+  function raf() {
     const scrollY = window.scrollY;
     const idle = scrollY <= 1;
     scene.setActive(!idle);
@@ -527,7 +508,6 @@ function boot() {
   window.addEventListener('resize', () => {
     const nowMobile = window.matchMedia('(max-width: 767px)').matches;
     tunnelTrack.style.height = `${ROUNDS.length * (nowMobile ? 72 : 96) + (nowMobile ? 40 : 60)}vh`;
-    scrollTarget = clampRange(scrollTarget, 0, scrollMax());
   });
 }
 
