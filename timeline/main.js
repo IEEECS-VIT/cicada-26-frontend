@@ -42,6 +42,7 @@ const ROUNDS = [
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const clampRange = (v, min, max) => Math.max(min, Math.min(max, v));
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
 function statusClass(status) {
   if (status === 'ACTIVE') return 'active';
@@ -424,6 +425,10 @@ function boot() {
   const tunnelTrack = document.getElementById('tunnel-track');
   const depthEl = document.getElementById('depth-value');
   const clockEl = document.getElementById('clock-value');
+  const tunnelViewport = document.getElementById('tunnel-viewport');
+  const topFadeEl = document.querySelector('.tunnel-fade--top');
+  const vignetteEl = document.querySelector('.tunnel-vignette');
+  const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   document.body.classList.remove('is-loading');
   tickClock(clockEl);
@@ -465,20 +470,53 @@ function boot() {
     });
   }
 
+  function getJourneyEnd() {
+    return tunnelTrack.offsetTop + tunnelTrack.offsetHeight - window.innerHeight;
+  }
+
   function computeProgress() {
-    const journeyEnd = tunnelTrack.offsetTop + tunnelTrack.offsetHeight - window.innerHeight;
+    const journeyEnd = getJourneyEnd();
     if (journeyEnd <= 0) return 0;
     return clamp01(window.scrollY / journeyEnd);
   }
 
+  // Idle scroll-snap: once the user stops moving near a card, drift the scroll
+  // position onto that card so it settles at a readable size. Any real input
+  // (wheel/touch/key) cancels the drift instantly so free scrolling always wins.
+  const SNAP_IDLE_MS = 150;
+  const SNAP_DURATION_MS = 500;
+  const SNAP_EPSILON = 0.004;
+  let prevScrollY = window.scrollY;
+  let lastMoveTime = performance.now();
+  let snapping = false;
+  let snapFromY = 0, snapToY = 0, snapStartTime = 0;
+  const cancelSnap = () => { snapping = false; };
+  ['wheel', 'touchstart', 'keydown'].forEach((type) => {
+    window.addEventListener(type, cancelSnap, { passive: true });
+  });
+
   function raf() {
+    const now = performance.now();
     const scrollY = window.scrollY;
+    if (Math.abs(scrollY - prevScrollY) > 0.5) lastMoveTime = now;
+    prevScrollY = scrollY;
+
     const idle = scrollY <= 1;
     scene.setActive(!idle);
 
     const rect = tunnelTrack.getBoundingClientRect();
     const trueInView = rect.top <= 1 && rect.bottom > 0;
     rail.classList.toggle('is-visible', trueInView);
+
+    // Before `.tunnel-viewport` actually locks to the top of the screen, it still
+    // renders in normal flow with its vignette/fade already at full strength --
+    // that hard-edged box floating mid-page is the seam between the hero and the
+    // first card. Ramp both overlays in only as the viewport approaches its stuck
+    // position, so the darkening arrives as part of the scroll rather than a cut.
+    const viewportRect = tunnelViewport.getBoundingClientRect();
+    const stuckT = clamp01(1 - viewportRect.top / 220).toFixed(3);
+    vignetteEl.style.opacity = stuckT;
+    topFadeEl.style.opacity = stuckT;
 
     if (!idle) {
       const progress = computeProgress();
@@ -491,7 +529,23 @@ function boot() {
           if (dist < best) { best = dist; nearest = i; }
         });
         railTickEls.forEach((t, i) => t.classList.toggle('progress-rail__tick--active', i === nearest));
+
+        if (!snapping && !reducedMotionQuery.matches && best > SNAP_EPSILON && (now - lastMoveTime) > SNAP_IDLE_MS) {
+          const journeyEnd = getJourneyEnd();
+          if (journeyEnd > 0) {
+            snapping = true;
+            snapStartTime = now;
+            snapFromY = scrollY;
+            snapToY = clampRange(scene.snapUs[nearest] * journeyEnd, 0, journeyEnd);
+          }
+        }
       }
+    }
+
+    if (snapping) {
+      const t = clamp01((now - snapStartTime) / SNAP_DURATION_MS);
+      window.scrollTo(0, lerp(snapFromY, snapToY, easeOutCubic(t)));
+      if (t >= 1) { snapping = false; lastMoveTime = now; }
     }
 
     const heroFadeDistance = Math.max(window.innerHeight * 0.62, 1);

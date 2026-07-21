@@ -3,6 +3,7 @@
      slate blue-grey, warm peach and burnished brown swirling against the dark. */
   --bg: oklch(0.11 0.006 60);
   --bg-deep: oklch(0.05 0.005 60);
+  --bg-fade: oklch(0.11 0.006 60 / 0);
   --ink: oklch(0.94 0.014 75);
   --ink-dim: oklch(0.70 0.02 272);
   --ink-faint: oklch(0.50 0.02 272);
@@ -154,12 +155,19 @@ img, canvas { display: block; max-width: 100%; }
 
 .tunnel-vignette {
   position: absolute; inset: 0; z-index: var(--z-fades);
-  box-shadow: inset 0 0 220px 60px oklch(0.04 0.006 60 / 0.85);
+  box-shadow: inset 0 0 260px 40px oklch(0.04 0.006 60 / 0.8);
   pointer-events: none;
+  opacity: 0;
 }
-.tunnel-fade { position: absolute; left: 0; right: 0; height: 180px; z-index: var(--z-fades); pointer-events: none; }
-.tunnel-fade--top { top: 0; background: linear-gradient(var(--bg), transparent); }
-.tunnel-fade--bottom { bottom: 0; background: linear-gradient(transparent, var(--bg)); }
+.tunnel-fade { position: absolute; left: 0; right: 0; height: 240px; z-index: var(--z-fades); pointer-events: none; }
+/* Fade toward --bg-fade (alpha-zero --bg), not the `transparent` keyword: transparent is
+   rgba(0,0,0,0), so gradients into it mix in pure black mid-fade and read as a hard dark
+   seam against the hero. --top's opacity (and the vignette's, above) is driven by JS from
+   how close .tunnel-viewport is to actually sticking, since before it locks to the top of
+   the screen it still renders in normal flow -- these overlays would otherwise appear as a
+   hard-edged box floating between the hero and the first card. */
+.tunnel-fade--top { top: 0; background: linear-gradient(var(--bg), var(--bg-fade)); opacity: 0; }
+.tunnel-fade--bottom { bottom: 0; background: linear-gradient(var(--bg-fade), var(--bg)); }
 
 .card-layer { position: absolute; inset: 0; z-index: var(--z-cards); }
 
