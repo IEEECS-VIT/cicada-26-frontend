@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cicada 2067 | Timeline</title>
 <meta name="description" content="The hunt in sequence. Six rounds, one trajectory, logged as Cicada 2067 advances.">
 
@@ -50,14 +50,23 @@
       <span class="nav__tag">LISTEN. ADAPT. SURVIVE.</span>
     </div>
   </div>
-  <div class="nav__links">
-    <a href="#" class="nav__link">ABOUT</a>
-    <a href="#" class="nav__link">PUZZLES</a>
-    <a href="#" class="nav__link">INSIGHTS</a>
-    <a href="#" class="nav__link nav__link--active">TIMELINE</a>
-    <a href="#" class="nav__link">TEAM</a>
-    <a href="#" class="nav__link nav__link--accent">REGISTER</a>
-    <span class="nav__pulse" aria-hidden="true"></span>
+  <button type="button" class="nav__toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Toggle navigation menu">
+    <span class="nav__toggle-bar"></span>
+    <span class="nav__toggle-bar"></span>
+    <span class="nav__toggle-bar"></span>
+  </button>
+  <div class="nav__menu" id="nav-menu">
+    <div class="nav__menu-inner">
+      <div class="nav__links">
+        <a href="#" class="nav__link">ABOUT</a>
+        <a href="#" class="nav__link">PUZZLES</a>
+        <a href="#" class="nav__link">INSIGHTS</a>
+        <a href="#" class="nav__link nav__link--active">TIMELINE</a>
+        <a href="#" class="nav__link">TEAM</a>
+        <a href="#" class="nav__link nav__link--accent">REGISTER</a>
+        <span class="nav__pulse" aria-hidden="true"></span>
+      </div>
+    </div>
   </div>
 </nav>
 

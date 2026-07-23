@@ -141,6 +141,9 @@ class TunnelScene {
     this.scene.fog = new THREE.FogExp2(0x0e0c0c, 0.011);
 
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1400);
+    // Establish the real aspect ratio before anchorForRound() (below) reads it -- otherwise
+    // card anchors get computed against the camera's placeholder 1:1 aspect from construction.
+    this.resize();
 
     this.scene.add(new THREE.HemisphereLight(0x6b5a52, 0x0a0908, 0.9));
     const key = new THREE.DirectionalLight(PALETTE.amber, 0.6);
@@ -161,7 +164,6 @@ class TunnelScene {
     this.mouseX = 0; this.mouseY = 0;
     this.targetMouseX = 0; this.targetMouseY = 0;
 
-    this.resize();
     window.addEventListener('resize', () => this.resize());
   }
 
@@ -197,7 +199,12 @@ class TunnelScene {
     if (right.lengthSq() < 0.001) right.set(1, 0, 0);
     right.normalize();
     const side = i % 2 === 0 ? 1 : -1;
-    const lateral = 8.5;
+    // A fixed world-space stagger offset was tuned for wide desktop screens; it pushed the
+    // anchor toward (or entirely past) the edge of the frustum on narrow/portrait viewports,
+    // where the card's own CSS width is already most of the viewport, leaving little or no
+    // room for a left/right offset. `maxLateral` (set in resize(), which runs before this is
+    // ever called) is derived from the current viewport so the card can't overflow the edge.
+    const lateral = this.maxLateral;
     const vertical = i % 2 === 0 ? 0.8 : -0.8;
     const pos = center.clone().addScaledVector(right, lateral * side).add(new THREE.Vector3(0, vertical, 0));
     return { u, world: pos };
@@ -336,6 +343,36 @@ class TunnelScene {
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+
+    // Mirrors `.round-card`'s CSS width (style.css) so the two derivations below know how
+    // wide a card actually renders at this viewport size.
+    const cardCssWidth = w <= 767 ? Math.min(320, w * 0.88) : Math.min(360, w * 0.84);
+    const FOCUS_ZOOM = 1.07; // extra zoom projectCards applies to the focused card (pullScale)
+
+    // Cap the focused-card zoom (projectCards' `scale`) so it can't render a card wider than
+    // the viewport -- the zoom was a fixed 1.5x tuned for desktop, but on narrow phones the
+    // CSS width alone is already most of the viewport, so that zoom used to overflow it.
+    this.maxCardScale = clampRange((w * 0.92) / (cardCssWidth * FOCUS_ZOOM), 0.6, 1.5);
+
+    // Cap the cards' left/right stagger offset (anchorForRound's `lateral`, in world units)
+    // so the anchor's projected pixel position, plus the card's own (possibly viewport-filling)
+    // half-width, can never push it past the screen edge. A fixed world-space offset was tuned
+    // only for wide desktop screens; on narrow/portrait viewports the projected offset is much
+    // larger relative to the screen, and the card itself may leave little or no margin for any
+    // offset at all -- both are accounted for here instead of guessed as separate constants.
+    const FOCUS_DIST = 16; // world distance where projectCards' scale reaches ~1 (its focus point)
+    const VFOV_HALF_TAN = 0.6009; // tan(31deg): half of the camera's fixed 62deg vertical FOV
+    const pxPerWorldUnit = h / (2 * FOCUS_DIST * VFOV_HALF_TAN);
+    const cardHalfWidthPx = (cardCssWidth * this.maxCardScale * FOCUS_ZOOM) / 2;
+    const marginPx = 10;
+    this.maxLateral = clampRange((w / 2 - marginPx - cardHalfWidthPx) / pxPerWorldUnit, 0, 8.5);
+
+    // Anchors' world position depends on both values above -- re-derive them whenever the
+    // viewport changes so a resize/orientation change keeps cards on-screen. Guarded because
+    // this also runs once during construction, before anchors exist yet.
+    if (this.cardAnchors) {
+      this.cardAnchors.forEach((anchor, i) => { anchor.world.copy(this.anchorForRound(i).world); });
+    }
   }
 
   setActive(v) { this.active = v; }
@@ -404,7 +441,7 @@ class TunnelScene {
       else if (frontDist > 5) opacity = 1;
       else opacity = clamp01((frontDist - 0.4) / 4.6);
 
-      const scale = clampRange(16 / frontDist, 0.32, 1.5);
+      const scale = clampRange(16 / frontDist, 0.32, this.maxCardScale);
 
       const isFocused = Math.abs(this.snapUs[i] - this.smoothProgress) < 0.03;
       el.classList.toggle('round-card--focused', isFocused);
@@ -434,8 +471,32 @@ function boot() {
   tickClock(clockEl);
   setInterval(() => tickClock(clockEl), 1000);
 
-  const perRoundVh = IS_MOBILE ? 72 : 96;
-  tunnelTrack.style.height = `${ROUNDS.length * perRoundVh + (IS_MOBILE ? 40 : 60)}vh`;
+  function setTrackHeight() {
+    const nowMobile = window.matchMedia('(max-width: 767px)').matches;
+    const vh = ROUNDS.length * (nowMobile ? 72 : 96) + (nowMobile ? 40 : 60);
+    // Set vh first, then dvh: browsers without dvh support silently keep the vh value
+    // (an unsupported unit assignment is a no-op), so this is a safe progressive upgrade
+    // that avoids the mobile-Safari toolbar-show/hide scroll jump.
+    tunnelTrack.style.height = `${vh}vh`;
+    tunnelTrack.style.height = `${vh}dvh`;
+  }
+  setTrackHeight();
+
+  const navToggle = document.getElementById('nav-toggle');
+  const navMenu = document.getElementById('nav-menu');
+  const closeNavMenu = () => {
+    navMenu.classList.remove('is-open');
+    navToggle.setAttribute('aria-expanded', 'false');
+  };
+  const openNavMenu = () => {
+    navMenu.classList.add('is-open');
+    navToggle.setAttribute('aria-expanded', 'true');
+  };
+  navToggle.addEventListener('click', () => {
+    if (navMenu.classList.contains('is-open')) closeNavMenu(); else openNavMenu();
+  });
+  navMenu.querySelectorAll('.nav__link').forEach((link) => link.addEventListener('click', closeNavMenu));
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNavMenu(); });
 
   const scene = new TunnelScene(canvas);
   requestAnimationFrame(() => canvas.classList.add('is-visible'));
@@ -551,7 +612,10 @@ function boot() {
     const heroFadeDistance = Math.max(window.innerHeight * 0.62, 1);
     const heroT = clamp01(scrollY / heroFadeDistance);
     heroEl.style.opacity = (1 - heroT).toFixed(3);
-    heroEl.style.filter = `blur(${(heroT * 14).toFixed(1)}px)`;
+    // Skip the filter property entirely at rest instead of `blur(0px)`: a zero-radius blur
+    // still promotes the element to its own compositing layer every frame, which is wasted
+    // GPU work while idle and has caused text rasterization glitches on some mobile GPUs.
+    heroEl.style.filter = heroT > 0 ? `blur(${(heroT * 14).toFixed(1)}px)` : '';
     heroEl.style.transform = `translate3d(0, ${(-heroT * 40).toFixed(1)}px, 0)`;
 
     scene.frame(cardEls, depthEl);
@@ -559,10 +623,8 @@ function boot() {
   }
   requestAnimationFrame(raf);
 
-  window.addEventListener('resize', () => {
-    const nowMobile = window.matchMedia('(max-width: 767px)').matches;
-    tunnelTrack.style.height = `${ROUNDS.length * (nowMobile ? 72 : 96) + (nowMobile ? 40 : 60)}vh`;
-  });
+  window.addEventListener('resize', setTrackHeight);
+  window.addEventListener('orientationchange', setTrackHeight);
 }
 
 if (document.readyState === 'loading') {

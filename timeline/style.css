@@ -67,11 +67,12 @@ img, canvas { display: block; max-width: 100%; }
 .hud-corner--tr { top: 18px; right: 18px; border-top-width: 1px; border-right-width: 1px; }
 
 .hud-readout {
-  position: fixed; bottom: 24px; z-index: var(--z-hud); pointer-events: none;
+  position: fixed; bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+  z-index: var(--z-hud); pointer-events: none;
   font-size: 10px; letter-spacing: 0.14em; color: var(--ink-faint); line-height: 1.6;
 }
-.hud-readout--depth { left: clamp(20px, 6vw, 52px); }
-.hud-readout--clock { right: clamp(20px, 6vw, 52px); text-align: right; }
+.hud-readout--depth { left: max(clamp(20px, 6vw, 52px), calc(env(safe-area-inset-left, 0px) + 12px)); }
+.hud-readout--clock { right: max(clamp(20px, 6vw, 52px), calc(env(safe-area-inset-right, 0px) + 12px)); text-align: right; }
 .hud-readout__label { display: block; }
 .hud-readout__value { font-size: 15px; letter-spacing: 0.06em; }
 .hud-readout--depth .hud-readout__value { color: var(--amber); }
@@ -83,16 +84,43 @@ img, canvas { display: block; max-width: 100%; }
   position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-nav);
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 10px 24px;
-  padding: 16px clamp(20px, 4vw, 48px);
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-bottom: 16px;
+  padding-left: max(clamp(20px, 4vw, 48px), calc(env(safe-area-inset-left, 0px) + 12px));
+  padding-right: max(clamp(20px, 4vw, 48px), calc(env(safe-area-inset-right, 0px) + 12px));
   background: oklch(0.09 0.008 60 / 0.7);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
 }
-.nav__brand { display: flex; align-items: center; gap: 14px; color: var(--amber); }
-.nav__wordmark { color: var(--ink); }
-.nav__title { display: block; font-family: var(--font-display); font-size: 13px; font-weight: 600; letter-spacing: 0.16em; color: var(--ink); }
-.nav__tag { display: block; font-size: 8.5px; letter-spacing: 0.22em; color: var(--ink-faint); margin-top: 2px; }
+.nav__brand { display: flex; align-items: center; gap: 14px; color: var(--amber); min-width: 0; }
+.nav__wordmark { color: var(--ink); min-width: 0; }
+.nav__title { display: block; font-family: var(--font-display); font-size: 13px; font-weight: 600; letter-spacing: 0.16em; color: var(--ink); white-space: nowrap; }
+.nav__tag { display: block; font-size: 8.5px; letter-spacing: 0.22em; color: var(--ink-faint); margin-top: 2px; white-space: nowrap; }
+
+/* Hamburger toggle: hidden until the nav can no longer fit inline (collapse breakpoint below) */
+.nav__toggle {
+  display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px; width: 40px; height: 40px; margin-left: auto;
+  background: transparent; border: 1px solid var(--line); border-radius: 3px;
+  cursor: pointer; padding: 0; flex-shrink: 0;
+  transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out);
+}
+.nav__toggle:active { transform: scale(0.96); }
+.nav__toggle-bar {
+  width: 18px; height: 1.5px; background: var(--ink); border-radius: 1px;
+  transition: transform 220ms var(--ease-out), opacity 160ms var(--ease-out);
+}
+.nav__toggle[aria-expanded="true"] { border-color: var(--amber-dim); }
+.nav__toggle[aria-expanded="true"] .nav__toggle-bar:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+.nav__toggle[aria-expanded="true"] .nav__toggle-bar:nth-child(2) { opacity: 0; }
+.nav__toggle[aria-expanded="true"] .nav__toggle-bar:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+/* `.nav__menu`/`.nav__menu-inner` only become real boxes at the collapse breakpoint below;
+   above it they stay `display: contents` so `.nav__links` participates directly in the
+   `.nav` flex row exactly as before, and the collapse machinery costs nothing. */
+.nav__menu, .nav__menu-inner { display: contents; }
 .nav__links { display: flex; align-items: center; gap: clamp(14px, 2.6vw, 34px); }
 .nav__link { font-size: clamp(10px, 1.4vw, 11.5px); letter-spacing: 0.14em; color: var(--ink-dim); font-weight: 500; transition: color 160ms var(--ease-out); }
 .nav__link:hover { color: var(--amber-bright); }
@@ -102,11 +130,54 @@ img, canvas { display: block; max-width: 100%; }
 @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.4); } }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 
+/* Nav collapse: six links stop fitting the single-line bar well before the 767px content
+   breakpoint below, so this gets its own wider threshold. Drawer opens as a real box under
+   the bar using the same grid-template-rows morph as .round-card__detail. */
+@media (max-width: 860px) {
+  .nav__toggle { display: flex; }
+  /* Taken out of `.nav`'s flex flow (it was an in-flow item riding the bar's own dark
+     background) and anchored below it instead. That's what makes the closed state actually
+     disappear: previously the grid row could fail to collapse (or the item could otherwise
+     keep claiming height) and the bar's translucent background would keep painting a tall
+     dark block even once the link text had faded out. As its own positioned panel, it now
+     carries its own background/backdrop and is force-hidden (visibility, not just opacity)
+     when closed, so there's nothing left to paint or intercept taps. */
+  .nav__menu {
+    position: absolute; top: 100%; left: 0; right: 0;
+    display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; pointer-events: none;
+    background: oklch(0.09 0.008 60 / 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+    padding-left: max(clamp(20px, 4vw, 48px), calc(env(safe-area-inset-left, 0px) + 12px));
+    padding-right: max(clamp(20px, 4vw, 48px), calc(env(safe-area-inset-right, 0px) + 12px));
+    transition: grid-template-rows 320ms var(--ease-in-out), opacity 220ms var(--ease-out), visibility 0s linear 320ms;
+  }
+  .nav__menu.is-open {
+    grid-template-rows: 1fr; opacity: 1; visibility: visible; pointer-events: auto;
+    transition: grid-template-rows 320ms var(--ease-in-out), opacity 220ms var(--ease-out), visibility 0s;
+  }
+  /* Override the desktop `display: contents` above: a contents box has no box of its own,
+     so overflow/min-height on it are no-ops and the 0fr grid row can never actually clip
+     the (always-present) link list, leaving the menu permanently expanded. */
+  .nav__menu-inner { display: block; overflow: hidden; min-height: 0; }
+  .nav__links {
+    flex-direction: column; align-items: stretch; gap: 0;
+    padding: 8px 0 12px; border-top: 1px solid var(--line-soft);
+  }
+  .nav__link {
+    padding: 13px 4px; font-size: 12.5px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .nav__link:first-child { border-top: none; }
+  .nav__menu .nav__pulse { display: none; }
+}
+
 /* Canvas */
 
 #tunnel-canvas {
   position: fixed; inset: 0; z-index: var(--z-canvas);
-  width: 100vw; height: 100vh;
+  width: 100vw; height: 100vh; height: 100dvh;
   opacity: 0; transition: opacity 900ms var(--ease-out);
 }
 #tunnel-canvas.is-visible { opacity: 1; }
@@ -117,8 +188,16 @@ img, canvas { display: block; max-width: 100%; }
   position: relative; z-index: 2;
   padding: clamp(150px, 24vw, 210px) clamp(24px, 5vw, 48px) 140px;
   max-width: 1280px; margin: 0 auto;
-  min-height: 92vh; display: flex; align-items: center;
+  display: flex; align-items: center;
   will-change: opacity, filter, transform;
+}
+/* The immersive near-full-viewport height (with its centered text + orbit graphic) only
+   reads as intentional when there's enough width for the orbit to fill the leftover space.
+   Below that (matches the nav's own collapse point), keep the section sized to its content
+   instead -- otherwise short/narrow viewports get a large empty gap above and below the
+   centered text that looks like a broken black band rather than a design choice. */
+@media (min-width: 861px) {
+  .hero { min-height: 92vh; min-height: 92dvh; }
 }
 .hero__content { max-width: 620px; position: relative; z-index: 2; }
 .hero__eyebrow { font-size: 12.5px; letter-spacing: 0.2em; color: var(--amber-dim); margin-bottom: 22px; }
@@ -150,7 +229,7 @@ img, canvas { display: block; max-width: 100%; }
 .tunnel-track { position: relative; }
 
 .tunnel-viewport {
-  position: sticky; top: 0; height: 100vh; overflow: hidden; z-index: 1;
+  position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; z-index: 1;
 }
 
 .tunnel-vignette {
@@ -242,7 +321,8 @@ img, canvas { display: block; max-width: 100%; }
 /* Progress rail */
 
 .progress-rail {
-  position: fixed; right: clamp(18px, 3.6vw, 40px); top: 50%; transform: translateY(-50%);
+  position: fixed; right: max(clamp(18px, 3.6vw, 40px), calc(env(safe-area-inset-right, 0px) + 10px));
+  top: 50%; transform: translateY(-50%);
   z-index: var(--z-hud); height: min(38vh, 260px);
   opacity: 0; transition: opacity 500ms var(--ease-out); pointer-events: none;
 }
@@ -298,17 +378,38 @@ img, canvas { display: block; max-width: 100%; }
   .nav__pulse, .hero__scrolldot { animation: none; opacity: 0.7; }
   .round-card__panel, .round-card__detail, .closing__cta { transition-duration: 120ms; }
   .round-card__detail { filter: none; }
+  .nav__menu, .nav__toggle-bar { transition-duration: 1ms; }
 }
 
 /* Mobile */
 
 @media (max-width: 767px) {
-  .nav__links { gap: 12px; }
-  .nav__link { display: none; }
-  .nav__link--active, .nav__link--accent { display: inline; }
   .hero { align-items: flex-start; padding-top: clamp(150px, 40vw, 200px); }
   .hero__orbit { display: none; }
   .hud-readout { font-size: 9px; }
   .round-card { width: min(320px, 88vw); }
   .progress-rail { display: none; }
+}
+
+/* Touch targets: every interactive element gets a real 44px tap zone regardless of viewport */
+
+@media (pointer: coarse) {
+  .nav__link { min-height: 44px; display: flex; align-items: center; }
+  .closing__cta { min-height: 44px; }
+}
+
+/* Short / landscape phones: the fixed HUD, progress rail and generous vertical padding that
+   work at portrait phone heights collide with card content once viewport height drops below
+   ~500px (typical landscape phone), so this collapses them rather than just scaling text down. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hud-readout, .progress-rail, .hero__orbit { display: none; }
+  .hero {
+    min-height: auto; min-height: auto;
+    padding-top: calc(76px + env(safe-area-inset-top, 0px));
+    padding-bottom: 40px;
+  }
+  .hero__scrollcue { display: none; }
+  .nav { padding-top: calc(10px + env(safe-area-inset-top, 0px)); padding-bottom: 10px; }
+  .round-card { width: min(300px, 46vw); }
+  .round-card__panel { padding: 14px 16px; }
 }
