@@ -114,10 +114,14 @@ body::before {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
-  opacity: 0.75;
-  mix-blend-mode: screen;
-  filter: saturate(1.2) brightness(0.85);
+  /* Centre the black hole disk and pull slightly right to
+     complement the left-column text layout */
+  object-position: 58% 50%;
+  opacity: 0.92;
+  /* Normal blend — screen was washing out the deep blacks
+     on some browsers causing the "blacked out" flash */
+  mix-blend-mode: normal;
+  filter: saturate(1.25) brightness(0.88) contrast(1.06);
 }
 
 /* =====================================================
@@ -351,10 +355,17 @@ body::before {
   min-height: 100vh;
   width: 100%;
   display: grid;
-  grid-template-columns: 55% 45%;
-  align-items: center;
+  /* Left text col / Right spacecraft col */
+  grid-template-columns: 52% 48%;
+  /* Main content row + scroll indicator row at bottom */
+  grid-template-rows: 1fr auto;
+  /* stretch — both columns fill the full row height so the canvas
+     container (hero-right) is viewport-tall without an explicit height */
+  align-items: stretch;
   padding-top: var(--nav-height);
-  overflow: hidden;
+  /* clip instead of hidden: still prevents body scrollbars but does
+     NOT apply to position:fixed children (the spacecraft canvas) */
+  overflow: clip;
 }
 
 /* Left Column */
@@ -517,17 +528,25 @@ body::before {
   letter-spacing: 0.35em;
 }
 
-/* Scroll Indicator */
+/* Scroll Indicator
+   Lives as a direct child of .hero-section (NOT inside .hero-left)
+   so its left:2rem is relative to the viewport edge, completely
+   avoiding any overlap with the hero text column.              */
 .scroll-indicator {
   position: absolute;
-  bottom: 2.5rem;
-  left: clamp(2rem, 6vw, 6rem);
+  bottom: 2rem;
+  left: 1.75rem;  /* far left — clear of hero-left padding      */
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+  z-index: 10;
   opacity: 0;
   animation: fadeSlideIn 1s ease 1.2s forwards;
+  /* Place in the grid without disrupting columns */
+  grid-column: 1;
+  grid-row: 2;
+  pointer-events: none;
 }
 
 .scroll-indicator-line {
@@ -567,21 +586,39 @@ body::before {
   transform: rotate(180deg);
 }
 
-/* Right Column */
+/* Right Column — just a grid placeholder; the actual canvas is fixed */
 .hero-right {
   position: relative;
-  height: 100vh;
-  overflow: visible;
+  /* No explicit height needed — align-items:stretch fills the row */
+  grid-column: 2;
+  grid-row: 1;
 }
 
-/* Spacecraft wrapper — positions the Endurance in the right half */
+/*
+ * Spacecraft scene — FIXED on desktop.
+ * Reason: position:fixed takes the canvas completely out of the
+ * document flow so it can never be clipped by hero-section's
+ * overflow:clip.  It always sits precisely on the right 48% of
+ * the viewport, full-height, independent of scroll position.
+ *
+ * pointer-events:none lets all clicks pass through to the nav / text.
+ */
 .spacecraft-scene {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 48%;          /* matches the right column width */
+  height: 100%;        /* full viewport height */
   pointer-events: none;
-  z-index: 5;
+  z-index: 6;          /* above hero content but below navbar (z=100) */
+  will-change: transform;
+}
+
+/* The R3F canvas fills .spacecraft-scene completely */
+.spacecraft-scene canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* =====================================================
@@ -759,19 +796,36 @@ body::before {
 
   .hero-section {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 45vh;
+    /* text row (auto), ship row (50vh), scroll row (auto) */
+    grid-template-rows: auto 50vh auto;
     padding-top: calc(var(--nav-height) + 1rem);
   }
 
+  /* TEXT AT TOP on mobile */
   .hero-left {
+    grid-column: 1;
+    grid-row: 1;         /* row 1 = top */
     min-height: auto;
-    padding: 2rem 1.5rem 1rem;
-    order: 2;
+    padding: 2rem 1.5rem 1.5rem;
   }
 
+  /* SHIP AT BOTTOM on mobile */
   .hero-right {
-    order: 1;
-    height: 45vh;
+    grid-column: 1;
+    grid-row: 2;         /* row 2 = bottom */
+    height: 50vh;
+    position: relative;
+  }
+
+  /* Un-fix the canvas on mobile — use normal absolute positioning
+     inside hero-right so it appears in the bottom row of the grid */
+  .spacecraft-scene {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    right: unset;
+    top: unset;
   }
 
   .scroll-indicator {
