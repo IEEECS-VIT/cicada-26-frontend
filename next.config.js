@@ -2,8 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   /* Required: three.js is an ESM package — Next.js needs to transpile
-     it (and its R3F ecosystem) to CommonJS for the server bundler.   */
-  transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
+     it to CommonJS for the server bundler. Used by lib/tunnel.ts and
+     the TARS widget in the FAQ section.                              */
+  transpilePackages: ["three"],
 };
 
 module.exports = nextConfig;

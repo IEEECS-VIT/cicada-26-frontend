@@ -14,7 +14,6 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { ROUNDS, statusClass, initTunnel } from "@/lib/tunnel";
 import "@/app/timeline.css";
@@ -186,22 +185,6 @@ export default function TimelineSection() {
         </div>
       </div>
 
-      <div className="closing">
-        <div className="closing__eyebrow">END OF LOG</div>
-        <h2 className="closing__title">TRANSMISSION HORIZON</h2>
-        <p className="closing__sub">
-          Further rounds declassify as the hunt advances. Stay on frequency.
-        </p>
-        <Link href="/puzzles" className="closing__cta">
-          REGISTER NOW <span aria-hidden="true">→</span>
-        </Link>
-        <div className="closing__foot">CICADA 2067 // LISTEN. ADAPT. SURVIVE.</div>
-        <div className="closing__cipher">
-          <span className="closing__cipher-morse">
-            ... . . -.- / -.. . -.-. --- -.. . / .- ... -.-. . -. -..
-          </span>
-        </div>
-      </div>
     </section>
   );
 }

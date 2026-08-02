@@ -2,6 +2,8 @@ import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import TimelineSection from "@/components/TimelineSection";
+import FaqSection from "@/components/FaqSection";
+import SiteFooter from "@/components/SiteFooter";
 
 /*
  * page.tsx — Home page
@@ -58,7 +60,10 @@ export default function HomePage() {
       <main>
         <HeroSection />
         <TimelineSection />
+        <FaqSection />
       </main>
+
+      <SiteFooter />
     </>
   );
 }
