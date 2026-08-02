@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 
 /*
  * HeroSection.tsx
@@ -9,6 +12,11 @@ import dynamic from "next/dynamic";
  * EnduranceScene is dynamically imported with ssr:false because
  * @react-three/fiber accesses WebGL / window at import time, which
  * would crash Next.js during server-side rendering.
+ *
+ * The ship UNMOUNTS once the timeline takes over (see shipVisible below).
+ * .spacecraft-scene is position:fixed, so it would otherwise hover over
+ * the tunnel for the rest of the page — and holding a second WebGL
+ * context alive next to the tunnel's is real battery cost on mobile.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -24,8 +32,23 @@ const EnduranceScene = dynamic(
 );
 
 export default function HeroSection() {
+  const [shipVisible, setShipVisible] = useState(true);
+
+  useEffect(() => {
+    /* Asymmetric thresholds (1.1 / 0.9) so scrolling around the boundary
+       can't thrash the WebGL context in and out every frame. */
+    const onScroll = () =>
+      setShipVisible((visible) =>
+        visible
+          ? window.scrollY < window.innerHeight * 1.1
+          : window.scrollY < window.innerHeight * 0.9
+      );
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <main id="hero" className="hero-section" aria-label="Hero">
+    <section id="hero" className="hero-section" aria-label="Hero">
 
       {/* ── Left Column — text content ───────────────────── */}
       <div className="hero-left">
@@ -66,9 +89,11 @@ export default function HeroSection() {
        * ensures clicks pass through to the navbar / buttons.
        */}
       <div className="hero-right" aria-hidden="true">
-        <div className="spacecraft-scene">
-          <EnduranceScene />
-        </div>
+        {shipVisible && (
+          <div className="spacecraft-scene">
+            <EnduranceScene />
+          </div>
+        )}
       </div>
 
       {/* ── Scroll Indicator ─────────────────────────────────
@@ -81,6 +106,6 @@ export default function HeroSection() {
         <span className="scroll-indicator-text">SCROLL TO DISCOVER</span>
       </div>
 
-    </main>
+    </section>
   );
 }

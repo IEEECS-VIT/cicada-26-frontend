@@ -12,6 +12,8 @@ const config: Config = {
         orbitron: ["var(--font-orbitron)", "monospace"],
         inter: ["var(--font-inter)", "sans-serif"],
         rajdhani: ["var(--font-rajdhani)", "sans-serif"],
+        chakra: ["var(--font-chakra)", "sans-serif"],
+        martian: ["var(--font-martian)", "monospace"],
       },
       colors: {
         "space-black": "#000000",

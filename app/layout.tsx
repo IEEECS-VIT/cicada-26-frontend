@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Orbitron, Inter, Rajdhani } from "next/font/google";
+import { Orbitron, Inter, Rajdhani, Chakra_Petch, Martian_Mono } from "next/font/google";
 import "./globals.css";
 
 const orbitron = Orbitron({
@@ -20,6 +20,19 @@ const rajdhani = Rajdhani({
   weight: ["300", "400", "500", "600", "700"],
 });
 
+/* Timeline section type. Chakra Petch ships static weights so `weight` is
+   required; Martian Mono is a variable font, so omitting it loads the full axis. */
+const chakraPetch = Chakra_Petch({
+  subsets: ["latin"],
+  variable: "--font-chakra",
+  weight: ["300", "500", "600", "700"],
+});
+
+const martianMono = Martian_Mono({
+  subsets: ["latin"],
+  variable: "--font-martian",
+});
+
 export const metadata: Metadata = {
   title: "Cicada 2067 — A Cryptic Hunt Beyond the Stars",
   description:
@@ -38,7 +51,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${orbitron.variable} ${inter.variable} ${rajdhani.variable} antialiased`}
+        className={`${orbitron.variable} ${inter.variable} ${rajdhani.variable} ${chakraPetch.variable} ${martianMono.variable} antialiased`}
       >
         {children}
       </body>

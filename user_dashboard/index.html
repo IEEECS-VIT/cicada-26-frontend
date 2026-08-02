@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CICADA 2067 — Crew Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500&family=JetBrains+Mono:wght@200;300;400&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css?v=7">
+</head>
+<body>
+<div class="cd-app">
+
+  <div class="cd-bg-image"></div>
+  <div class="cd-bg-overlay"></div>
+
+  <canvas id="sky" class="cd-sky"></canvas>
+
+  <div class="cd-glow cd-glow--right"></div>
+  <div class="cd-glow cd-glow--left"></div>
+  <div class="cd-vignette"></div>
+
+  <div class="cd-shell">
+
+    <header class="cd-header">
+      <div class="cd-brand">
+        <div class="cd-logo">
+          <div class="cd-logo__ring"></div>
+          <div class="cd-logo__ring-dashed"></div>
+          <div class="cd-logo__dot"></div>
+        </div>
+        <div class="cd-brand-text">
+          <div class="cd-brand-title">CICADA 2067</div>
+          <div class="cd-brand-sub">LISTEN. ADAPT. SURVIVE.</div>
+        </div>
+      </div>
+
+      <nav class="cd-nav">
+        <a href="#" class="cd-nav__link">ABOUT</a>
+        <a href="#" class="cd-nav__link">PUZZLES</a>
+        <a href="#" class="cd-nav__link">ROUNDS</a>
+        <a href="#" class="cd-nav__link">LOGS</a>
+        <div class="cd-nav__status">
+          <span class="cd-nav__dot"></span>
+          <span>DASHBOARD</span>
+        </div>
+      </nav>
+    </header>
+
+    <div class="cd-welcome-row">
+      <div class="cd-welcome">
+        <div class="cd-eyebrow">CREW DOSSIER &middot; ACCESS GRANTED</div>
+        <div class="cd-welcome__title">Welcome back to the hunt.</div>
+      </div>
+      <div class="cd-meta">
+        <div class="cd-meta__block cd-meta__block--right">
+          <div class="cd-meta__label">SHIP TIME</div>
+          <div class="cd-meta__value" id="clock">--:--:--</div>
+        </div>
+        <div class="cd-meta__divider"></div>
+        <div class="cd-meta__block">
+          <div class="cd-meta__label">SIGNAL</div>
+          <div class="cd-signal">
+            <span class="cd-signal__bar"></span>
+            <span class="cd-signal__bar"></span>
+            <span class="cd-signal__bar"></span>
+            <span class="cd-signal__bar"></span>
+            <span class="cd-signal__bar"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cd-panels">
+      <div class="cd-panels__scan-wrap">
+        <div class="cd-panels__scan"></div>
+      </div>
+
+      <div class="cd-panel cd-panel--left">
+        <div class="cd-operative">
+          <div class="cd-eyebrow">OPERATIVE</div>
+          <div class="cd-operative__name-row">
+            <div class="cd-operative__name" id="v-name">ARJUN MEHTA</div>
+            <span class="cd-operative__cursor"></span>
+          </div>
+          <div class="cd-clearance">
+            <span>CLEARANCE VERIFIED</span>
+            <span class="cd-clearance__line"></span>
+          </div>
+        </div>
+
+        <div class="cd-grid2">
+          <div class="cd-grid2__cell">
+            <div class="cd-grid2__label">TEAM</div>
+            <div class="cd-grid2__value" id="v-team">NOCTURNE SIX</div>
+          </div>
+          <div class="cd-grid2__cell">
+            <div class="cd-grid2__label">REGISTRATION NO</div>
+            <div class="cd-grid2__value" id="v-reg">CC-2067-0093</div>
+          </div>
+          <div class="cd-grid2__cell cd-grid2__cell--span2">
+            <div class="cd-grid2__label">COMMS ID</div>
+            <div class="cd-grid2__value cd-grid2__value--truncate" id="v-mail">a.mehta@cicada2067.io</div>
+          </div>
+        </div>
+
+        <div class="cd-actions">
+          <div class="cd-enter-btn" id="enter-terminal">
+            <span>ENTER TERMINAL</span>
+            <span class="cd-enter-btn__arrow">&#8594;</span>
+          </div>
+          <div class="cd-status-line" id="status-line">ALL SYSTEMS NOMINAL &middot; YOU ARE CLEAR TO PROCEED</div>
+        </div>
+      </div>
+
+      <div class="cd-panel cd-panel--right">
+        <div class="cd-sigil">
+          <div class="cd-sigil__glow"></div>
+          <video class="cd-sigil__video" src="uploads/blackhole.mp4"
+                 autoplay loop muted playsinline preload="auto"
+                 disablepictureinpicture aria-hidden="true"></video>
+          <div class="cd-sigil__ring"></div>
+          <div class="cd-sigil__ring-dashed"></div>
+        </div>
+
+        <div class="cd-sigil-caption">
+          <div class="cd-eyebrow">CREW SIGIL</div>
+          <div class="cd-sigil-caption__team" id="v-team-2">NOCTURNE SIX</div>
+        </div>
+
+        <div class="cd-uplink">
+          <div class="cd-uplink__divider"></div>
+          <div class="cd-uplink__row">
+            <span>UPLINK</span>
+            <span class="cd-uplink__val--accent">STABLE</span>
+          </div>
+          <div class="cd-uplink__row">
+            <span>SESSION</span>
+            <span class="cd-uplink__val" id="session-id">0093-A</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="cd-footer">
+      <span>CICADA 2067 &#183; CREW TERMINAL</span>
+      <span>DECRYPTION KEY HELD LOCALLY</span>
+    </footer>
+  </div>
+</div>
+<script src="js/script.js?v=7"></script>
+</body>
+</html>

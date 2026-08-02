@@ -1,14 +1,22 @@
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
+import TimelineSection from "@/components/TimelineSection";
 
 /*
  * page.tsx — Home page
  * ─────────────────────────────────────────────────────────────────
+ * One continuous scroll: landing hero → timeline tunnel → closing.
+ *
  * Layer order (back → front):
  *   z-index -1 → .blackhole-bg   : fixed 891208.jpg background
+ *   z-index  0 → #tunnel-canvas  : fixed WebGL tunnel (opaque)
  *   z-index 100 → Navbar         : fixed top nav
  *   z-index 10  → HeroSection    : text + R3F canvas
+ *
+ * .blackhole-bg's opacity is driven per-frame by lib/tunnel.ts, which
+ * cross-fades it out as the tunnel canvas fades in. It's reached from
+ * there by selector because this is a server component.
  *
  * Background image setup
  * ──────────────────────
@@ -46,7 +54,11 @@ export default function HomePage() {
       </div>
 
       <Navbar />
-      <HeroSection />
+
+      <main>
+        <HeroSection />
+        <TimelineSection />
+      </main>
     </>
   );
 }
