@@ -9,27 +9,22 @@ import { useEffect, useState } from "react";
  * ─────────────────────────────────────────────────────────────────
  * Hero layout — text column LEFT, 3D spacecraft RIGHT.
  *
- * EnduranceScene is dynamically imported with ssr:false because
- * @react-three/fiber accesses WebGL / window at import time, which
- * would crash Next.js during server-side rendering.
+ * EnduranceShip is dynamically imported with ssr:false because the
+ * <endurance-ship> custom element only exists in the browser; rendering
+ * the tag server-side would emit an un-upgraded, unstyled element.
  *
  * The ship UNMOUNTS once the timeline takes over (see shipVisible below).
  * .spacecraft-scene is position:fixed, so it would otherwise hover over
- * the tunnel for the rest of the page — and holding a second WebGL
- * context alive next to the tunnel's is real battery cost on mobile.
+ * the tunnel for the rest of the page — and a ~1600-plane preserve-3d
+ * subtree left alive next to the tunnel is real battery cost on mobile.
  * ─────────────────────────────────────────────────────────────────
  */
 
-/* Dynamic import → loads the R3F Canvas only in the browser */
-const EnduranceScene = dynamic(
-  () => import("./EnduranceScene"),
-  {
-    ssr: false,
-    /* Show nothing while the JS bundle loads; the ship appears as soon
-       as WebGL initialises (usually < 300 ms). */
-    loading: () => null,
-  }
-);
+/* Dynamic import → the web component registers itself in the browser only */
+const EnduranceShip = dynamic(() => import("./EnduranceShip"), {
+  ssr: false,
+  loading: () => null,
+});
 
 export default function HeroSection() {
   const [shipVisible, setShipVisible] = useState(true);
@@ -91,7 +86,7 @@ export default function HeroSection() {
       <div className="hero-right" aria-hidden="true">
         {shipVisible && (
           <div className="spacecraft-scene">
-            <EnduranceScene />
+            <EnduranceShip />
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 
@@ -13,42 +14,6 @@ const NAV_LINKS = [
   { label: "DISCORD", href: "/discord" },
 ];
 
-/* Glowing cicada SVG logo */
-function CicadaIcon() {
-  return (
-    <svg
-      viewBox="0 0 40 40"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      {/* Body */}
-      <ellipse cx="20" cy="22" rx="4" ry="10" fill="#F4A233" opacity="0.9" />
-      {/* Head */}
-      <circle cx="20" cy="11" r="3.5" fill="#FFD97D" opacity="0.95" />
-      {/* Eyes */}
-      <circle cx="18" cy="10.5" r="1" fill="#000" />
-      <circle cx="22" cy="10.5" r="1" fill="#000" />
-      {/* Upper wings */}
-      <ellipse cx="11" cy="16" rx="7" ry="3.5" fill="#F4A233" opacity="0.5" transform="rotate(-20 11 16)" />
-      <ellipse cx="29" cy="16" rx="7" ry="3.5" fill="#F4A233" opacity="0.5" transform="rotate(20 29 16)" />
-      {/* Lower wings */}
-      <ellipse cx="12" cy="23" rx="6" ry="2.5" fill="#C07810" opacity="0.4" transform="rotate(-10 12 23)" />
-      <ellipse cx="28" cy="23" rx="6" ry="2.5" fill="#C07810" opacity="0.4" transform="rotate(10 28 23)" />
-      {/* Antenna */}
-      <line x1="18" y1="8" x2="13" y2="3" stroke="#F4A233" strokeWidth="1" opacity="0.7" />
-      <line x1="22" y1="8" x2="27" y2="3" stroke="#F4A233" strokeWidth="1" opacity="0.7" />
-      <circle cx="13" cy="3" r="1" fill="#FFD97D" opacity="0.8" />
-      <circle cx="27" cy="3" r="1" fill="#FFD97D" opacity="0.8" />
-      {/* Wing veins */}
-      <line x1="11" y1="15" x2="7" y2="19" stroke="#FFD97D" strokeWidth="0.5" opacity="0.3" />
-      <line x1="29" y1="15" x2="33" y2="19" stroke="#FFD97D" strokeWidth="0.5" opacity="0.3" />
-      {/* Glow ring */}
-      <circle cx="20" cy="20" r="18" stroke="#F4A233" strokeWidth="0.5" opacity="0.2" />
-    </svg>
-  );
-}
-
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -56,20 +21,24 @@ export default function Navbar() {
   return (
     <>
       <header className="navbar" role="banner">
-        {/* Logo */}
+        {/* Logo — the wordmark is baked into the image, so there is no
+            separate text lockup. The source is a 1280² with heavy black
+            padding; .navbar-logo img crops it to the mark. */}
         <Link
           href="/"
           className="navbar-logo"
           aria-label="Cicada 2067 — Home"
           onClick={() => setMenuOpen(false)}
         >
-          <div className="navbar-logo-icon">
-            <CicadaIcon />
-          </div>
-          <div className="navbar-logo-text">
-            <span className="navbar-logo-name">CICADA 2067</span>
-            <span className="navbar-logo-sub">LISTEN. ADAPT. SURVIVE.</span>
-          </div>
+          <Image
+            src="/cicada_logo.jpg"
+            alt="Cicada 2067"
+            width={1280}
+            height={1280}
+            priority
+            quality={90}
+            sizes="200px"
+          />
         </Link>
 
         {/* Desktop Navigation */}

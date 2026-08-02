@@ -500,9 +500,10 @@ export function initTunnel(refs: TunnelRefs): () => void {
   const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   const canHover = hoverCapable();
 
-  /* Owned by page.tsx (a server component), so it's reached by selector rather
-     than plumbed through props. Absent on any route that isn't home. */
+  /* Both owned by page.tsx (a server component), so they're reached by selector
+     rather than plumbed through props. Absent on any route that isn't home. */
   const landing = document.querySelector<HTMLElement>(".blackhole-bg");
+  const faq = document.querySelector<HTMLElement>(".faq-section");
 
   tickClock(clock);
   const clockTimer = window.setInterval(() => tickClock(clock), 1000);
@@ -605,13 +606,23 @@ export function initTunnel(refs: TunnelRefs): () => void {
     /* Cross-fade: landing visuals out, tunnel + HUD in, over the first half
        viewport of the timeline hero. Replaces the old one-shot `is-visible`. */
     const enterT = clamp01((scrollY - start) / (window.innerHeight * 0.5));
-    canvas.style.opacity = enterT.toFixed(3);
-    hud.style.opacity = enterT.toFixed(3);
+
+    /* ...and back out again as the FAQ rises into frame. The HUD readouts and
+       the rail are position:fixed, so without this they hang over the FAQ and
+       the footer for the rest of the page. Ramps over the last 60% of a
+       viewport before the FAQ reaches the top of the screen. */
+    const exitT = faq
+      ? clamp01(1 - faq.getBoundingClientRect().top / (window.innerHeight * 0.6))
+      : 0;
+
+    const chromeOpacity = (enterT * (1 - exitT)).toFixed(3);
+    canvas.style.opacity = chromeOpacity;
+    hud.style.opacity = chromeOpacity;
     if (landing) landing.style.opacity = (1 - enterT).toFixed(3);
 
     const rect = track.getBoundingClientRect();
     const trueInView = rect.top <= 1 && rect.bottom > 0;
-    rail.classList.toggle("is-visible", trueInView);
+    rail.classList.toggle("is-visible", trueInView && exitT === 0);
 
     // Before `.tunnel-viewport` actually locks to the top of the screen, it still
     // renders in normal flow with its vignette/fade already at full strength --
