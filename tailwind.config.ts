@@ -24,35 +24,9 @@ const config: Config = {
         "deep-amber": "#FF8C00",
         "cosmic-gray": "#1a1a2e",
       },
-      animation: {
-        "glow-pulse": "glowPulse 3s ease-in-out infinite",
-        "float-up": "floatUp 6s ease-in-out infinite",
-        "star-twinkle": "starTwinkle 4s ease-in-out infinite",
-        "scroll-bounce": "scrollBounce 2s ease-in-out infinite",
-        "text-shimmer": "textShimmer 4s linear infinite",
-      },
-      keyframes: {
-        glowPulse: {
-          "0%, 100%": { textShadow: "0 0 10px #F4A233, 0 0 20px #F4A233, 0 0 40px #F4A233" },
-          "50%": { textShadow: "0 0 20px #FFD97D, 0 0 40px #FFD97D, 0 0 80px #F4A233, 0 0 100px #FF8C00" },
-        },
-        floatUp: {
-          "0%, 100%": { transform: "translateY(0px)" },
-          "50%": { transform: "translateY(-12px)" },
-        },
-        starTwinkle: {
-          "0%, 100%": { opacity: "0.3" },
-          "50%": { opacity: "1" },
-        },
-        scrollBounce: {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(8px)" },
-        },
-        textShimmer: {
-          "0%": { backgroundPosition: "-200% center" },
-          "100%": { backgroundPosition: "200% center" },
-        },
-      },
+      /* No `animation`/`keyframes` here: the five that used to be defined were
+         never referenced by any `animate-*` class in JSX, and duplicated the
+         real @keyframes in globals.css. Add them back only alongside a caller. */
     },
   },
   plugins: [],

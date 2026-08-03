@@ -7,7 +7,9 @@
 .site-footer {
   position: relative;
   z-index: 2;                 /* above the fixed #tunnel-canvas */
-  background: var(--bg-deep);
+  /* Ramp --bg (the FAQ) into --bg-deep over the first 120px rather than
+     stepping between them at the border — the flat cut read as a seam. */
+  background: linear-gradient(to bottom, var(--bg) 0, var(--bg-deep) 120px);
   border-top: 1px solid var(--line-soft);
   font-family: var(--font-mono);
   padding: 28px clamp(20px, 5vw, 64px) calc(28px + env(safe-area-inset-bottom, 0px));

@@ -2,10 +2,15 @@ import type { Metadata } from "next";
 import { Orbitron, Inter, Rajdhani, Chakra_Petch, Martian_Mono } from "next/font/google";
 import "./globals.css";
 
+/* Every weight here is loaded unconditionally on every route, so the lists are
+   pinned to what the CSS actually asks for. Across app/*.css only 300, 400, 500,
+   600 and 900 are ever declared — 700 and 800 were four static font files being
+   downloaded for nothing. Re-check with `rg 'font-weight' app/*.css` before
+   adding a heavier weight to a rule. */
 const orbitron = Orbitron({
   subsets: ["latin"],
   variable: "--font-orbitron",
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["400", "500", "600", "900"],
 });
 
 const inter = Inter({
@@ -17,15 +22,15 @@ const inter = Inter({
 const rajdhani = Rajdhani({
   subsets: ["latin"],
   variable: "--font-rajdhani",
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600"],
 });
 
 /* Timeline section type. Chakra Petch ships static weights so `weight` is
-   required; Martian Mono is a variable font, so omitting it loads the full axis. */
+   required; Martian Mono is a variable font — one file for the whole axis. */
 const chakraPetch = Chakra_Petch({
   subsets: ["latin"],
   variable: "--font-chakra",
-  weight: ["300", "500", "600", "700"],
+  weight: ["300", "500", "600"],
 });
 
 const martianMono = Martian_Mono({

@@ -111,6 +111,26 @@ export default function FaqSection() {
     return () => observer.disconnect();
   }, []);
 
+  /* Arriving from another route via /#faq, the browser resolves the hash at
+     navigation time — before lib/tunnel.ts has sized .tunnel-track to 636dvh.
+     The FAQ is ~5000px lower once that lands, so the native jump falls far
+     short. Re-run it after layout settles: once on the next frame, and again
+     at 400ms to catch late image/font reflow. scroll-margin-top on
+     .faq-section (app/faq.css) keeps it clear of the fixed navbar. The
+     navbar's same-page click path doesn't come through here — it re-measures
+     per frame instead (see Navbar.tsx). */
+  useEffect(() => {
+    if (window.location.hash !== "#faq") return;
+    const jump = () =>
+      sectionRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+    const frame = requestAnimationFrame(jump);
+    const timer = window.setTimeout(jump, 400);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, []);
+
   const toggleFaq = (index: number) => {
     const nextIndex = openIndex === index ? null : index;
     setOpenIndex(nextIndex);
@@ -121,7 +141,9 @@ export default function FaqSection() {
   };
 
   return (
-    <section ref={sectionRef} className="faq-section" aria-labelledby="faq-heading">
+    /* id: target of the navbar's FAQs link. The .faq-section CLASS must stay —
+       lib/tunnel.ts finds this node by that selector to drive its exit fade. */
+    <section ref={sectionRef} id="faq" className="faq-section" aria-labelledby="faq-heading">
       {/* Background — reuses the hero's image, already fetched and cached, so
           the end of the page ties back to its opening at zero extra bytes. */}
       <div className="faq-bg" aria-hidden="true">

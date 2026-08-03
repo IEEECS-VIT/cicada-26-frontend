@@ -176,10 +176,15 @@ body::before {
   width: 120px;
   object-fit: cover;
   object-position: 50% 45%;
-  /* The artwork sits on solid black, so `screen` drops the plate entirely
-     instead of leaving a visible black rectangle on the navbar gradient. */
+  /* `screen` only erases a pixel completely at true #000, and JPEG ringing
+     lifts this plate to ~#0a0a0a — hence the visible rectangle. Crush the
+     near-black back down BEFORE the blend (filter runs first), then feather
+     the edges so there is no rectangle left to perceive either way. */
   mix-blend-mode: screen;
-  filter: drop-shadow(0 0 10px rgba(244, 162, 51, 0.35));
+  filter: brightness(1.04) contrast(1.22)
+          drop-shadow(0 0 10px rgba(244, 162, 51, 0.35));
+  -webkit-mask-image: radial-gradient(118% 118% at 50% 50%, #000 50%, transparent 100%);
+  mask-image: radial-gradient(118% 118% at 50% 50%, #000 50%, transparent 100%);
 }
 
 /* Nav Links */
@@ -419,6 +424,16 @@ body::before {
   filter: drop-shadow(0 0 20px rgba(244, 162, 51, 0.4));
 }
 
+/* HeroSection sets .is-idle once the hero has scrolled away. These two infinite
+   animations are the only per-frame work left in the hero, and both are costly:
+   the shimmer re-rasterizes background-clip:text under a drop-shadow, the
+   indicator animates a box-shadowed pseudo-element. Paused, not removed — they
+   resume identically when the hero comes back. */
+.hero-section.is-idle .glow-line,
+.hero-section.is-idle .scroll-indicator-line::after {
+  animation-play-state: paused;
+}
+
 /* Particle dust effect on heading */
 .hero-heading::after {
   content: "CICADA 2067";
@@ -592,56 +607,32 @@ body::before {
   height: 100%;        /* full viewport height */
   pointer-events: none;
   z-index: 6;          /* above hero content but below navbar (z=100) */
-  will-change: transform;
+  /* No will-change here: this element is never transformed, so promoting it
+     was a permanently retained layer for nothing. Its opacity IS written per
+     frame by lib/tunnel.ts, but only over the first viewport of scroll. */
 }
 
 /*
- * <endurance-ship> — public/endurance.js, a Shadow-DOM web component.
+ * The Endurance — components/EnduranceShip.tsx, a three.js canvas.
  *
- * It sizes itself with container units against its own box, so it needs a
- * definite width AND height — .spacecraft-scene above provides both.
+ * All theming (the copper hull ramp, the amber windows) lives in that file as
+ * material colours now. There is nothing to style here: the old rules retinted
+ * a Shadow-DOM web component's custom properties and then colour-graded the
+ * whole 3D subtree with a `filter`, which forced an offscreen buffer every
+ * frame. Both problems left with the component.
  *
- * THEMING: custom properties inherit across the shadow boundary, and
- * declarations here (outer document) outrank the component's own :host
- * block, so this retints the hull without touching the vendor file.
- * Anything INSIDE the shadow tree (.endurance, .blackhole, .cam) is
- * unreachable from here — see components/EnduranceShip.tsx.
+ * The canvas is sized imperatively by the renderer against this box, so it only
+ * needs to be told to fill it.
  */
-endurance-ship {
+.endurance-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.endurance-canvas canvas {
   display: block;
   width: 100%;
   height: 100%;
-
-  /* Kills the component's own starfield + gradient; the page has 891208.jpg */
-  background: none;
-
-  /* --luz-05..90 (the hull shading ramp) are hsl(var(--hue), var(--sat), N%),
-     so these two declarations warm every shaded panel at once. */
-  --hue: 30;
-  --sat: 18%;
-
-  /* Hull plates — the vendor's cool blue-greys (#b9c0c3 → #353a42), rotated
-     to copper and dropped well down the luminance ramp. The stock plates read
-     bone-white against the accretion disk; the ship should sit in it, not
-     float on top of it. */
-  --sp0: #9c8e7e;
-  --sp1: #8b7d6d;
-  --sp2: #7f7161;
-  --sp3: #6f6254;
-  --sp4: #605448;
-  --sp5: #574b40;
-  --sp6: #473d34;
-  --sp7: #383029;
-  --sp8: #2a241f;
-
-  /* Window / lamp glow → the site's accretion amber */
-  --yellow: var(--color-accretion-bright);
-
-  /* The --luz-05..90 ramp is baked into the vendor's :host at fixed
-     lightness stops, so its top end stays near-white however --hue/--sat are
-     set. One grade over the whole render brings those highlights down with
-     everything else and keeps the internal shading relationships intact. */
-  filter: brightness(0.66) saturate(1.35) contrast(1.08);
 }
 
 /* =====================================================

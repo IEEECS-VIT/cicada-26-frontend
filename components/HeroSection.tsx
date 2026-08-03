@@ -7,20 +7,21 @@ import { useEffect, useState } from "react";
 /*
  * HeroSection.tsx
  * ─────────────────────────────────────────────────────────────────
- * Hero layout — text column LEFT, 3D spacecraft RIGHT.
+ * Hero layout — text column LEFT, three.js Endurance RIGHT.
  *
- * EnduranceShip is dynamically imported with ssr:false because the
- * <endurance-ship> custom element only exists in the browser; rendering
- * the tag server-side would emit an un-upgraded, unstyled element.
+ * EnduranceShip is dynamically imported with ssr:false because it builds a
+ * WebGL context on mount; there is nothing meaningful to render server-side.
  *
  * The ship UNMOUNTS once the timeline takes over (see shipVisible below).
- * .spacecraft-scene is position:fixed, so it would otherwise hover over
- * the tunnel for the rest of the page — and a ~1600-plane preserve-3d
- * subtree left alive next to the tunnel is real battery cost on mobile.
+ * .spacecraft-scene is position:fixed, so it would otherwise hover over the
+ * tunnel for the rest of the page — and leaving a second WebGL context alive
+ * next to the tunnel's is real battery cost on mobile. lib/tunnel.ts fades
+ * .spacecraft-scene's opacity to 0 before this threshold so the unmount is
+ * invisible; the two ranges are coupled, change them together.
  * ─────────────────────────────────────────────────────────────────
  */
 
-/* Dynamic import → the web component registers itself in the browser only */
+/* Dynamic import → three.js and the scene build stay out of the server bundle */
 const EnduranceShip = dynamic(() => import("./EnduranceShip"), {
   ssr: false,
   loading: () => null,
@@ -43,7 +44,14 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <section id="hero" className="hero-section" aria-label="Hero">
+    /* is-idle pauses the infinite heading shimmer once the hero is off-screen —
+       it re-rasterizes background-clip:text under a drop-shadow every frame,
+       which is pure waste while invisible. The animation itself is untouched. */
+    <section
+      id="hero"
+      className={`hero-section${shipVisible ? "" : " is-idle"}`}
+      aria-label="Hero"
+    >
 
       {/* ── Left Column — text content ───────────────────── */}
       <div className="hero-left">
@@ -76,7 +84,7 @@ export default function HeroSection() {
         </Link>
       </div>
 
-      {/* ── Right Column — React Three Fiber spacecraft ──── */}
+      {/* ── Right Column — three.js Endurance ──────────────── */}
       {/*
        * aria-hidden: the 3D canvas is purely decorative — screen
        * readers don't need to know about it.

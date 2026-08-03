@@ -176,9 +176,12 @@
 
 .round-card__panel {
   cursor: pointer;
-  background: oklch(0.12 0.01 60 / 0.82);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* Was oklch(... / 0.82) + backdrop-filter: blur(8px). All six cards are
+     translate3d'd every frame by lib/tunnel.ts, and a backdrop blur makes each
+     one re-sample and re-blur everything behind it at its new position — the
+     single worst compositing case on the page. Over a tunnel this dark the
+     extra 0.1 of opacity is visually near-identical. */
+  background: oklch(0.12 0.01 60 / 0.92);
   border: 1px solid var(--line);
   border-radius: 3px;
   padding: 20px 22px;

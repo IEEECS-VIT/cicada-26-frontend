@@ -10,13 +10,26 @@
 .faq-section {
   position: relative;
   z-index: 2;
-  /* Opaque, and above the fixed #tunnel-canvas (z-index 0) — without this
-     the tunnel renders straight through the section. */
-  background: var(--bg);
+  /* Landing target for the FAQs nav link — clears the fixed navbar. */
+  scroll-margin-top: var(--nav-height);
+  /* The opaque cover that hides the fixed #tunnel-canvas (z-index 0) lives on
+     ::before, not here, so its top edge can ramp in instead of cutting. */
   overflow: hidden;
   font-family: var(--font-mono);
   color: var(--ink);
   padding: clamp(72px, 12vw, 128px) clamp(20px, 5vw, 64px);
+}
+
+/* The opaque backdrop, ramped in over the first 220px so the tunnel behind
+   cross-fades into this section instead of being cut off by a straight edge.
+   .faq-section sets z-index:2 and so forms a stacking context — this z-index:-1
+   child still paints above #tunnel-canvas (z-index 0), just below the content. */
+.faq-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to bottom, transparent 0, var(--bg) 220px);
 }
 
 /* Background — scoped to the section. The source had these fixed inset-0,
@@ -28,6 +41,11 @@
   opacity: 0.28;
   filter: blur(3px);
   transform: scale(1.06);
+  /* Ramped over the same 220px as ::before. Without this the image and its wash
+     switch on at full strength exactly where the section starts, which puts a
+     visible brightness step back into the seam the gradient just removed. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 220px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 220px);
 }
 
 .faq-bg__wash {
@@ -51,6 +69,9 @@
     linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
     linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
   background-size: 100% 2px, 3px 100%;
+  /* Same 220px ramp as .faq-bg — scanlines starting mid-air read as an edge. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 220px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 220px);
 }
 
 .faq-inner {
