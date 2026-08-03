@@ -42,7 +42,14 @@
   --z-canvas: 0;
   --z-cards: 5;
   --z-fades: 6;
-  --z-hud: 600;
+  /* 90, not 600. .timeline-section is position:relative with no z-index or
+     isolation, so it is NOT a stacking context and these position:fixed HUD
+     children resolve against the root -- at 600 they painted over the navbar
+     (100) and over an open mobile menu (99), with .hud-corner--tl/--tr landing
+     at top:18px, directly on the logo/hamburger row. Nothing else in the root
+     context exceeds 20, so 90 keeps the HUD above all page content and below
+     the nav layer. */
+  --z-hud: 90;
 }
 
 /* Everything in this file lives inside .timeline-section, which sets the

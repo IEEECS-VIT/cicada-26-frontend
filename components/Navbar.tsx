@@ -26,6 +26,39 @@ export default function Navbar() {
   useEffect(() => () => cancelAnimationFrame(flightRef.current), []);
 
   /*
+   * Scroll lock. overflow:hidden deliberately, NOT the position:fixed +
+   * negative-top body trick: lib/tunnel.ts's rAF loop reads window.scrollY
+   * every frame and drives the entire tunnel from it, and position:fixed
+   * resets scrollY to 0 -- the loop would read that as "user jumped to the top
+   * of the document" and unwind the whole scene behind the menu. overflow
+   * leaves scrollY untouched. Set on documentElement as well as body because
+   * iOS Safari honours the html one more reliably. Restoring to "" is safe:
+   * body's overflow-x:hidden lives in globals.css, not inline.
+   */
+  useEffect(() => {
+    if (!menuOpen) return;
+    const { documentElement: html, body } = document;
+    html.style.overflow = body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
+  /* Covers the back button and any navigation the per-link handlers below
+     don't see. Those handlers still earn their keep for same-route clicks
+     (/#faq from /), where pathname never changes. */
+  useEffect(() => setMenuOpen(false), [pathname]);
+
+  /*
    * #faq sits ~7000px down, past the entire WebGL tunnel. Native smooth scroll
    * crawls that and fights `html { scroll-behavior: smooth }` in globals.css,
    * so drive it here with behavior:"instant" — the same reason lib/tunnel.ts
@@ -146,6 +179,14 @@ export default function Navbar() {
           </Link>
         ))}
       </nav>
+
+      {/* Scrim — tap anywhere off the menu to dismiss. Sits below the menu and
+          the navbar (z 98 vs 99/100) so the hamburger stays reachable. */}
+      <div
+        className={`mobile-menu-scrim${menuOpen ? " open" : ""}`}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden
+      />
     </>
   );
 }

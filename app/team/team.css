@@ -526,12 +526,33 @@
   width: 100%;
   max-width: 380px;
   backdrop-filter: blur(8px);
+}
+
+/*
+ * The breathing glow, moved off box-shadow onto an opacity-animated overlay.
+ *
+ * box-shadow is not a composited property, so the old `btn-breathe` repainted
+ * this button 60x/sec for as long as /team stayed open. opacity is composited:
+ * same pulse, no repaint.
+ *
+ * The keyframes also animated an OUTER halo (0 0 15px / 0 0 40px) that never
+ * actually rendered — .launch-btn carries a clip-path, and clip-path clips an
+ * element's own box-shadow. Only the inset delta (0.05 -> 0.12) was ever
+ * visible, and that is exactly what this reproduces.
+ */
+.crew-portal .launch-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 30px rgba(198, 185, 176, 0.12);
+  opacity: 0;
   animation: btn-breathe 3s ease-in-out infinite;
 }
 
 @keyframes btn-breathe {
-  0%, 100% { box-shadow: var(--glow), inset 0 0 20px rgba(198, 185, 176, 0.05); }
-  50% { box-shadow: 0 0 15px #C6B9B0, 0 0 40px #C6B9B088, inset 0 0 30px rgba(198, 185, 176, 0.12); }
+  0%, 100% { opacity: 0; }
+  50%      { opacity: 1; }
 }
 
 .crew-portal .launch-btn::before {
@@ -551,7 +572,12 @@
   border-color: var(--a3);
   box-shadow: 0 0 25px #C6B9B0, 0 0 70px #C6B9B066, inset 0 0 30px rgba(198, 185, 176, 0.15);
   transform: translateY(-2px);
+}
+
+/* Hover takes over the glow — stop the pulse on the overlay, not the button. */
+.crew-portal .launch-btn:hover::after {
   animation: none;
+  opacity: 0;
 }
 
 .crew-portal .launch-btn:active { transform: scale(0.97); }
