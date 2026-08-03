@@ -341,16 +341,17 @@ body::before {
   min-height: 100vh;
   width: 100%;
   display: grid;
-  /* Left text col / Right spacecraft col */
+  /* Left text col / right col left intentionally empty — the black-hole
+     background reads through it and keeps the copy off centre */
   grid-template-columns: 52% 48%;
   /* Main content row + scroll indicator row at bottom */
   grid-template-rows: 1fr auto;
-  /* stretch — both columns fill the full row height so the canvas
-     container (hero-right) is viewport-tall without an explicit height */
+  /* stretch — hero-left fills the full row height regardless of its own
+     min-height, which is what keeps the copy vertically centred on mobile */
   align-items: stretch;
   padding-top: var(--nav-height);
-  /* clip instead of hidden: still prevents body scrollbars but does
-     NOT apply to position:fixed children (the spacecraft canvas) */
+  /* clip, not hidden: prevents body scrollbars without creating a scroll
+     container on this section */
   overflow: clip;
 }
 
@@ -582,59 +583,6 @@ body::before {
   transform: rotate(180deg);
 }
 
-/* Right Column — just a grid placeholder; the actual canvas is fixed */
-.hero-right {
-  position: relative;
-  /* No explicit height needed — align-items:stretch fills the row */
-  grid-column: 2;
-  grid-row: 1;
-}
-
-/*
- * Spacecraft scene — FIXED on desktop.
- * Reason: position:fixed takes the canvas completely out of the
- * document flow so it can never be clipped by hero-section's
- * overflow:clip.  It always sits precisely on the right 48% of
- * the viewport, full-height, independent of scroll position.
- *
- * pointer-events:none lets all clicks pass through to the nav / text.
- */
-.spacecraft-scene {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 48%;          /* matches the right column width */
-  height: 100%;        /* full viewport height */
-  pointer-events: none;
-  z-index: 6;          /* above hero content but below navbar (z=100) */
-  /* No will-change here: this element is never transformed, so promoting it
-     was a permanently retained layer for nothing. Its opacity IS written per
-     frame by lib/tunnel.ts, but only over the first viewport of scroll. */
-}
-
-/*
- * The Endurance — components/EnduranceShip.tsx, a three.js canvas.
- *
- * All theming (the copper hull ramp, the amber windows) lives in that file as
- * material colours now. There is nothing to style here: the old rules retinted
- * a Shadow-DOM web component's custom properties and then colour-graded the
- * whole 3D subtree with a `filter`, which forced an offscreen buffer every
- * frame. Both problems left with the component.
- *
- * The canvas is sized imperatively by the renderer against this box, so it only
- * needs to be told to fill it.
- */
-.endurance-canvas {
-  width: 100%;
-  height: 100%;
-}
-
-.endurance-canvas canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
 /* =====================================================
    COMING SOON PAGE
    ===================================================== */
@@ -810,36 +758,15 @@ body::before {
 
   .hero-section {
     grid-template-columns: 1fr;
-    /* text row (auto), ship row (50vh), scroll row (auto) */
-    grid-template-rows: auto 50vh auto;
     padding-top: calc(var(--nav-height) + 1rem);
   }
 
-  /* TEXT AT TOP on mobile */
   .hero-left {
     grid-column: 1;
-    grid-row: 1;         /* row 1 = top */
+    grid-row: 1;
+    /* auto is safe: align-items:stretch still fills the 1fr row */
     min-height: auto;
     padding: 2rem 1.5rem 1.5rem;
-  }
-
-  /* SHIP AT BOTTOM on mobile */
-  .hero-right {
-    grid-column: 1;
-    grid-row: 2;         /* row 2 = bottom */
-    height: 50vh;
-    position: relative;
-  }
-
-  /* Un-fix the canvas on mobile — use normal absolute positioning
-     inside hero-right so it appears in the bottom row of the grid */
-  .spacecraft-scene {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    right: unset;
-    top: unset;
   }
 
   .scroll-indicator {

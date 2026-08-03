@@ -25,8 +25,8 @@ import SiteFooter from "@/components/SiteFooter";
  * Place your file at:   /public/891208.jpg
  * The `next/image` fill + priority ensures it's preloaded and
  * rendered without layout shift. object-position "60% 50%"
- * nudges the bright accretion disk to the right, matching the
- * expected composition when the spacecraft canvas overlays it.
+ * nudges the bright accretion disk into the empty right half of
+ * the hero, away from the copy in the left column.
  * ─────────────────────────────────────────────────────────────────
  */
 

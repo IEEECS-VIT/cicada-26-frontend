@@ -1,41 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
 /*
  * HeroSection.tsx
  * ─────────────────────────────────────────────────────────────────
- * Hero layout — text column LEFT, three.js Endurance RIGHT.
+ * Hero layout — text column LEFT, grid column 2 deliberately empty so the
+ * black-hole background reads through it.
  *
- * EnduranceShip is dynamically imported with ssr:false because it builds a
- * WebGL context on mount; there is nothing meaningful to render server-side.
- *
- * The ship UNMOUNTS once the timeline takes over (see shipVisible below).
- * .spacecraft-scene is position:fixed, so it would otherwise hover over the
- * tunnel for the rest of the page — and leaving a second WebGL context alive
- * next to the tunnel's is real battery cost on mobile. lib/tunnel.ts fades
- * .spacecraft-scene's opacity to 0 before this threshold so the unmount is
- * invisible; the two ranges are coupled, change them together.
+ * The only live state here is heroActive, which drives .is-idle: past ~1.1vh
+ * the hero is off-screen and its two infinite animations are pure waste. See
+ * the .is-idle rules in globals.css.
  * ─────────────────────────────────────────────────────────────────
  */
 
-/* Dynamic import → three.js and the scene build stay out of the server bundle */
-const EnduranceShip = dynamic(() => import("./EnduranceShip"), {
-  ssr: false,
-  loading: () => null,
-});
-
 export default function HeroSection() {
-  const [shipVisible, setShipVisible] = useState(true);
+  const [heroActive, setHeroActive] = useState(true);
 
   useEffect(() => {
     /* Asymmetric thresholds (1.1 / 0.9) so scrolling around the boundary
-       can't thrash the WebGL context in and out every frame. */
+       can't thrash the class on and off every frame. */
     const onScroll = () =>
-      setShipVisible((visible) =>
-        visible
+      setHeroActive((active) =>
+        active
           ? window.scrollY < window.innerHeight * 1.1
           : window.scrollY < window.innerHeight * 0.9
       );
@@ -49,7 +37,7 @@ export default function HeroSection() {
        which is pure waste while invisible. The animation itself is untouched. */
     <section
       id="hero"
-      className={`hero-section${shipVisible ? "" : " is-idle"}`}
+      className={`hero-section${heroActive ? "" : " is-idle"}`}
       aria-label="Hero"
     >
 
@@ -82,21 +70,6 @@ export default function HeroSection() {
         >
           REGISTER NOW &nbsp;→
         </Link>
-      </div>
-
-      {/* ── Right Column — three.js Endurance ──────────────── */}
-      {/*
-       * aria-hidden: the 3D canvas is purely decorative — screen
-       * readers don't need to know about it.
-       * pointer-events: none on .spacecraft-scene (in globals.css)
-       * ensures clicks pass through to the navbar / buttons.
-       */}
-      <div className="hero-right" aria-hidden="true">
-        {shipVisible && (
-          <div className="spacecraft-scene">
-            <EnduranceShip />
-          </div>
-        )}
       </div>
 
       {/* ── Scroll Indicator ─────────────────────────────────

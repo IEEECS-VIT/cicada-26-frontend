@@ -504,9 +504,6 @@ export function initTunnel(refs: TunnelRefs): () => void {
      rather than plumbed through props. Absent on any route that isn't home. */
   const landing = document.querySelector<HTMLElement>(".blackhole-bg");
   const faq = document.querySelector<HTMLElement>(".faq-section");
-  /* Nullable and re-read every frame: HeroSection unmounts the ship past ~1.1vh,
-     so unlike the two above, this node comes and goes. */
-  const shipScene = () => document.querySelector<HTMLElement>(".spacecraft-scene");
 
   tickClock(clock);
   const clockTimer = window.setInterval(() => tickClock(clock), 1000);
@@ -636,17 +633,6 @@ export function initTunnel(refs: TunnelRefs): () => void {
     hud.style.opacity = chromeOpacity;
     if (landing) landing.style.opacity = (1 - enterT).toFixed(3);
 
-    /* The hero ship is position:fixed and HeroSection unmounts it outright at
-       scrollY > 1.1vh — at full opacity, which pops. This ramp must therefore
-       finish BEFORE that threshold, so it is keyed to scrollY directly rather
-       than to enterT (which only starts moving at the timeline hero, i.e. 1vh,
-       and would still be at 0.8 when the unmount fires). */
-    const ship = shipScene();
-    if (ship) {
-      const shipT = clamp01((scrollY - window.innerHeight * 0.55) / (window.innerHeight * 0.5));
-      ship.style.opacity = (1 - shipT).toFixed(3);
-    }
-
     const rect = track.getBoundingClientRect();
     /* `trueInView` alone is not enough to justify snapping. The track's last
        pixels are still technically in view when the FAQ already fills the
@@ -726,8 +712,6 @@ export function initTunnel(refs: TunnelRefs): () => void {
     inputEvents.forEach((type) => window.removeEventListener(type, cancelSnap));
     cardCleanups.forEach((fn) => fn());
     if (landing) landing.style.opacity = "";
-    const ship = shipScene();
-    if (ship) ship.style.opacity = "";
     scene.dispose();
   };
 }
