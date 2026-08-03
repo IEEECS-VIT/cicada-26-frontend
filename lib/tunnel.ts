@@ -699,6 +699,19 @@ export function initTunnel(refs: TunnelRefs): () => void {
        state is correct the moment it becomes visible again. frame()'s getDelta is
        clamped at 0.05, so a long gap can't jolt the animation on resume. */
     if (chrome > 0.001) scene.frame(cards, depth);
+    // @ts-ignore TEMP DEBUG
+    (window as any).__tdbg = {
+      scrollY, start, end, span,
+      viewH: window.innerHeight, liveViewH: window.innerHeight,
+      viewW: window.innerWidth, liveViewW: window.innerWidth,
+      mobile: isMobile(),
+      target: scene.targetProgress, smooth: scene.smoothProgress,
+      maxLateral: scene.maxLateral, maxCardScale: scene.maxCardScale,
+      heroTop, trackTop, trackHeight,
+      faqTop: faq ? faq.getBoundingClientRect().top + scrollY : 0,
+      anchors: scene.cardAnchors.map((a) => [a.u, a.world.x, a.world.y, a.world.z]),
+      cam: [scene.camera.position.x, scene.camera.position.y, scene.camera.position.z],
+    };
     rafId = requestAnimationFrame(raf);
   }
   rafId = requestAnimationFrame(raf);
