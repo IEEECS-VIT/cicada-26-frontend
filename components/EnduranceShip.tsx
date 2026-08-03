@@ -95,10 +95,14 @@ const SHADOW_CSS = `
   /* Measured: across a full revolution the widest projected pose is 98.9% of
      the host width (it peaks around rotateZ -50deg). That ratio is constant —
      both the ship and cqmin derive from the host — so this is the one number
-     that buys clearance. 0.72 leaves ~60px either side at 1500px wide. */
-  --ship-scale: 0.72;
+     that buys clearance. 0.74 is the ceiling, re-measured in-browser at 1500px:
+     the widest pose (t~52s of the orbit) puts the ship's right edge exactly on
+     the host's, which is also the viewport's. Right side binds first — left has
+     slack to ~0.88. Above 0.74 the ring's right modules get cut by the viewport;
+     1.035 overflowed by 130px. Don't raise this without re-measuring. */
+  --ship-scale: 0.95;
   transform: scale3d(var(--ship-scale), var(--ship-scale), var(--ship-scale))
-             rotateX(40deg) rotateZ(-70deg);
+             rotateX(36.8deg) rotateZ(-84.525deg);
   animation: none;   /* drops the vendor's 4s entry spin — see below */
 }
 
@@ -114,9 +118,9 @@ const SHADOW_CSS = `
  */
 @keyframes orbit {
   from { transform: scale3d(var(--ship-scale), var(--ship-scale), var(--ship-scale))
-                    rotateX(40deg) rotateZ(-70deg); }
+                    rotateX(36.8deg) rotateZ(-84.525deg); }
   to   { transform: scale3d(var(--ship-scale), var(--ship-scale), var(--ship-scale))
-                    rotateX(40deg) rotateZ(290deg); }
+                    rotateX(36.8deg) rotateZ(275.475deg); }
 }
 
 /*
