@@ -1,19 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
 /*
  * HeroSection.tsx
  * ─────────────────────────────────────────────────────────────────
- * Hero layout — text column LEFT, grid column 2 deliberately empty so the
- * black-hole background reads through it.
+ * Hero layout — text column LEFT, the Endurance RIGHT.
  *
- * The only live state here is heroActive, which drives .is-idle: past ~1.1vh
- * the hero is off-screen and its two infinite animations are pure waste. See
- * the .is-idle rules in globals.css.
+ * heroActive drives everything off-screen-related: past ~1.1vh the hero is
+ * gone and its infinite animations are pure waste. It feeds both the .is-idle
+ * rules in globals.css and the ship's paused state.
+ *
+ * The ship stays mounted for the life of the page — it is in-flow inside the
+ * grid, so it scrolls away on its own, and remounting would rebuild ~1600 DOM
+ * nodes. Pausing is free; that is why idle is a prop and not a conditional.
  * ─────────────────────────────────────────────────────────────────
  */
+
+/* ssr:false — the custom element only exists after /endurance.js runs client-side. */
+const EnduranceShip = dynamic(() => import("./EnduranceShip"), {
+  ssr: false,
+  loading: () => null,
+});
 
 export default function HeroSection() {
   const [heroActive, setHeroActive] = useState(true);
@@ -70,6 +80,11 @@ export default function HeroSection() {
         >
           REGISTER NOW &nbsp;→
         </Link>
+      </div>
+
+      {/* ── Right Column — the Endurance ─────────────────── */}
+      <div className="hero-right" aria-hidden="true">
+        <EnduranceShip idle={!heroActive} />
       </div>
 
       {/* ── Scroll Indicator ─────────────────────────────────

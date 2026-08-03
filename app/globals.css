@@ -341,13 +341,13 @@ body::before {
   min-height: 100vh;
   width: 100%;
   display: grid;
-  /* Left text col / right col left intentionally empty — the black-hole
-     background reads through it and keeps the copy off centre */
+  /* Left text col / right Endurance col */
   grid-template-columns: 52% 48%;
   /* Main content row + scroll indicator row at bottom */
   grid-template-rows: 1fr auto;
-  /* stretch — hero-left fills the full row height regardless of its own
-     min-height, which is what keeps the copy vertically centred on mobile */
+  /* stretch — both columns fill the full row height. That is what gives
+     .hero-right a definite height, which <endurance-ship> requires: it is a
+     container-query container (container-type:size) and cannot size to content. */
   align-items: stretch;
   padding-top: var(--nav-height);
   /* clip, not hidden: prevents body scrollbars without creating a scroll
@@ -583,6 +583,80 @@ body::before {
   transform: rotate(180deg);
 }
 
+/*
+ * Right Column — holds the Endurance (components/EnduranceShip.tsx).
+ *
+ * In-flow on purpose. An earlier build made the ship position:fixed to escape
+ * .hero-section's overflow:clip, which then needed lib/tunnel.ts to hand-fade
+ * its opacity and HeroSection to unmount it — three coupled parts that had to
+ * be changed together. The component clips itself (:host{overflow:hidden})
+ * and .endurance is scaled to fit, so sitting in the grid cell and scrolling
+ * away naturally replaces all of that.
+ */
+.hero-right {
+  position: relative;
+  /* No explicit height needed — align-items:stretch fills the row */
+  grid-column: 2;
+  grid-row: 1;
+  pointer-events: none;   /* clicks fall through to the nav and the CTA */
+}
+
+/*
+ * <endurance-ship> — public/endurance.js, a Shadow-DOM web component.
+ *
+ * It sizes itself with container units against its own box, so it needs a
+ * definite width AND height — .hero-right above provides both.
+ *
+ * THEMING: custom properties inherit across the shadow boundary, and
+ * declarations here (outer document) outrank the component's own :host
+ * block, so this retints the hull without touching the vendor file.
+ * Anything INSIDE the shadow tree (.endurance, .blackhole, .cam) is
+ * unreachable from here — see components/EnduranceShip.tsx.
+ */
+endurance-ship {
+  /* Also holds the layout before /endurance.js lands and upgrades the
+     element — until then its :host block does not exist yet. */
+  display: block;
+  width: 100%;
+  height: 100%;
+
+  /* Kills the component's own starfield + gradient; the page has 891208.jpg */
+  background: none;
+
+  /* --luz-05..90 (the hull shading ramp) are hsl(var(--hue), var(--sat), N%),
+     so these two declarations warm every shaded panel at once. */
+  --hue: 30;
+  --sat: 18%;
+
+  /* Hull plates — the vendor's cool blue-greys (#b9c0c3 → #353a42), rotated
+     to copper and dropped well down the luminance ramp. The stock plates read
+     bone-white against the accretion disk; the ship should sit in it, not
+     float on top of it. */
+  --sp0: #9c8e7e;
+  --sp1: #8b7d6d;
+  --sp2: #7f7161;
+  --sp3: #6f6254;
+  --sp4: #605448;
+  --sp5: #574b40;
+  --sp6: #473d34;
+  --sp7: #383029;
+  --sp8: #2a241f;
+
+  /* Window / lamp glow → the site's accretion amber */
+  --yellow: var(--color-accretion-bright);
+
+  /* The vendor's --luz-* ramp is fixed at high lightness stops, so its
+     highlights stay near-white however --hue/--sat are set. Bring the top of
+     the ramp down directly. Deliberately NOT a `filter:` — colour-grading the
+     3D subtree forces an offscreen buffer, which is free on a static ship and
+     a per-frame cost on a rotating one. */
+  --luz-90: hsl(var(--hue), var(--sat), 62%);
+  --luz-85: hsl(var(--hue), var(--sat), 58%);
+  --luz-80: hsl(var(--hue), var(--sat), 54%);
+  --luz-75: hsl(var(--hue), var(--sat), 50%);
+  --luz-70: hsl(var(--hue), var(--sat), 46%);
+}
+
 /* =====================================================
    COMING SOON PAGE
    ===================================================== */
@@ -758,15 +832,29 @@ body::before {
 
   .hero-section {
     grid-template-columns: 1fr;
+    /* text row (auto), ship row (45vh). The scroll-indicator row is gone —
+       it's display:none below. 45vh is a definite height, which is what
+       <endurance-ship>'s container-type:size needs. */
+    grid-template-rows: auto 45vh;
     padding-top: calc(var(--nav-height) + 1rem);
   }
 
+  /* TEXT AT TOP on mobile */
   .hero-left {
     grid-column: 1;
     grid-row: 1;
-    /* auto is safe: align-items:stretch still fills the 1fr row */
+    /* auto is safe: align-items:stretch still fills the row */
     min-height: auto;
     padding: 2rem 1.5rem 1.5rem;
+  }
+
+  /* SHIP AT BOTTOM on mobile. It holds a static pose — the continuous orbit
+     is gated to min-width:769px in the shadow CSS, because ~1600 preserve-3d
+     planes re-projecting every frame roughly halves the frame rate on a
+     phone. See components/EnduranceShip.tsx. */
+  .hero-right {
+    grid-column: 1;
+    grid-row: 2;
   }
 
   .scroll-indicator {
