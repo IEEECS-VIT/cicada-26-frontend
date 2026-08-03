@@ -1,3 +1,5 @@
-node_modules/
-.next/
-.env
+.claude
+.next
+.playwright-mcp
+.remember
+node_modules

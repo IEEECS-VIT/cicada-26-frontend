@@ -562,7 +562,17 @@ export function initTunnel(refs: TunnelRefs): () => void {
   };
   if (canHover) window.addEventListener("pointermove", onPointerMove);
 
-  const onResize = () => { scene.resize(); setTrackHeight(); };
+  /* Cached because they only move when the layout does. Reading them inside raf()
+     forced two layout flushes per frame for values that were constant between
+     resizes. measure() must run AFTER setTrackHeight, which changes both. */
+  let heroTop = 0, trackTop = 0, trackHeight = 0;
+  const measure = () => {
+    heroTop = hero.getBoundingClientRect().top + window.scrollY;
+    trackTop = track.getBoundingClientRect().top + window.scrollY;
+    trackHeight = track.offsetHeight;
+  };
+
+  const onResize = () => { scene.resize(); setTrackHeight(); measure(); };
   window.addEventListener("resize", onResize);
   window.addEventListener("orientationchange", onResize);
 
@@ -572,8 +582,8 @@ export function initTunnel(refs: TunnelRefs): () => void {
 
      offsetTop is NOT usable here: .timeline-section is position:relative, so it is the
      offsetParent and offsetTop would report 0 for the hero. These need document-absolute
-     positions, hence getBoundingClientRect. Both are read once per frame in raf(). */
-  const docTop = (el: HTMLElement) => el.getBoundingClientRect().top + window.scrollY;
+     positions, hence getBoundingClientRect — see measure() above, which caches them. */
+  measure();
 
   // Idle scroll-snap: once the user stops moving near a card, drift the scroll
   // position onto that card so it settles at a readable size. Any real input
@@ -594,8 +604,8 @@ export function initTunnel(refs: TunnelRefs): () => void {
   function raf() {
     const now = performance.now();
     const scrollY = window.scrollY;
-    const start = docTop(hero);
-    const end = docTop(track) + track.offsetHeight - window.innerHeight;
+    const start = heroTop;
+    const end = trackTop + trackHeight - window.innerHeight;
     const span = Math.max(end - start, 1);
     if (Math.abs(scrollY - prevScrollY) > 0.5) lastMoveTime = now;
     prevScrollY = scrollY;
@@ -609,20 +619,30 @@ export function initTunnel(refs: TunnelRefs): () => void {
 
     /* ...and back out again as the FAQ rises into frame. The HUD readouts and
        the rail are position:fixed, so without this they hang over the FAQ and
-       the footer for the rest of the page. Ramps over the last 60% of a
-       viewport before the FAQ reaches the top of the screen. */
+       the footer for the rest of the page. Ramped over a FULL viewport (was 0.6)
+       so the tunnel is still partly lit behind the 220px translucent band at the
+       top of .faq-section — that overlap is what makes the seam a cross-fade
+       rather than a cut. Shortening this back re-hardens the seam. */
     const exitT = faq
-      ? clamp01(1 - faq.getBoundingClientRect().top / (window.innerHeight * 0.6))
+      ? clamp01(1 - faq.getBoundingClientRect().top / window.innerHeight)
       : 0;
 
-    const chromeOpacity = (enterT * (1 - exitT)).toFixed(3);
+    const chrome = enterT * (1 - exitT);
+    const chromeOpacity = chrome.toFixed(3);
     canvas.style.opacity = chromeOpacity;
     hud.style.opacity = chromeOpacity;
     if (landing) landing.style.opacity = (1 - enterT).toFixed(3);
 
     const rect = track.getBoundingClientRect();
+    /* `trueInView` alone is not enough to justify snapping. The track's last
+       pixels are still technically in view when the FAQ already fills the
+       screen, so a reader who stops anywhere on the FAQ — by scrolling or via
+       the navbar's FAQs link — used to get dragged thousands of pixels back
+       into the tunnel. Once the tunnel has begun fading out (exitT > 0) it is
+       never right to pull the page back into it. Same condition the rail uses. */
     const trueInView = rect.top <= 1 && rect.bottom > 0;
-    rail.classList.toggle("is-visible", trueInView && exitT === 0);
+    const snappable = trueInView && exitT === 0;
+    rail.classList.toggle("is-visible", snappable);
 
     // Before `.tunnel-viewport` actually locks to the top of the screen, it still
     // renders in normal flow with its vignette/fade already at full strength --
@@ -646,7 +666,7 @@ export function initTunnel(refs: TunnelRefs): () => void {
         });
         railTicks.forEach((t, i) => t.classList.toggle("progress-rail__tick--active", i === nearest));
 
-        if (!snapping && !reducedMotionQuery.matches && best > SNAP_EPSILON && (now - lastMoveTime) > SNAP_IDLE_MS) {
+        if (!snapping && snappable && !reducedMotionQuery.matches && best > SNAP_EPSILON && (now - lastMoveTime) > SNAP_IDLE_MS) {
           snapping = true;
           snapStartTime = now;
           snapFromY = scrollY;
@@ -673,7 +693,25 @@ export function initTunnel(refs: TunnelRefs): () => void {
     hero.style.filter = heroT > 0 ? `blur(${(heroT * 14).toFixed(1)}px)` : "";
     hero.style.transform = `translate3d(0, ${(-heroT * 40).toFixed(1)}px, 0)`;
 
-    scene.frame(cards, depth);
+    /* Nothing the scene draws is visible at chrome 0 — either the tunnel hasn't
+       faded in yet, or the FAQ has covered it — so skip the WebGL render and the
+       card projection entirely. The scroll bookkeeping above still runs, so the
+       state is correct the moment it becomes visible again. frame()'s getDelta is
+       clamped at 0.05, so a long gap can't jolt the animation on resume. */
+    if (chrome > 0.001) scene.frame(cards, depth);
+    // @ts-ignore TEMP DEBUG
+    (window as any).__tdbg = {
+      scrollY, start, end, span,
+      viewH: window.innerHeight, liveViewH: window.innerHeight,
+      viewW: window.innerWidth, liveViewW: window.innerWidth,
+      mobile: isMobile(),
+      target: scene.targetProgress, smooth: scene.smoothProgress,
+      maxLateral: scene.maxLateral, maxCardScale: scene.maxCardScale,
+      heroTop, trackTop, trackHeight,
+      faqTop: faq ? faq.getBoundingClientRect().top + scrollY : 0,
+      anchors: scene.cardAnchors.map((a) => [a.u, a.world.x, a.world.y, a.world.z]),
+      cam: [scene.camera.position.x, scene.camera.position.y, scene.camera.position.z],
+    };
     rafId = requestAnimationFrame(raf);
   }
   rafId = requestAnimationFrame(raf);

@@ -1,6 +1,7 @@
 /*!
- * Endurance spacecraft (Interstellar) - pure CSS, by Ivan Grozdic.
- * Source: https://codepen.io/ig_design  |  License: see LICENSE.txt
+ * Endurance spacecraft (Interstellar) - pure CSS. Copyright (c) 2026 Josetxu.
+ * Source: https://codepen.io/josetxu/pen/gORKrgR
+ * License: MIT - see endurance.LICENSE.txt (must ship with this file).
  *
  * Usage:  <script src="endurance.js"></script>
  *         <endurance-ship style="width:100%;height:100vh"></endurance-ship>

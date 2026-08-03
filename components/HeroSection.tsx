@@ -7,34 +7,33 @@ import { useEffect, useState } from "react";
 /*
  * HeroSection.tsx
  * ─────────────────────────────────────────────────────────────────
- * Hero layout — text column LEFT, 3D spacecraft RIGHT.
+ * Hero layout — text column LEFT, the Endurance RIGHT.
  *
- * EnduranceShip is dynamically imported with ssr:false because the
- * <endurance-ship> custom element only exists in the browser; rendering
- * the tag server-side would emit an un-upgraded, unstyled element.
+ * heroActive drives everything off-screen-related: past ~1.1vh the hero is
+ * gone and its infinite animations are pure waste. It feeds both the .is-idle
+ * rules in globals.css and the ship's paused state.
  *
- * The ship UNMOUNTS once the timeline takes over (see shipVisible below).
- * .spacecraft-scene is position:fixed, so it would otherwise hover over
- * the tunnel for the rest of the page — and a ~1600-plane preserve-3d
- * subtree left alive next to the tunnel is real battery cost on mobile.
+ * The ship stays mounted for the life of the page — it is in-flow inside the
+ * grid, so it scrolls away on its own, and remounting would rebuild ~1600 DOM
+ * nodes. Pausing is free; that is why idle is a prop and not a conditional.
  * ─────────────────────────────────────────────────────────────────
  */
 
-/* Dynamic import → the web component registers itself in the browser only */
+/* ssr:false — the custom element only exists after /endurance.js runs client-side. */
 const EnduranceShip = dynamic(() => import("./EnduranceShip"), {
   ssr: false,
   loading: () => null,
 });
 
 export default function HeroSection() {
-  const [shipVisible, setShipVisible] = useState(true);
+  const [heroActive, setHeroActive] = useState(true);
 
   useEffect(() => {
     /* Asymmetric thresholds (1.1 / 0.9) so scrolling around the boundary
-       can't thrash the WebGL context in and out every frame. */
+       can't thrash the class on and off every frame. */
     const onScroll = () =>
-      setShipVisible((visible) =>
-        visible
+      setHeroActive((active) =>
+        active
           ? window.scrollY < window.innerHeight * 1.1
           : window.scrollY < window.innerHeight * 0.9
       );
@@ -43,7 +42,14 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <section id="hero" className="hero-section" aria-label="Hero">
+    /* is-idle pauses the infinite heading shimmer once the hero is off-screen —
+       it re-rasterizes background-clip:text under a drop-shadow every frame,
+       which is pure waste while invisible. The animation itself is untouched. */
+    <section
+      id="hero"
+      className={`hero-section${heroActive ? "" : " is-idle"}`}
+      aria-label="Hero"
+    >
 
       {/* ── Left Column — text content ───────────────────── */}
       <div className="hero-left">
@@ -76,19 +82,9 @@ export default function HeroSection() {
         </Link>
       </div>
 
-      {/* ── Right Column — React Three Fiber spacecraft ──── */}
-      {/*
-       * aria-hidden: the 3D canvas is purely decorative — screen
-       * readers don't need to know about it.
-       * pointer-events: none on .spacecraft-scene (in globals.css)
-       * ensures clicks pass through to the navbar / buttons.
-       */}
+      {/* ── Right Column — the Endurance ─────────────────── */}
       <div className="hero-right" aria-hidden="true">
-        {shipVisible && (
-          <div className="spacecraft-scene">
-            <EnduranceShip />
-          </div>
-        )}
+        <EnduranceShip idle={!heroActive} />
       </div>
 
       {/* ── Scroll Indicator ─────────────────────────────────

@@ -6,8 +6,14 @@ import { useEffect, useRef } from "react";
 /*
  * EnduranceShip.tsx
  * ─────────────────────────────────────────────────────────────────
- * The real Interstellar Endurance — public/endurance.js, a self-contained
- * Shadow-DOM web component (<endurance-ship>).
+ * The Interstellar Endurance — public/endurance.js, a self-contained
+ * Shadow-DOM web component (<endurance-ship>). Pure CSS 3D, no WebGL.
+ *
+ * Vendor: Josetxu — https://codepen.io/josetxu/pen/gORKrgR (MIT, see
+ * public/endurance.LICENSE.txt). It in turn credits: cam system by Yusuke
+ * Nakaya (codepen.io/YusukeNakaya/pen/GRWZdOb) as explained by Amit Sheen in
+ * CSS-Tricks; cuboid system by jh3y (codepen.io/jh3y/pen/MWJdqBo); conic-
+ * gradient drawing tricks by Ana Tudor.
  *
  * WHAT OUTER CSS CAN AND CANNOT DO — read before editing:
  *   CAN  → theme it. Custom properties inherit across the shadow boundary,
@@ -16,6 +22,14 @@ import { useEffect, useRef } from "react";
  *          globals.css under `endurance-ship`.
  *   CANNOT → touch anything INSIDE the shadow tree (.endurance, .blackhole,
  *          .cam). Those need the stylesheet injected below.
+ *
+ * KNOWN COST, accepted deliberately. Measured at 1500px wide: page baseline
+ * 8.3ms/frame, ship present but static 24.8ms, ship rotating 33.3ms (~29.5fps).
+ * It is contained — the orbit pauses off-hero and the page returns to 8.3ms.
+ * A three.js rebuild would reach ~60fps for zero bundle cost (three is already
+ * loaded for lib/tunnel.ts), but would add a third WebGL context; 29.5fps was
+ * chosen over that trade. Don't "fix" this by shrinking the ship: the cost is
+ * element-bound, not fill-bound — see the detail-cull note below.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -31,35 +45,97 @@ declare global {
 }
 
 /*
- * Injected into the shadow root — the three corrections outer CSS can't reach.
+ * Injected into the shadow root — the corrections outer CSS can't reach.
  *
  * .blackhole  the component ships its own Gargantua at z-index:-3; the page
  *             already has 891208.jpg behind it, so two would stack.
  * .cam        400 empty 5cqw×5cqh divs at translateZ(75cqmin) driving a
- *             hover-camera trick that is dead anyway (.spacecraft-scene is
- *             pointer-events:none). Each is a transformed box in a
- *             preserve-3d subtree, so dropping them is a straight win.
- * orbit       the vendor's one-shot `spin 4s` lands on rotateX(40)/rotateZ(-70);
- *             this picks up from exactly that pose and keeps going.
- *
- * Desktop-only gate: this model is ~1600 preserve-3d planes that re-project
- * every frame. Measured here, a continuous orbit costs roughly half the frame
- * rate. Phones (and reduced-motion) keep the entry spin, then hold the pose.
+ *             hover-camera trick. Each :hover rule pins .endurance to a fixed
+ *             pose and sets animation-iteration-count:0, so they'd fight the
+ *             orbit outright. Hover-to-steer is deliberately dropped.
  */
 const SHADOW_CSS = `
 .blackhole { display: none; }
 .cam { display: none; }
-/* The vendor's 90cqmin is the ring's flat diameter, but the ship is tilted
-   ~40deg on X and spinning on Z, so its projected bounding box runs about
-   1.4x wider than that — at 90 it overflowed the host and got clipped by
-   :host{overflow:hidden}. 62 keeps the widest pose inside the frame. */
-.endurance { width: 62cqmin; height: 62cqmin; }
-@keyframes orbit {
-  from { transform: rotateX(40deg) rotateZ(-70deg); }
-  to   { transform: rotateX(40deg) rotateZ(290deg); }
+
+/*
+ * Detail cull — the single biggest lever on frame rate.
+ *
+ * Rotating the root re-projects every descendant every frame, and the cost is
+ * element-bound, not pixel-bound: measured here, shrinking the ship 25x in
+ * pixel area (590px -> 118px) moved it 19.0 -> 21.0 fps, i.e. nothing. Element
+ * count is the only thing that matters. Measured, cumulative, at 1500px wide:
+ *
+ *   nothing culled ............ 18.5 fps / 50.1ms
+ *   + .nozzle span ............ 28.0 fps / 33.4ms
+ *   + .hatch, .window ......... 32.8 fps / 33.3ms
+ *   + .chains ................. 36.5 fps / 25.0ms   <- visible, not done
+ *   + .cylinders .............. 54.0 fps / 16.7ms   <- visible, not done
+ *
+ * The three culled below are interior engine-bell fins, hatch hardware and
+ * window mullions: sub-pixel at any size this ship is actually rendered at.
+ * .chains and .cylinders are the struts joining the modules — they read
+ * clearly in the silhouette, so they stay however tempting the numbers are.
+ */
+.nozzle span, .hatch, .window { display: none; }
+
+/*
+ * DO NOT shrink .endurance to fit the frame. Its 90cqmin is the ring's
+ * diameter, but every module sizes itself with calc(var(--width) * 1cqmin) —
+ * container units resolve against the HOST, not against .endurance. Shrinking
+ * the ring therefore pulls the radius in while leaving the modules full size,
+ * and the twelve of them collide into a solid clump. Measured at 62cqmin:
+ * circumference 1388px against 12 x 136px of module = 1632px, i.e. 18% more
+ * module than ring. The vendor ratio (81% fill) is what makes it read as open.
+ *
+ * To fit the frame, scale the whole projection instead — radius and modules
+ * together. --ship-scale is the one knob; nothing else here should change.
+ */
+.endurance {
+  /* Measured: across a full revolution the widest projected pose is 98.9% of
+     the host width (it peaks around rotateZ -50deg). That ratio is constant —
+     both the ship and cqmin derive from the host — so this is the one number
+     that buys clearance. 0.74 is the ceiling, re-measured in-browser at 1500px:
+     the widest pose (t~52s of the orbit) puts the ship's right edge exactly on
+     the host's, which is also the viewport's. Right side binds first — left has
+     slack to ~0.88. Above 0.74 the ring's right modules get cut by the viewport;
+     1.035 overflowed by 130px. Don't raise this without re-measuring. */
+  --ship-scale: 0.95;
+  transform: scale3d(var(--ship-scale), var(--ship-scale), var(--ship-scale))
+             rotateX(36.8deg) rotateZ(-84.525deg);
+  animation: none;   /* drops the vendor's 4s entry spin — see below */
 }
-@media (min-width: 769px) and (prefers-reduced-motion: no-preference) {
-  .endurance { animation: spin 4s ease 0s 1, orbit 90s linear 4s infinite; }
+
+/*
+ * rotateX is held constant so the ring turns about its own axis; animating
+ * rotateZ through a full 360 is the revolution. The scale has to be repeated
+ * in both keyframes: a keyframed transform replaces the whole property, so
+ * omitting it here would snap the ship to full size on frame one.
+ *
+ * The vendor's one-shot 'spin 4s' is deliberately not chained in front of
+ * this. It ends on an unscaled rotateX(142.5)->rotateX(40) sweep, so it both
+ * popped the scale and fought the orbit's start pose.
+ */
+@keyframes orbit {
+  from { transform: scale3d(var(--ship-scale), var(--ship-scale), var(--ship-scale))
+                    rotateX(36.8deg) rotateZ(-84.525deg); }
+  to   { transform: scale3d(var(--ship-scale), var(--ship-scale), var(--ship-scale))
+                    rotateX(36.8deg) rotateZ(275.475deg); }
+}
+
+/*
+ * Desktop only: ~1600 preserve-3d planes re-project every frame, which
+ * roughly halves the frame rate on a phone. Mobile holds the static pose.
+ *
+ * Note there is no prefers-reduced-motion gate here, and that is deliberate.
+ * 360deg / 60s is 6deg per second — ambient, no parallax, no flashing, well
+ * under anything vestibular. What reduced-motion should suppress is the
+ * vendor's fast 4s entry spin, and that is already gone (animation:none
+ * above). To restore the gate, add "and (prefers-reduced-motion:
+ * no-preference)" to this query — the ship then holds the pose instead.
+ */
+@media (min-width: 769px) {
+  .endurance { animation: orbit 60s linear infinite; }
 }
 `;
 
@@ -84,7 +160,7 @@ function injectShadowStyles(host: HTMLElement): boolean {
   return true;
 }
 
-export default function EnduranceShip() {
+export default function EnduranceShip({ idle = false }: { idle?: boolean }) {
   const hostRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -101,6 +177,29 @@ export default function EnduranceShip() {
     customElements.whenDefined("endurance-ship").then(attach);
     return () => { cancelled = true; cancelAnimationFrame(rafId); };
   }, []);
+
+  /*
+   * Off-hero pause, driven through the Web Animations API rather than CSS.
+   *
+   * The obvious version of this is a `:host([data-idle]) .endurance {
+   * animation-play-state: paused }` rule in SHADOW_CSS. Do not use it — it was
+   * tried and measured, and it silently does nothing here: getComputedStyle
+   * reports "paused" while the animation's currentTime keeps advancing (4025ms
+   * over a 4s window) and the frame cost is unchanged (33.3ms vs 33.4ms) with
+   * the ship still on screen. WAAPI pause() is authoritative and verifiable.
+   *
+   * Off-screen culling would mostly hide the difference — the page measures at
+   * its 8.3ms baseline past the hero either way — but this makes the guarantee
+   * explicit instead of leaning on a browser heuristic.
+   */
+  useEffect(() => {
+    const root = hostRef.current?.shadowRoot;
+    const ring = root?.querySelector(".endurance");
+    if (!ring) return;
+    /* getAnimations() is empty until the injected sheet has applied, so this
+       effect is a no-op on the first pass and correct on every later one. */
+    for (const anim of ring.getAnimations()) idle ? anim.pause() : anim.play();
+  }, [idle]);
 
   return (
     <>

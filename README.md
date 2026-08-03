@@ -21,7 +21,6 @@
 Cicada 2067 is an **Interstellar-themed cryptic hunt** landing page built with Next.js 14. The design is dark, cinematic, and enigmatic — inspired by the film *Interstellar* and the aesthetics of deep space. The site features:
 
 - A **photorealistic black hole background** (Gargantua-inspired)
-- A **Canvas 2D animated spacecraft** (Endurance-style ring station) orbiting in the foreground
 - Smooth entrance animations and gold accretion-toned UI
 - A fully responsive layout from 4K desktop down to 375px mobile
 
@@ -35,10 +34,7 @@ Cicada 2067 is an **Interstellar-themed cryptic hunt** landing page built with N
 | React | 18 | Component model |
 | TypeScript | 5 | Type safety |
 | Tailwind CSS | 3.4.1 | Utility classes (used sparingly) |
-| Canvas 2D API | Browser native | Spacecraft animation (no external lib) |
 | Google Fonts | (next/font) | Orbitron, Inter, Rajdhani |
-
-> ⚠️ **No Three.js / React Three Fiber** is used. The spacecraft is rendered entirely via the native Canvas 2D API to keep the bundle lightweight and eliminate WebGL context overhead on mobile.
 
 ---
 
@@ -51,7 +47,6 @@ cicada/
 │   ├── layout.tsx                # Root layout: fonts, metadata, global CSS
 │   ├── page.tsx                  # Home page: blackhole background + Navbar + Hero
 │   ├── globals.css               # Global design system, all component styles
-│   ├── endurance.css             # LEGACY — CSS-only spaceship (not imported, kept for reference)
 │   │
 │   ├── insights/                 # /insights route
 │   │   └── page.tsx              # Insights coming-soon page
@@ -66,10 +61,8 @@ cicada/
 │
 ├── components/                   # Reusable React components
 │   ├── Navbar.tsx                # Fixed navigation header + mobile hamburger menu
-│   ├── HeroSection.tsx           # Full-viewport hero layout (text + spacecraft)
-│   ├── SpacecraftCanvas.tsx      # 🚀 Canvas 2D animated Endurance spacecraft
-│   ├── ComingSoon.tsx            # Generic coming-soon page wrapper
-│   └── Endurance.tsx             # LEGACY — CSS-only ring spacecraft (not used)
+│   ├── HeroSection.tsx           # Full-viewport hero layout (text)
+│   └── ComingSoon.tsx            # Generic coming-soon page wrapper
 │
 ├── public/                       # Static assets served at root URL
 │   ├── blackhole.png             # Cinematic Gargantua black hole background image
@@ -105,7 +98,7 @@ cicada/
 - CSS custom properties (brand colours, font variables, layout tokens)
 - CSS reset and body base styles
 - Star-field background on `body::before` using stacked `radial-gradient`s
-- All component styles: `.navbar`, `.hero-section`, `.hero-left`, `.cta-button`, `.scroll-indicator`, `.spacecraft-scene`, `.coming-soon-*`
+- All component styles: `.navbar`, `.hero-section`, `.hero-left`, `.cta-button`, `.scroll-indicator`, `.coming-soon-*`
 - All keyframe animations: `fadeSlideIn`, `textShimmer`, `scrollBounce`
 - Full responsive breakpoints: `@media (max-width: 1024px)`, `768px`, `480px`
 
@@ -121,37 +114,8 @@ cicada/
 **Hero section layout**. Structure:
 - `<main class="hero-section">` — CSS Grid: `52% | 48%`
 - `.hero-left` — eyebrow text → h1 heading → body copy → CTA button
-- `.hero-right` → `.spacecraft-scene` → `<SpacecraftCanvas />`
+- Grid column 2 is intentionally empty — the black-hole background reads through it
 - `.scroll-indicator` — **placed as a sibling of hero-left** (outside the left column) so that `position: absolute; left: 1.75rem` anchors it to the hero-section edge, preventing any text overlap
-
-### `components/SpacecraftCanvas.tsx` ⭐ KEY FILE
-**JavaScript spacecraft animation** using Canvas 2D. Architecture:
-
-```
-useEffect
-  └── ResizeObserver (canvas dimensions + DPR scaling)
-  └── requestAnimationFrame loop → drawFrame(timestamp)
-        ├── Compute: ringRot, bobY, driftX from timestamp
-        ├── Compute: cx, cy (ship centre), R, Ry (ring radii)
-        ├── [Layer 1] Ambient ring glow (radial gradient)
-        ├── [Layer 2] Back ring fill + stroke (top half ellipse)
-        ├── [Layer 3] Back modules (12 segments, sin θ < 0)
-        ├── [Layer 4] Back struts (3 arms, sin θ < 0)
-        ├── [Layer 5] Central hub (drawHub)
-        ├── [Layer 6] Front struts (3 arms, sin θ > 0)
-        ├── [Layer 7] Front modules (12 segments, sin θ > 0)
-        ├── [Layer 8] Front ring fill + stroke (bottom half ellipse)
-        ├── [Layer 9] Engine pods + glow (drawEnginePod × 3)
-        └── [Layer 10] Particle system (max 180 amber particles)
-```
-
-**Depth ordering principle**: The ring habitat is a rotating torus. Viewed from the side, modules with `sin(effectiveAngle) < 0` are at the TOP of the ellipse (behind the hub) and drawn first. Modules with `sin > 0` are at the BOTTOM (in front of the hub) and drawn after. This creates correct 3D layering without WebGL.
-
-**Performance safeguards**:
-- `devicePixelRatio` capped at `2` (prevents 3x DPR on ultra-HiDPI from tripling draw time)
-- `ResizeObserver` replaces `window.resize` event (more efficient)
-- `cancelAnimationFrame` cleanup on unmount prevents memory leaks
-- Particle count capped at 180
 
 ### `components/ComingSoon.tsx`
 Reusable **coming-soon page** component. Accepts a `title` and optional `subtitle` prop. Used by all sub-routes (puzzles, insights, team, etc.) that are not yet built.
@@ -165,9 +129,6 @@ Reusable **coming-soon page** component. Accepts a `title` and optional `subtitl
 
 | Feature | File(s) | Lines / Notes |
 |---|---|---|
-| **Spacecraft animation** | `components/SpacecraftCanvas.tsx` | Entire file — Canvas 2D loop |
-| **Ring depth ordering** | `SpacecraftCanvas.tsx` | `Math.sin(theta)` check per module/strut |
-| **Engine glow + particles** | `SpacecraftCanvas.tsx` | `drawEnginePod()` + `emit()` |
 | **Black hole background** | `app/page.tsx` + `globals.css` | `.blackhole-bg` styles |
 | **Hero text layout** | `components/HeroSection.tsx` | Left column DOM |
 | **Scroll indicator (fixed)** | `HeroSection.tsx` + `globals.css` | Outside `.hero-left`, `left: 1.75rem` |
@@ -185,11 +146,6 @@ Reusable **coming-soon page** component. Accepts a `title` and optional `subtitl
 - [x] Cinematic black hole background (high-quality AI-generated PNG)
 - [x] Fixed navigation with SVG Cicada logo
 - [x] Hero headline with shimmer/glow animation
-- [x] Canvas 2D Endurance spacecraft (smooth, 60fps, no lag)
-- [x] Spacecraft depth-correct ring rendering (front/back layering)
-- [x] Engine glow pods with pulsing radial gradients
-- [x] Amber particle exhaust system
-- [x] Hub with segmented modules and blue window lights
 - [x] Scroll indicator repositioned (no text overlap)
 - [x] Mobile responsive layout
 - [x] All sub-routes returning ComingSoon pages
@@ -226,17 +182,6 @@ npm run start
 1. Create `app/<route-name>/page.tsx`
 2. Export a default component using `<ComingSoon title="Your Title" />`
 3. Add the route to `NAV_LINKS` in `components/Navbar.tsx`
-
-### Modifying the Spacecraft
-
-All spacecraft logic is in `components/SpacecraftCanvas.tsx`.
-
-- **Ring speed**: Adjust `ts * 0.000235` in `drawFrame`
-- **Bob amplitude**: Adjust `* 9` in `bobY` calculation
-- **Ring size**: Adjust `Math.min(W, H) * 0.28` for `R`
-- **Engine glow intensity**: Adjust `pulse` multipliers in `drawEnginePod`
-- **Particle spawn rate**: Adjust `< 0.22` probability in the engine loop
-- **Module count**: Change `12` in the module loop (and match in `3` for struts if desired)
 
 ### Modifying the Background
 
