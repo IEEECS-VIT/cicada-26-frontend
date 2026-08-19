@@ -1,5 +1,9 @@
 import { api } from "./client";
 
+export async function fetchMyTeam() {
+  return api("/api/teams/me");
+}
+
 export async function createTeam(team_name) {
   return api("/api/teams/create", { method: "POST", body: { team_name } });
 }

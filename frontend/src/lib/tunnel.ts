@@ -41,30 +41,89 @@ export interface Round {
 }
 
 export const ROUNDS: Round[] = [
-  { code: 'ROUND 01', title: 'FIRST CONTACT', date: '14 MAR 2067', status: 'COMPLETE',
-    summary: 'Initial transmission decoded. Entry accepted.',
-    briefing: 'A single burst signal repeated for six days before it was caught. Once isolated, the payload resolved into an invitation, not a threat.',
-    objectives: [['ISOLATE SIGNAL', 'COMPLETE'], ['DECODE PAYLOAD', 'COMPLETE'], ['CONFIRM ENTRY', 'COMPLETE']] },
-  { code: 'ROUND 02', title: 'CIPHER PROTOCOL', date: '02 APR 2067', status: 'ACTIVE',
-    summary: 'Decode the transmission. Uncover the next coordinate.',
-    briefing: 'A looping numeric transmission repeats every eleven seconds. Isolate the pattern, invert it, and the next coordinate resolves.',
-    objectives: [['DECODE PAYLOAD', 'IN PROGRESS'], ['VERIFY CHECKSUM', 'PENDING'], ['SUBMIT COORDINATE', 'LOCKED']] },
-  { code: 'ROUND 03', title: 'DEEP FIELD SCAN', date: '21 APR 2067', status: 'LOCKED',
-    summary: 'Coordinates unlock at close of Round 02.',
-    briefing: 'Long range scan protocols are staged and waiting on authorization from the prior round.',
-    objectives: [['SCAN ARRAY', 'LOCKED'], ['TRIANGULATE', 'LOCKED'], ['LOG COORDINATE', 'LOCKED']] },
-  { code: 'ROUND 04', title: 'SIGNAL TRIANGULATION', date: '09 MAY 2067', status: 'LOCKED',
-    summary: 'Three signals converge on a single origin.',
-    briefing: 'Details classified until the prior round clears.',
-    objectives: [['CROSS REFERENCE', 'LOCKED'], ['PLOT VECTOR', 'LOCKED'], ['LOG COORDINATE', 'LOCKED']] },
-  { code: 'ROUND 05', title: 'THE LONG SILENCE', date: '28 MAY 2067', status: 'LOCKED',
-    summary: 'No transmission is still a transmission.',
-    briefing: 'Details classified until the prior round clears.',
-    objectives: [['MONITOR FREQUENCY', 'LOCKED'], ['INTERPRET SILENCE', 'LOCKED'], ['LOG COORDINATE', 'LOCKED']] },
-  { code: 'ROUND 06', title: 'FINAL DESCENT', date: '16 JUN 2067', status: 'LOCKED',
-    summary: 'Last coordinate. No return signal past this point.',
-    briefing: 'Details classified until the prior round clears.',
-    objectives: [['CONFIRM DESCENT', 'LOCKED'], ['BRACE', 'LOCKED'], ['ARRIVE', 'LOCKED']] },
+  {
+    code: "01 BRIEF",
+    title: "REGISTRATION",
+    date: "10:00 – 10:30",
+    status: "ACTIVE",
+    summary: "IDs checked. Attendance logged. The briefing begins.",
+    briefing:
+      "Participant IDs and attendance are verified on arrival. Mission control then walks the crew through the event, the rules, the guidelines, and the storyline — including fair play, safety, and how the day proceeds.",
+    objectives: [
+      ["VERIFY IDs", "PENDING"],
+      ["LOG ATTENDANCE", "PENDING"],
+      ["BRIEF THE CREW", "PENDING"],
+    ],
+  },
+  {
+    code: "02 R1",
+    title: "INITIATION",
+    date: "10:30 – 13:00",
+    status: "LOCKED",
+    summary: "Platform access opens. The first cryptic sequence begins.",
+    briefing:
+      "Teams receive access to the event platform and work through cryptic, logical, and observational challenges. Clues unlock checkpoints. Crews decode together and reconstruct the first fragments of the mystery.",
+    objectives: [
+      ["ACCESS PLATFORM", "LOCKED"],
+      ["CLEAR CHECKPOINTS", "LOCKED"],
+      ["RECOVER FRAGMENTS", "LOCKED"],
+    ],
+  },
+  {
+    code: "03 HOLD",
+    title: "LUNCH & CUT",
+    date: "13:00 – 14:00",
+    status: "LOCKED",
+    summary: "Round 1 is scored. The shortlist is named.",
+    briefing:
+      "Round 1 submissions are evaluated while crews stand down for lunch. Teams shortlisted for the next round are announced before the afternoon burn.",
+    objectives: [
+      ["EVALUATE ROUND 1", "LOCKED"],
+      ["ANNOUNCE SHORTLIST", "LOCKED"],
+    ],
+  },
+  {
+    code: "04 R2",
+    title: "ROUND TWO",
+    date: "14:00 – 16:00",
+    status: "LOCKED",
+    summary: "Qualified crews decode the deeper transmission.",
+    briefing:
+      "Qualified teams continue through advanced clues and encrypted fragments. The work is to connect what Round 1 already gave you and reconstruct key portions of the hidden transmission. A major breakthrough qualifies a crew for the final.",
+    objectives: [
+      ["DECODE FRAGMENTS", "LOCKED"],
+      ["LINK PRIOR CLUES", "LOCKED"],
+      ["QUALIFY FOR FINAL", "LOCKED"],
+    ],
+  },
+  {
+    code: "05 R3",
+    title: "ROUND THREE",
+    date: "16:00 – 17:00",
+    status: "LOCKED",
+    summary: "Finalists take the map. The last clues go live.",
+    briefing:
+      "Finalist teams receive a themed map and the concluding clues. They navigate designated campus locations, recover the remaining fragments of the transmission, and solve the last challenge. Submit the final solution to close the reconstruction.",
+    objectives: [
+      ["NAVIGATE CAMPUS", "LOCKED"],
+      ["RECOVER FRAGMENTS", "LOCKED"],
+      ["SUBMIT FINAL", "LOCKED"],
+    ],
+  },
+  {
+    code: "06 END",
+    title: "RESULTS",
+    date: "17:00 – 17:30",
+    status: "LOCKED",
+    summary: "Finals verified. Winners named. The hunt closes.",
+    briefing:
+      "Final submissions are verified. Winners and runners-up are announced, prizes are given, and the day ends with a vote of thanks. Eight hours, 10:00 to 18:00.",
+    objectives: [
+      ["VERIFY FINALS", "LOCKED"],
+      ["ANNOUNCE STANDING", "LOCKED"],
+      ["CLOSE THE HUNT", "LOCKED"],
+    ],
+  },
 ];
 
 export const statusClass = (status: RoundStatus) =>
