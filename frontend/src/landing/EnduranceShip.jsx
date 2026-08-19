@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 /*
  * EnduranceShip.tsx — the Interstellar Endurance, ported from the Next.js
- * landing. /landing/endurance.js (a self-contained Shadow-DOM web component)
+ * landing. /assets/endurance.js (a self-contained Shadow-DOM web component)
  * is loaded globally via <script> in index.html.
  */
 
