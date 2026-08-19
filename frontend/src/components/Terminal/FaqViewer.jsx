@@ -42,10 +42,10 @@ export default function FaqViewer() {
       <div className="mb-3 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-primary" />
-            <h3 className="font-display text-xl text-primary tracking-wider uppercase">Frequently Asked Questions</h3>
+            <HelpCircle className="w-5 h-5 text-accretion" />
+            <h3 className="font-orbitron text-xl text-accretion tracking-wider uppercase">Frequently Asked Questions</h3>
           </div>
-          <span className="label-mono text-[9px] text-primary/70">{FAQ_LIST.length} SIGNALS</span>
+          <span className="label-mono text-[9px] text-accretion/70">{FAQ_LIST.length} SIGNALS</span>
         </div>
       </div>
 
@@ -57,36 +57,36 @@ export default function FaqViewer() {
                 key={faq.id}
                 className={`border rounded-lg transition-all duration-200 overflow-hidden bg-black/40 relative ${
                   isOpen 
-                    ? 'border-[#D19B83]/70 shadow-[inset_0_0_12px_rgba(209,155,131,0.08)]' 
-                    : 'border-[#D19B83]/30 hover:border-[#D19B83]/50'
+                    ? 'border-accretion/70' 
+                    : 'border-accretion/30 hover:border-accretion/50'
                 }`}
               >
                 {/* Sci-fi corner accents */}
-                <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 border-t border-l border-[#D19B83]/60" />
-                <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 border-t border-r border-[#D19B83]/60" />
-                <div className="absolute bottom-1.5 left-1.5 w-1.5 h-1.5 border-b border-l border-[#D19B83]/60" />
-                <div className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 border-b border-r border-[#D19B83]/60" />
+                <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 border-t border-l border-accretion/60" />
+                <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 border-t border-r border-accretion/60" />
+                <div className="absolute bottom-1.5 left-1.5 w-1.5 h-1.5 border-b border-l border-accretion/60" />
+                <div className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 border-b border-r border-accretion/60" />
 
                 <button
                   onClick={() => setOpenIdx(isOpen ? -1 : index)}
                   className="w-full p-3 text-left flex items-center justify-between gap-3 cursor-pointer select-none"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="label-mono text-[9px] text-primary/60 shrink-0">{faq.id}</span>
-                    <span className={`font-display text-xs sm:text-sm tracking-wider uppercase truncate ${isOpen ? 'text-primary font-semibold' : 'text-foreground/80'}`}>
+                    <span className="label-mono text-[9px] text-accretion/60 shrink-0">{faq.id}</span>
+                    <span className={`font-orbitron text-xs sm:text-sm tracking-wider uppercase truncate ${isOpen ? 'text-accretion font-semibold' : 'text-foreground/80'}`}>
                       {faq.q}
                     </span>
                   </div>
                   {isOpen ? (
-                    <ChevronDown className="w-4 h-4 text-primary shrink-0 transition-transform" />
+                    <ChevronDown className="w-4 h-4 text-accretion shrink-0 transition-transform" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-primary/70 shrink-0 transition-transform" />
+                    <ChevronRight className="w-4 h-4 text-accretion/70 shrink-0 transition-transform" />
                   )}
                 </button>
 
                 {isOpen && (
-                  <div className="px-3.5 pb-3.5 pt-1 text-xs text-foreground/80 font-mono border-t border-[#D19B83]/20 mt-0.5">
-                    <p className="leading-relaxed text-[#ffdb9d]/90">{faq.a}</p>
+                  <div className="px-3.5 pb-3.5 pt-1 text-xs text-foreground/80 font-mono border-t border-accretion/20 mt-0.5">
+                    <p className="leading-relaxed text-accretion-bright/90">{faq.a}</p>
                   </div>
                 )}
               </div>
