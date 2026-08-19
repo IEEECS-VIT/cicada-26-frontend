@@ -1,219 +1,155 @@
 @import "tailwindcss";
 
-/* Landing design system + page CSS (ported from the Next.js `Landing` branch) */
-@import "./styles/globals.css";
-@import "./styles/faq.css";
-@import "./styles/footer.css";
-@import "./styles/timeline.css";
-@import "./styles/team.css";
-
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  /* Existing theme colors */
-  --color-surface: #131313;
-  --color-surface-dim: #131313;
-  --color-surface-bright: #3a3939;
-  --color-surface-container-lowest: #0e0e0e;
-  --color-surface-container-low: #1c1b1b;
-  --color-surface-container: #201f1f;
-  --color-surface-container-high: #2a2a2a;
-  --color-surface-container-highest: #353534;
-  --color-surface-variant: #353534;
-  --color-on-surface: #e5e2e1;
-  --color-on-surface-variant: #d6c3ba;
-  --color-outline: #9e8d85;
-  --color-outline-variant: #51443e;
-  --color-primary-container: #c58b6d;
-  --color-secondary-container: #feb700;
-  --color-tertiary: #9ad0d5;
-  --color-error: #ffb4ab;
+  --font-orbitron: "Orbitron", ui-sans-serif, system-ui, sans-serif;
+  --font-rajdhani: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Orbitron", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-void: #000000;
+  --color-starlight: #F5F0E8;
+  --color-starlight-dim: #9090a0;
+  --color-copper: #C6B9B0;
+  --color-accretion: #F4A233;
+  --color-accretion-bright: #FFD97D;
+  --color-accretion-dim: #C07810;
+  --color-background: #000000;
+  --color-foreground: #F5F0E8;
+  --color-primary: #F4A233;
+  --color-primary-foreground: #000000;
+  --color-muted: #161616;
+  --color-muted-foreground: #C6B9B0;
+  --color-border: color-mix(in oklab, #F4A233 18%, transparent);
+  --animate-fade-in: fade-slide-in 0.8s ease forwards;
+  --animate-shimmer: text-shimmer 5s linear infinite;
+  --animate-scroll-bounce: scroll-bounce 2s ease-in-out infinite;
+  --animate-blink: tunnel-blink 2.4s ease-in-out infinite;
+}
 
-  --font-mono: 'JetBrains Mono', monospace;
-  --font-body-md: 'JetBrains Mono', monospace;
-  --font-code-sm: 'JetBrains Mono', monospace;
-  --font-label-sm: 'JetBrains Mono', monospace;
-  --font-headline-lg: 'JetBrains Mono', monospace;
-  --font-body-lg: 'JetBrains Mono', monospace;
-  --font-headline-md: 'JetBrains Mono', monospace;
-  --font-display-lg: 'JetBrains Mono', monospace;
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-  /* New theme keys from downloaded project */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-ring-offset-background: var(--background);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+@keyframes text-shimmer {
+  from { background-position: -200% center; }
+  to { background-position: 200% center; }
+}
 
-  --font-display: var(--font-display);
-  --font-sans: var(--font-body);
+@keyframes scroll-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(100%); }
+}
+
+@keyframes tunnel-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
 }
 
 :root {
+  --nav-height: 80px;
   --radius: 0.75rem;
-  --background: oklch(0.06 0.004 60);
-  --foreground: #D19B83;
-  --card: oklch(0.085 0.006 60);
-  --card-foreground: #D19B83;
-  --popover: oklch(0.085 0.006 60);
-  --popover-foreground: #D19B83;
-  --primary: #D19B83;
-  --primary-foreground: oklch(0.1 0.01 60);
-  --secondary: oklch(0.14 0.01 60);
-  --secondary-foreground: #D19B83;
-  --muted: oklch(0.16 0.008 60);
-  --muted-foreground: #D19B83;
-  --accent: oklch(0.72 0.09 55);
-  --accent-foreground: oklch(0.1 0.01 60);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.98 0.01 60);
-  --border: oklch(0.42 0.045 58);
-  --input: oklch(0.3 0.03 58);
-  --ring: oklch(0.72 0.09 55);
-  --chart-1: oklch(0.82 0.06 62);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.085 0.006 60);
-  --sidebar-foreground: #D19B83;
-  --sidebar-primary: oklch(0.82 0.06 62);
-  --sidebar-primary-foreground: oklch(0.1 0.01 60);
-  --sidebar-accent: oklch(0.14 0.01 60);
-  --sidebar-accent-foreground: #D19B83;
-  --sidebar-border: oklch(0.3 0.03 58);
-  --sidebar-ring: oklch(0.72 0.09 55);
-
-  --font-display: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Barlow", ui-sans-serif, system-ui, sans-serif;
-  --glow-hair: 0 0 12px oklch(0.72 0.09 55 / 0.55);
-  --glow-panel: 0 0 60px oklch(0.72 0.09 55 / 0.12);
-}
-
-.dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: #D19B83;
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: #D19B83;
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: #D19B83;
-  --primary: #D19B83;
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: #D19B83;
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: #D19B83;
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: #D19B83;
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: #D19B83;
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: #D19B83;
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: #D19B83;
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
+  * { border-color: var(--color-border); }
+
+  html {
+    scroll-behavior: smooth;
+    background: #000;
   }
 
+  html, body { margin: 0; overflow-x: clip; }
+
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: var(--font-body);
+    background: #000;
+    color: var(--color-starlight);
+    font-family: var(--font-rajdhani);
     letter-spacing: 0.01em;
+    min-height: 100%;
   }
-  
-  h1, h2, h3, .font-display {
-    font-family: var(--font-display);
+
+  /* Keep page chrome above the fixed Gargantua layer; never paint #root opaque. */
+  #root {
+    isolation: isolate;
+    min-height: 100%;
+    background: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
   }
 }
 
 @utility label-mono {
-  font-family: var(--font-display);
+  font-family: var(--font-rajdhani);
   font-size: 0.65rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--color-muted-foreground);
-}
-
-@utility hairline {
-  border: 1px solid color-mix(in oklab, var(--color-border) 45%, transparent);
+  color: var(--color-copper);
 }
 
 @utility panel {
-  border: 1px solid rgba(209, 155, 131, 0.45);
-  border-radius: var(--radius);
+  border: 1px solid color-mix(in oklab, var(--color-accretion) 45%, transparent);
   background: color-mix(in oklab, black 80%, transparent);
-  box-shadow: 0 0 14px rgba(209, 155, 131, 0.2);
-}
-
-/* Original scanline and glow classes */
-.scanline {
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-  background-size: 100% 2px, 3px 100%;
-}
-
-.glow-sm {
-  box-shadow: 0 0 10px rgba(248, 184, 152, 0.3);
-}
-
-.glow-md {
-  box-shadow: 0 0 20px rgba(248, 184, 152, 0.5);
 }
 
 @utility scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* Web component theme — custom properties must live in CSS. */
+endurance-ship {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: none;
+  --hue: 30;
+  --sat: 18%;
+  --sp0: #9c8e7e;
+  --sp1: #8b7d6d;
+  --sp2: #7f7161;
+  --sp3: #6f6254;
+  --sp4: #605448;
+  --sp5: #574b40;
+  --sp6: #473d34;
+  --sp7: #383029;
+  --sp8: #2a241f;
+  --yellow: var(--color-accretion-bright);
+  --luz-90: hsl(var(--hue), var(--sat), 62%);
+  --luz-85: hsl(var(--hue), var(--sat), 58%);
+  --luz-80: hsl(var(--hue), var(--sat), 54%);
+  --luz-75: hsl(var(--hue), var(--sat), 50%);
+  --luz-70: hsl(var(--hue), var(--sat), 46%);
+}
+
+/*
+ * Tunnel engine (lib/tunnel.ts) toggles these class names at 60fps.
+ * Visual layout lives as Tailwind on the JSX; only the toggled states stay here.
+ */
+.round-card--open .round-card__detail {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  filter: blur(0);
+}
+.round-card--focused .round-card__panel {
+  border-color: var(--color-accretion);
+  box-shadow:
+    0 0 64px color-mix(in oklab, var(--color-accretion) 28%, transparent),
+    0 16px 44px rgba(0, 0, 0, 0.55);
+}
+.progress-rail.is-visible { opacity: 1; }
+.progress-rail__tick--active {
+  background: var(--color-accretion);
+  border-color: var(--color-accretion);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--color-accretion) 45%, transparent);
+  transform: scale(1.5);
+}
+.progress-rail__tick--active .progress-rail__label {
+  opacity: 1;
+  color: var(--color-accretion);
 }
