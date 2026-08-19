@@ -2,10 +2,9 @@
 
 Interstellar cryptic hunt frontend for IEEE Computer Society, VIT.
 
-Vite + React app lives in `frontend/`. Media is in `frontend/public/assets/`.
+Media lives in `public/assets/`.
 
 ```bash
-cd frontend
 cp .env.example .env
 npm install
 npm run dev
