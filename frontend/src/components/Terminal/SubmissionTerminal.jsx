@@ -97,23 +97,23 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
   };
 
   return (
-    <div className="panel flex-1 flex flex-col p-6 min-h-0 relative z-20 shadow-[inset_0_0_50px_rgba(0,0,0,0.8)]">
+    <div className="panel relative z-20 flex min-h-0 flex-1 flex-col p-3 sm:p-6">
       
-      <div className="flex justify-between items-center border-b border-[#D19B83]/40 pb-4 mb-4 shrink-0">
+      <div className="flex flex-col justify-between gap-3 border-b border-accretion/40 pb-3 mb-3 shrink-0 sm:mb-4 sm:flex-row sm:items-center sm:pb-4">
         <div>
-          <h2 className="font-display text-2xl tracking-[0.2em] text-primary">SECURE TERMINAL</h2>
-          <p className="label-mono text-xs text-primary/70 mt-1">Awaiting input...</p>
+          <h2 className="font-orbitron text-lg tracking-[0.16em] text-accretion sm:text-2xl sm:tracking-[0.2em]">SECURE TERMINAL</h2>
+          <p className="label-mono text-[10px] text-accretion/70 mt-1 sm:text-xs">Awaiting input...</p>
         </div>
         <button
           onClick={() => setIsTerminalOpen(false)}
-          className="flex items-center gap-2 px-4 py-2 border border-[#D19B83]/60 rounded text-primary hover:bg-primary/20 transition-colors"
+          className="flex min-h-11 items-center justify-center gap-2 border border-accretion/60 px-3 py-2 text-accretion transition-colors hover:bg-accretion/20 sm:px-4"
         >
-          <Power className="w-4 h-4" />
-          <span className="font-display text-xs tracking-widest uppercase">Terminate Connection</span>
+          <Power className="w-4 h-4 shrink-0" />
+          <span className="font-orbitron text-[10px] tracking-widest uppercase sm:text-xs">Terminate</span>
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto font-mono text-sm sm:text-base space-y-2 pb-4 text-primary/90">
+      <div className="flex-1 overflow-y-auto font-mono text-sm sm:text-base space-y-2 pb-4 text-accretion/90">
         <div className="mb-6 opacity-70">
           <p>CICADA 2067 SECURE SHELL v2.4.1</p>
           <p>Connection established. Encryption key verified.</p>
@@ -124,8 +124,8 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
         {terminalHistory.map((entry, idx) => (
           <div key={idx} className="space-y-1">
             <div className="flex gap-2">
-              <span className="text-primary/50">&gt;</span>
-              <span className="text-[#D19B83] break-all">{entry.command}</span>
+              <span className="text-accretion/50">&gt;</span>
+              <span className="text-accretion break-all">{entry.command}</span>
             </div>
             <div className="pl-4 whitespace-pre-wrap opacity-80 break-words mb-4">
               {entry.response}
@@ -135,13 +135,13 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
         <div ref={endRef} />
       </div>
 
-      <form onSubmit={handleCommand} className="mt-4 shrink-0 relative flex items-center border-t border-[#D19B83]/40 pt-4">
-        <span className="absolute left-0 text-primary font-mono text-xl select-none">&gt;</span>
+      <form onSubmit={handleCommand} className="mt-4 shrink-0 relative flex items-center border-t border-accretion/40 pt-4">
+        <span className="absolute left-0 text-accretion font-mono text-xl select-none">&gt;</span>
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          className="w-full bg-transparent border-none outline-none font-mono text-lg text-[#D19B83] pl-6 placeholder:text-primary/30"
+          className="w-full bg-transparent border-none outline-none font-mono text-base text-accretion pl-6 placeholder:text-accretion/30"
           placeholder="Enter command..."
           autoFocus
           spellCheck="false"

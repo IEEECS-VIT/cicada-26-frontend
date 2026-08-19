@@ -1,13 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { GameStateProvider } from "../context/GameStateContext";
 import Terminal from "../components/Terminal/Terminal";
+import HuntCountdown from "./HuntCountdown";
+import { HUNT_LOCK_ENABLED, isHuntOpen } from "../config/hunt";
 import { LogOut, Home } from "lucide-react";
 
 export default function TerminalPage() {
   const { user, teamName, loading, logout } = useAuth();
   const navigate = useNavigate();
+  const [huntOpen, setHuntOpen] = useState(() => isHuntOpen());
 
   useEffect(() => {
     if (loading) return;
@@ -15,30 +18,67 @@ export default function TerminalPage() {
     else if (!teamName) navigate("/team-setup", { replace: true });
   }, [loading, user, teamName, navigate]);
 
+  useEffect(() => {
+    if (huntOpen) return;
+    const id = setInterval(() => {
+      if (isHuntOpen()) setHuntOpen(true);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [huntOpen]);
+
   if (loading || !user || !teamName) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background text-foreground font-mono">
-        <div className="animate-pulse text-primary">Accessing secure terminal...</div>
+      <div className="flex min-h-screen items-center justify-center bg-black font-orbitron text-accretion">
+        <p className="animate-pulse tracking-[0.32em]">ACCESSING TERMINAL</p>
       </div>
+    );
+  }
+
+  /*
+   * Hunt lock — OFF while testing.
+   * To go live: set HUNT_LOCK_ENABLED to true in src/config/hunt.js
+   */
+  const lockParticipants =
+    HUNT_LOCK_ENABLED &&
+    !huntOpen &&
+    user.role === "participant";
+
+  if (lockParticipants) {
+    return (
+      <HuntCountdown
+        teamName={teamName}
+        onOpen={() => setHuntOpen(true)}
+        onLogout={logout}
+      />
     );
   }
 
   return (
     <GameStateProvider>
-      <div className="flex flex-col h-screen bg-background text-foreground font-mono">
-        <div className="shrink-0 flex items-center justify-between border-b border-[#D19B83]/30 bg-black/60 px-4 py-2">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/")} className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-primary/60 hover:text-primary transition-colors">
-              <Home className="h-3.5 w-3.5" /> Home
+      <div className="flex h-dvh flex-col bg-black text-starlight">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-accretion/20 px-3 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-4 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="inline-flex min-h-11 items-center gap-1.5 font-rajdhani text-[11px] tracking-[0.18em] text-copper hover:text-accretion sm:tracking-[0.22em]"
+            >
+              <Home className="h-3.5 w-3.5 shrink-0" /> HOME
             </button>
-            <span className="text-primary/20">|</span>
-            <span className="label-mono text-[10px] text-primary/60">CREW: <span className="text-primary">{teamName}</span></span>
+            <span className="hidden text-copper/30 sm:inline">|</span>
+            <span className="min-w-0 truncate font-rajdhani text-[11px] tracking-[0.16em] text-copper sm:tracking-[0.22em]">
+              CREW: <span className="text-accretion">{teamName}</span>
+            </span>
           </div>
-          <button onClick={logout} className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-primary/60 hover:text-primary transition-colors">
-            <LogOut className="h-3.5 w-3.5" /> Signout
+          <button
+            type="button"
+            onClick={logout}
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 font-rajdhani text-[11px] tracking-[0.18em] text-copper hover:text-accretion sm:tracking-[0.22em]"
+          >
+            <LogOut className="h-3.5 w-3.5" /> SIGNOUT
           </button>
         </div>
-        <div className="flex-1 min-h-0">
+        <div className="min-h-0 flex-1">
           <Terminal />
         </div>
       </div>
