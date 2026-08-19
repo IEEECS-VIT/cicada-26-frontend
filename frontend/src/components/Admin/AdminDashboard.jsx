@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import {
+  listUsers, getAdminChallenges, getAdminProgress, getLeaderboard,
+  approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
+  createChallenge, updateChallenge, deleteChallenge, adminOverride,
+  removeTeamMember, deleteTeam,
+} from '../../api/admin';
 import {
   Lock,
   Unlock,
@@ -68,9 +75,12 @@ const DEFAULT_CREDENTIALS = {
 };
 
 export default function AdminDashboard() {
+  const { user: authUser } = useAuth();
+  const isOAuthAdmin = !!(authUser && (authUser.role === 'admin' || authUser.role === 'GOD'));
+
   // --- AUTHENTICATION STATE ---
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return sessionStorage.getItem('cicada_admin_logged') === 'true';
+    return sessionStorage.getItem('cicada_admin_logged') === 'true' || isOAuthAdmin;
   });
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -194,6 +204,59 @@ export default function AdminDashboard() {
     localStorage.setItem('cicada_users', JSON.stringify(users));
   }, [users]);
 
+  // --- LOAD LIVE BACKEND DATA (when opened through the authenticated admin flow) ---
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState('');
+
+  useEffect(() => {
+    if (!isAuthenticated || !isOAuthAdmin) return;
+    let cancelled = false;
+    setLiveLoading(true);
+    setLiveError('');
+    (async () => {
+      try {
+        const [u, ch, prog, lb] = await Promise.all([
+          listUsers(), getAdminChallenges(), getAdminProgress(), getLeaderboard(),
+        ]);
+        if (cancelled) return;
+        setUsers((u.data || []).map((x) => ({
+          id: x.id,
+          username: x.display_name || x.email,
+          email: x.email,
+          role: x.role === 'admin' || x.role === 'GOD' ? 'Admin' : 'Participant',
+          isApprovedAdmin: x.role === 'admin' || x.role === 'GOD' ? x.is_admin_approved !== false : false,
+        })));
+        setChallenges((ch.data || []).map((x) => ({
+          id: x.id,
+          title: x.name,
+          round: x.order_number,
+          answer: x.answer_key || '',
+          isLocked: x.is_active === false,
+          hintsEnabled: true,
+          solvedCount: 0,
+          timeLimit: x.time_limit || 0,
+          assets: (x.assets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
+        })));
+        const lbMap = {};
+        (lb.data || []).forEach((t) => { lbMap[t.team_name] = t.challenges_completed; });
+        setTeams((prog.data || []).map((t) => ({
+          id: t.team_name,
+          name: t.team_name,
+          members: [],
+          round: t.current_challenge_order || 1,
+          points: lbMap[t.team_name] != null ? lbMap[t.team_name] : (t.challenges_solved || 0),
+          status: 'active',
+        })));
+      } catch (err) {
+        if (!cancelled) setLiveError(err.message || 'Failed to load live data.');
+      } finally {
+        if (!cancelled) setLiveLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isOAuthAdmin]);
+
   // --- LOGIN FUNCTION ---
   const handleLogin = (e) => {
     e.preventDefault();
@@ -216,6 +279,7 @@ export default function AdminDashboard() {
   // --- USER MANAGEMENT HANDLERS ---
   // API Endpoint: POST 09_Approve_Admin
   const handleApproveAdmin = (userId) => {
+    approveAdmin({ target_user_id: userId }).catch((err) => console.error(err));
     setUsers(users.map(u => {
       if (u.id === userId) {
         return { ...u, isApprovedAdmin: true };
@@ -240,9 +304,12 @@ export default function AdminDashboard() {
 
   // API Endpoint: POST 10_Toggle_Admin_Role
   const handleToggleAdminRole = (userId) => {
+    const targetUser = users.find(u => u.id === userId);
+    const newRole = targetUser && targetUser.role === 'Admin' ? 'participant' : 'admin';
+    toggleRole({ target_user_id: userId, role: newRole }).catch((err) => console.error(err));
     setUsers(users.map(u => {
       if (u.id === userId) {
-        const newRole = u.role === 'Admin' ? 'Participant' : 'Admin';
+        const newRoleUI = u.role === 'Admin' ? 'Participant' : 'Admin';
         return { 
           ...u, 
           role: newRole,
@@ -256,6 +323,7 @@ export default function AdminDashboard() {
   // API Endpoint: POST 12_Admin_Delete_User
   const handleDeleteUser = (userId, username) => {
     if (window.confirm(`WIPE USER ACCOUNT "${username.toUpperCase()}"? THIS REMOVES THEIR SECURITY PRIVILEGES.`)) {
+      deleteUser({ target_user_id: userId }).catch((err) => console.error(err));
       setUsers(users.filter(u => u.id !== userId));
       
       const newLog = {
@@ -277,6 +345,8 @@ export default function AdminDashboard() {
   const handleBulkImportAdmins = (e) => {
     e.preventDefault();
     if (!bulkAdminsCSVText.trim()) return;
+
+    bulkImportAdmins({ csv_data: bulkAdminsCSVText }).catch((err) => console.error(err));
 
     const lines = bulkAdminsCSVText.split('\n');
     const importedUsers = [];
@@ -401,6 +471,15 @@ export default function AdminDashboard() {
   const handleCreateChallenge = (e) => {
     e.preventDefault();
     if (!newChallengeTitle.trim()) return;
+
+    createChallenge({
+      order_number: parseInt(newChallengeRound) || 1,
+      name: newChallengeTitle,
+      answer_key: newChallengeAnswer || 'decrypted_key',
+      time_limit: parseInt(newChallengeTimeLimit) || 60,
+      is_active: false,
+      assets: (newChallengeAssets || []).map((a) => ({ type: 'file', url: a.url || '#', name: a.name || 'asset' })),
+    }).catch((err) => console.error(err));
 
     const newChal = {
       id: `chal-${Date.now()}`,
@@ -768,6 +847,9 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!activeTeam) return;
 
+    adminOverride({ team_name: activeTeam.name, target_challenge_order: parseInt(overrideTargetRound) || 1 })
+      .catch((err) => console.error(err));
+
     setTeams(teams.map(t => {
       if (t.id === activeTeam.id) {
         return {
@@ -1041,6 +1123,17 @@ export default function AdminDashboard() {
 
         {/* Dashboard Nav Tabs */}
         <nav className="flex items-center flex-wrap gap-2">
+          {isOAuthAdmin && (
+            <div className="w-full mb-2 text-[10px] uppercase tracking-wider text-[#9ad0d5]">
+              {liveLoading ? (
+                <span>// SYNCHRONIZING LIVE TELEMETRY...</span>
+              ) : liveError ? (
+                <span className="text-[#ffb4ab]">// LIVE SYNC ERROR: {liveError}</span>
+              ) : (
+                <span>// LIVE TELEMETRY LINKED TO BACKEND</span>
+              )}
+            </div>
+          )}
           <button
             onClick={() => setActiveTab('teams')}
             className={`px-4 py-2 border rounded text-xs uppercase tracking-wider transition-all cursor-pointer ${
