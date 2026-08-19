@@ -1,0 +1,125 @@
+/* =====================================================
+   SITE FOOTER — closes the page under the FAQ section.
+   Tokens come from timeline.css so the footer reads as a
+   continuation of the FAQ rather than a separate bar.
+   ===================================================== */
+
+.site-footer {
+  position: relative;
+  z-index: 2;                 /* above the fixed #tunnel-canvas */
+  /* Ramp --bg (the FAQ) into --bg-deep over the first 120px rather than
+     stepping between them at the border — the flat cut read as a seam. */
+  background: linear-gradient(to bottom, var(--bg) 0, var(--bg-deep) 120px);
+  border-top: 1px solid var(--line-soft);
+  font-family: var(--font-mono);
+  padding: 28px clamp(20px, 5vw, 64px) calc(28px + env(safe-area-inset-bottom, 0px));
+}
+
+.site-footer__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .site-footer__inner {
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: left;
+  }
+}
+
+/* ── Brand ──────────────────────────────────────────── */
+
+.site-footer__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+@media (min-width: 768px) {
+  .site-footer__brand { align-items: flex-start; }
+}
+
+.site-footer__logo {
+  height: 38px;
+  width: auto;
+  opacity: 0.9;
+}
+
+.site-footer__legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.site-footer__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--amber-dim);
+}
+
+.site-footer__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber-glow);
+  animation: tunnelBlink 2.4s ease-in-out infinite;
+}
+
+/* ── Socials ────────────────────────────────────────── */
+
+.site-footer__socials {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+
+.site-footer__social {
+  /* 44px tap target on every viewport, icon stays 20px */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 3px;
+  color: var(--ink-faint);
+  transition: color 200ms var(--ease-out), background 200ms var(--ease-out);
+}
+
+.site-footer__social svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.site-footer__social:hover,
+.site-footer__social:focus-visible {
+  color: var(--amber);
+  background: oklch(0.18 0.014 60 / 0.7);
+}
+
+.site-footer__social:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-footer__dot { animation: none; }
+  .site-footer__social { transition-duration: 1ms; }
+}

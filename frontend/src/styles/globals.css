@@ -1,0 +1,983 @@
+
+/* =====================================================
+   CICADA 2067 — GLOBAL DESIGN SYSTEM
+   ===================================================== */
+
+:root {
+  --font-orbitron: "Orbitron", monospace;
+  --font-inter: "Inter", sans-serif;
+  --font-rajdhani: "Rajdhani", sans-serif;
+
+  /* Brand Colors */
+  --color-void: #000000;
+  --color-deep-space: #020209;
+  --color-nebula: #0a0a1a;
+  --color-accretion: #F4A233;
+  --color-accretion-bright: #FFD97D;
+  --color-accretion-dim: #C07810;
+  --color-starlight: #F5F5F0;
+  --color-starlight-dim: #9090a0;
+  --color-amber: #FF8C00;
+  --color-border: rgba(244, 162, 51, 0.25);
+  --color-border-bright: rgba(244, 162, 51, 0.6);
+
+  /* Layout */
+  --nav-height: 80px;
+}
+
+/* =====================================================
+   RESET & BASE
+   ===================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-inter);
+  background-color: var(--color-void);
+  color: var(--color-starlight);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* =====================================================
+   STAR FIELD BACKGROUND
+   ===================================================== */
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 5%  98%, #fff, transparent),
+    radial-gradient(1px 1px at 18% 79%, #fff, transparent),
+    radial-gradient(2px 1px at 26% 52%, #fff, transparent),
+    radial-gradient(1px 2px at 31% 20%, #e6e6e6, transparent),
+    radial-gradient(1px 1px at 41% 44%, #e8e8e8, transparent),
+    radial-gradient(1px 2px at 47% 6%,  #fff, transparent),
+    radial-gradient(1px 1px at 50% 71%, #f5f5f5, transparent),
+    radial-gradient(2px 1px at 65% 50%, #e2e2e2, transparent),
+    radial-gradient(1px 1px at 54% 26%, #fff, transparent),
+    radial-gradient(2px 2px at 76% 34%, #efefef, transparent),
+    radial-gradient(1px 1px at 10% 32%, #ececec, transparent),
+    radial-gradient(1px 2px at 84% 60%, #fff, transparent),
+    radial-gradient(1px 1px at 87% 13%, #eaeaea, transparent),
+    radial-gradient(1px 1px at 69% 21%, #efefef, transparent),
+    radial-gradient(1px 2px at 62% 83%, #efefef, transparent),
+    radial-gradient(2px 1px at 51% 66%, #efefef, transparent),
+    radial-gradient(1px 1px at 36% 62%, #efefef, transparent),
+    radial-gradient(1px 1px at 94% 68%, #efefef, transparent),
+    radial-gradient(2px 1px at 98% 50%, #efefef, transparent),
+    radial-gradient(1px 1px at 95% 21%, #efefef, transparent),
+    radial-gradient(1px 1px at 22% 88%, #fff, transparent),
+    radial-gradient(1px 1px at 73% 7%,  #e0e0e0, transparent),
+    radial-gradient(2px 1px at 8%  55%, #d0d0d0, transparent),
+    radial-gradient(1px 2px at 90% 45%, #f0f0f0, transparent),
+    radial-gradient(1px 1px at 3%  12%, #fff, transparent),
+    linear-gradient(to bottom, #000000 0%, #00000a 40%, #000005 100%);
+  background-repeat: repeat;
+  background-size:
+    25% 25%, 33% 33%, 50% 50%, 20% 20%, 33% 33%,
+    25% 18%, 33% 19%, 33% 21%, 23% 27%, 27% 35%,
+    18% 32%, 28% 34%, 33% 30%, 25% 29%, 29% 31%,
+    20% 29%, 30% 27%, 22% 33%, 15% 32%, 33% 22%,
+    17% 24%, 29% 17%, 23% 38%, 31% 26%, 19% 41%,
+    100% 100%;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* =====================================================
+   BLACKHOLE BACKGROUND (FIXED)
+   ===================================================== */
+
+.blackhole-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.blackhole-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Centre the black hole disk and pull slightly right to
+     complement the left-column text layout */
+  object-position: 58% 50%;
+  opacity: 0.92;
+  /* Normal blend — screen was washing out the deep blacks
+     on some browsers causing the "blacked out" flash */
+  mix-blend-mode: normal;
+  filter: saturate(1.25) brightness(0.88) contrast(1.06);
+}
+
+/* =====================================================
+   NAVBAR
+   ===================================================== */
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-height);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(1.5rem, 5vw, 4rem);
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 5, 0.6) 70%,
+    transparent 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(244, 162, 51, 0.08);
+}
+
+/*
+ * Logo — the cicada mark + "CICADA 2067" wordmark are both baked into
+ * the image, so there is no text lockup beside it.
+ *
+ * The source file is 1280x1280 with roughly 60% black padding around the
+ * mark. Fixing the box to a wide aspect and letting object-fit:cover crop
+ * it keeps the ring, cicada and wordmark and drops the empty black, so the
+ * nav bar isn't paying for dead pixels.
+ */
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.navbar-logo img {
+  /* 120:52 is the crop, not just the size: object-fit:cover derives the visible
+     band from the box ASPECT, so at this ratio the square source is cropped to
+     rows 26%-69% — the ring and cicada, minus the baked-in wordmark (only ~9% of
+     the image height, unreadable at navbar scale; the hero H1 carries the name).
+     Hence aspect-ratio + auto width: breakpoints must scale height ALONE, or the
+     band narrows and clips the ring. */
+  height: 52px;
+  aspect-ratio: 120 / 52;
+  width: auto;
+  object-fit: cover;
+  object-position: 50% 45%;
+  /* `screen` only erases a pixel completely at true #000, and JPEG ringing lifts
+     this plate to ~#0a0a0a — contrast() crushes it back down before the blend
+     (filter runs first). No drop-shadow: this JPEG is fully opaque, so the
+     shadow's silhouette is the bounding box, painting the exact orange rectangle
+     the mask below is too wide to feather away. The mark's glow is baked in. */
+  mix-blend-mode: screen;
+  filter: brightness(1.04) contrast(1.22);
+  -webkit-mask-image: radial-gradient(118% 118% at 50% 50%, #000 50%, transparent 100%);
+  mask-image: radial-gradient(118% 118% at 50% 50%, #000 50%, transparent 100%);
+}
+
+/* Nav Links */
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  list-style: none;
+}
+
+.navbar-link {
+  font-family: var(--font-rajdhani);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--color-starlight-dim);
+  text-decoration: none;
+  text-transform: uppercase;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.navbar-link::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-accretion);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 6px rgba(244, 162, 51, 0.6);
+}
+
+.navbar-link:hover {
+  color: var(--color-accretion-bright);
+}
+
+.navbar-link:hover::after {
+  width: 100%;
+}
+
+.navbar-link.active {
+  color: var(--color-accretion);
+}
+
+/* Discord special button */
+.navbar-link.discord-link {
+  color: var(--color-accretion);
+  border: 1px solid var(--color-border-bright);
+  padding: 0.4rem 1rem;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.navbar-link.discord-link:hover {
+  background: rgba(244, 162, 51, 0.1);
+  box-shadow: 0 0 15px rgba(244, 162, 51, 0.2);
+  color: var(--color-accretion-bright);
+}
+
+.navbar-link.discord-link::after {
+  display: none;
+}
+
+/* Hamburger */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  padding: 4px;
+  background: none;
+  border: none;
+  z-index: 110;
+}
+
+.hamburger span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: var(--color-accretion);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+  box-shadow: 0 0 4px rgba(244, 162, 51, 0.4);
+}
+
+.hamburger.open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.hamburger.open span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.hamburger.open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Mobile Menu */
+.mobile-menu {
+  display: none;
+  position: fixed;
+  top: var(--nav-height);
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 5, 0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--color-border);
+  padding: 1.5rem 2rem;
+  flex-direction: column;
+  gap: 0;
+  z-index: 99;
+  transform: translateY(-10px);
+  opacity: 0;
+  /*
+   * visibility and pointer-events are load-bearing, not decoration. With
+   * opacity:0 alone this panel still hit-tests: it is a 370px-tall fixed box
+   * pinned under the navbar at z-index 99, above .hero-left (z-10), so every
+   * tap on the hero heading or the CTA landed on an invisible nav link and
+   * navigated away. aria-hidden covers screen readers; only these two cover
+   * the pointer. visibility:hidden also drops the links out of tab order.
+   *
+   * `transition: all` is replaced with an explicit list so visibility can
+   * join it. visibility interpolates discretely -- any intermediate value is
+   * `visible` if either endpoint is -- which means it flips to visible
+   * instantly on open, then holds visible for the full 300ms on close so the
+   * fade-out still plays. No transition-delay juggling required.
+   */
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0.3s;
+}
+
+.mobile-menu.open {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/*
+ * Scrim -- z-index 98 sits under the menu (99) and under the navbar (100), so
+ * the nav row stays lit and the hamburger stays clickable above it. No
+ * backdrop-filter here on purpose: the menu above already carries blur(20px)
+ * and the navbar blur(12px); a third full-viewport backdrop layer is the exact
+ * cost this pass is trying to remove.
+ */
+.mobile-menu-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  background: rgba(0, 0, 5, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s;
+}
+
+.mobile-menu-scrim.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.mobile-menu-link {
+  font-family: var(--font-rajdhani);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  color: var(--color-starlight-dim);
+  text-decoration: none;
+  text-transform: uppercase;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(244, 162, 51, 0.08);
+  transition: color 0.3s ease;
+  display: block;
+}
+
+.mobile-menu-link:hover {
+  color: var(--color-accretion-bright);
+}
+
+.mobile-menu-link:last-child {
+  border-bottom: none;
+  color: var(--color-accretion);
+  margin-top: 0.5rem;
+}
+
+/* =====================================================
+   HERO SECTION
+   ===================================================== */
+
+.hero-section {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  display: grid;
+  /* Left text col / right Endurance col */
+  grid-template-columns: 52% 48%;
+  /* Main content row + scroll indicator row at bottom */
+  grid-template-rows: 1fr auto;
+  /* stretch — both columns fill the full row height. That is what gives
+     .hero-right a definite height, which <endurance-ship> requires: it is a
+     container-query container (container-type:size) and cannot size to content. */
+  align-items: stretch;
+  padding-top: var(--nav-height);
+  /* clip, not hidden: prevents body scrollbars without creating a scroll
+     container on this section */
+  overflow: clip;
+}
+
+/* Left Column */
+.hero-left {
+  position: relative;
+  z-index: 10;
+  padding: clamp(2rem, 6vw, 6rem);
+  padding-right: clamp(1rem, 3vw, 3rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100vh - var(--nav-height));
+}
+
+.hero-eyebrow {
+  font-family: var(--font-rajdhani);
+  font-size: clamp(0.6rem, 1.2vw, 0.8rem);
+  font-weight: 600;
+  letter-spacing: 0.5em;
+  color: var(--color-accretion);
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  opacity: 0;
+  animation: fadeSlideIn 0.8s ease 0.2s forwards;
+}
+
+.hero-eyebrow::before {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 1px;
+  background: var(--color-accretion);
+  box-shadow: 0 0 6px rgba(244, 162, 51, 0.5);
+  flex-shrink: 0;
+}
+
+.hero-heading {
+  font-family: var(--font-orbitron);
+  font-size: clamp(3rem, 7.5vw, 7rem);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  color: var(--color-starlight);
+  margin-bottom: 2rem;
+  position: relative;
+  opacity: 0;
+  animation: fadeSlideIn 0.9s ease 0.4s forwards;
+}
+
+/* CSS text glow */
+.hero-heading .glow-line {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    var(--color-starlight) 0%,
+    var(--color-accretion-bright) 35%,
+    var(--color-accretion) 50%,
+    var(--color-accretion-bright) 65%,
+    var(--color-starlight) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: textShimmer 5s linear 1.5s infinite;
+  filter: drop-shadow(0 0 20px rgba(244, 162, 51, 0.4));
+}
+
+/* HeroSection sets .is-idle once the hero has scrolled away. These two infinite
+   animations are the only per-frame work left in the hero, and both are costly:
+   the shimmer re-rasterizes background-clip:text under a drop-shadow, the
+   indicator animates a box-shadowed pseudo-element. Paused, not removed — they
+   resume identically when the hero comes back. */
+.hero-section.is-idle .glow-line,
+.hero-section.is-idle .scroll-indicator-line::after {
+  animation-play-state: paused;
+}
+
+/* Particle dust effect on heading */
+.hero-heading::after {
+  content: "CICADA 2067";
+  position: absolute;
+  inset: 0;
+  font-family: var(--font-orbitron);
+  font-size: inherit;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: transparent;
+  text-shadow:
+    2px  2px  0 rgba(244, 162, 51, 0.05),
+    -2px -2px 0 rgba(244, 162, 51, 0.05),
+    4px  4px  0 rgba(244, 162, 51, 0.03),
+    -4px -4px 0 rgba(244, 162, 51, 0.03),
+    6px  6px  0 rgba(244, 162, 51, 0.02);
+  pointer-events: none;
+}
+
+.hero-body {
+  font-family: var(--font-inter);
+  font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+  font-weight: 300;
+  line-height: 1.75;
+  color: var(--color-starlight-dim);
+  max-width: 480px;
+  margin-bottom: 2.5rem;
+  opacity: 0;
+  animation: fadeSlideIn 0.9s ease 0.6s forwards;
+  letter-spacing: 0.02em;
+}
+
+.hero-body strong {
+  color: var(--color-starlight);
+  font-weight: 400;
+}
+
+/* CTA Button */
+.cta-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-orbitron);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  color: var(--color-accretion);
+  text-decoration: none;
+  text-transform: uppercase;
+  border: 1px solid var(--color-accretion);
+  padding: 1rem 2rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  background: transparent;
+  opacity: 0;
+  animation: fadeSlideIn 0.9s ease 0.8s forwards;
+  align-self: flex-start;
+}
+
+.cta-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(244, 162, 51, 0.08),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.cta-button:hover::before {
+  left: 100%;
+}
+
+.cta-button:hover {
+  background: rgba(244, 162, 51, 0.06);
+  box-shadow:
+    0 0 20px rgba(244, 162, 51, 0.2),
+    inset 0 0 20px rgba(244, 162, 51, 0.05);
+  transform: translateY(-2px);
+  letter-spacing: 0.35em;
+}
+
+/* Scroll Indicator
+   Lives as a direct child of .hero-section (NOT inside .hero-left)
+   so its left:2rem is relative to the viewport edge, completely
+   avoiding any overlap with the hero text column.              */
+.scroll-indicator {
+  position: absolute;
+  bottom: 2rem;
+  left: 1.75rem;  /* far left — clear of hero-left padding      */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 10;
+  opacity: 0;
+  animation: fadeSlideIn 1s ease 1.2s forwards;
+  /* Place in the grid without disrupting columns */
+  grid-column: 1;
+  grid-row: 2;
+  pointer-events: none;
+}
+
+.scroll-indicator-line {
+  width: 1px;
+  height: 60px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--color-accretion-dim),
+    var(--color-accretion)
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.scroll-indicator-line::after {
+  content: "";
+  position: absolute;
+  top: -20px;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  background: var(--color-accretion-bright);
+  animation: scrollBounce 2s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(244, 162, 51, 0.8);
+}
+
+.scroll-indicator-text {
+  font-family: var(--font-rajdhani);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  color: var(--color-accretion-dim);
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+}
+
+/*
+ * Right Column — holds the Endurance (components/EnduranceShip.tsx).
+ *
+ * In-flow on purpose. An earlier build made the ship position:fixed to escape
+ * .hero-section's overflow:clip, which then needed lib/tunnel.ts to hand-fade
+ * its opacity and HeroSection to unmount it — three coupled parts that had to
+ * be changed together. The component clips itself (:host{overflow:hidden})
+ * and .endurance is scaled to fit, so sitting in the grid cell and scrolling
+ * away naturally replaces all of that.
+ */
+.hero-right {
+  position: relative;
+  /* No explicit height needed — align-items:stretch fills the row */
+  grid-column: 2;
+  grid-row: 1;
+  pointer-events: none;   /* clicks fall through to the nav and the CTA */
+}
+
+/*
+ * <endurance-ship> — public/endurance.js, a Shadow-DOM web component.
+ *
+ * It sizes itself with container units against its own box, so it needs a
+ * definite width AND height — .hero-right above provides both.
+ *
+ * THEMING: custom properties inherit across the shadow boundary, and
+ * declarations here (outer document) outrank the component's own :host
+ * block, so this retints the hull without touching the vendor file.
+ * Anything INSIDE the shadow tree (.endurance, .blackhole, .cam) is
+ * unreachable from here — see components/EnduranceShip.tsx.
+ */
+endurance-ship {
+  /* Also holds the layout before /endurance.js lands and upgrades the
+     element — until then its :host block does not exist yet. */
+  display: block;
+  width: 100%;
+  height: 100%;
+
+  /* Kills the component's own starfield + gradient; the page has 891208.jpg */
+  background: none;
+
+  /* --luz-05..90 (the hull shading ramp) are hsl(var(--hue), var(--sat), N%),
+     so these two declarations warm every shaded panel at once. */
+  --hue: 30;
+  --sat: 18%;
+
+  /* Hull plates — the vendor's cool blue-greys (#b9c0c3 → #353a42), rotated
+     to copper and dropped well down the luminance ramp. The stock plates read
+     bone-white against the accretion disk; the ship should sit in it, not
+     float on top of it. */
+  --sp0: #9c8e7e;
+  --sp1: #8b7d6d;
+  --sp2: #7f7161;
+  --sp3: #6f6254;
+  --sp4: #605448;
+  --sp5: #574b40;
+  --sp6: #473d34;
+  --sp7: #383029;
+  --sp8: #2a241f;
+
+  /* Window / lamp glow → the site's accretion amber */
+  --yellow: var(--color-accretion-bright);
+
+  /* The vendor's --luz-* ramp is fixed at high lightness stops, so its
+     highlights stay near-white however --hue/--sat are set. Bring the top of
+     the ramp down directly. Deliberately NOT a `filter:` — colour-grading the
+     3D subtree forces an offscreen buffer, which is free on a static ship and
+     a per-frame cost on a rotating one. */
+  --luz-90: hsl(var(--hue), var(--sat), 62%);
+  --luz-85: hsl(var(--hue), var(--sat), 58%);
+  --luz-80: hsl(var(--hue), var(--sat), 54%);
+  --luz-75: hsl(var(--hue), var(--sat), 50%);
+  --luz-70: hsl(var(--hue), var(--sat), 46%);
+}
+
+/* =====================================================
+   COMING SOON PAGE
+   ===================================================== */
+
+.coming-soon-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+
+.coming-soon-badge {
+  font-family: var(--font-rajdhani);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.5em;
+  color: var(--color-accretion);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.coming-soon-badge::before,
+.coming-soon-badge::after {
+  content: "";
+  display: block;
+  width: 30px;
+  height: 1px;
+  background: var(--color-accretion);
+}
+
+.coming-soon-title {
+  font-family: var(--font-orbitron);
+  font-size: clamp(2.5rem, 8vw, 6rem);
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-align: center;
+  background: linear-gradient(
+    135deg,
+    var(--color-starlight) 0%,
+    var(--color-accretion-bright) 50%,
+    var(--color-starlight) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 30px rgba(244, 162, 51, 0.3));
+  margin-bottom: 1.5rem;
+}
+
+.coming-soon-sub {
+  font-family: var(--font-rajdhani);
+  font-size: clamp(0.85rem, 2vw, 1.1rem);
+  font-weight: 400;
+  letter-spacing: 0.25em;
+  color: var(--color-starlight-dim);
+  text-transform: uppercase;
+  text-align: center;
+  max-width: 400px;
+  line-height: 1.8;
+}
+
+.coming-soon-line {
+  width: 1px;
+  height: 80px;
+  background: linear-gradient(
+    to bottom,
+    var(--color-accretion),
+    transparent
+  );
+  margin: 2rem auto;
+}
+
+.coming-soon-back {
+  font-family: var(--font-orbitron);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  color: var(--color-accretion-dim);
+  text-decoration: none;
+  text-transform: uppercase;
+  border: 1px solid var(--color-border);
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.coming-soon-back:hover {
+  color: var(--color-accretion);
+  border-color: var(--color-accretion);
+  box-shadow: 0 0 15px rgba(244, 162, 51, 0.15);
+}
+
+/* Decorative orbit ring on coming soon */
+.coming-soon-ring {
+  position: absolute;
+  width: min(600px, 90vw);
+  height: min(600px, 90vw);
+  border-radius: 50%;
+  border: 1px solid rgba(244, 162, 51, 0.06);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.coming-soon-ring::after {
+  content: "";
+  position: absolute;
+  width: min(400px, 60vw);
+  height: min(400px, 60vw);
+  border-radius: 50%;
+  border: 1px solid rgba(244, 162, 51, 0.1);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* =====================================================
+   KEYFRAMES
+   ===================================================== */
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes textShimmer {
+  from { background-position: -200% center; }
+  to   { background-position:  200% center; }
+}
+
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(100%); }
+}
+
+/* =====================================================
+   RESPONSIVE
+   ===================================================== */
+
+@media (max-width: 1024px) {
+  .hero-section {
+    grid-template-columns: 60% 40%;
+  }
+}
+
+@media (max-width: 768px) {
+  .hamburger {
+    display: flex;
+  }
+
+  .navbar-links {
+    display: none;
+  }
+
+  .mobile-menu {
+    display: flex;
+  }
+
+  .mobile-menu-scrim {
+    display: block;
+  }
+
+  .hero-section {
+    grid-template-columns: 1fr;
+    /* text row (auto), ship row (45vh). The scroll-indicator row is gone —
+       it's display:none below. 45vh is a definite height, which is what
+       <endurance-ship>'s container-type:size needs. */
+    grid-template-rows: auto 45vh;
+    padding-top: calc(var(--nav-height) + 1rem);
+  }
+
+  /* TEXT AT TOP on mobile */
+  .hero-left {
+    grid-column: 1;
+    grid-row: 1;
+    /* auto is safe: align-items:stretch still fills the row */
+    min-height: auto;
+    padding: 2rem 1.5rem 1.5rem;
+  }
+
+  /* SHIP AT BOTTOM on mobile, running the same 60s orbit as desktop with the
+     full silhouette. See components/EnduranceShip.tsx for why no extra detail
+     is culled here. */
+  .hero-right {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .scroll-indicator {
+    display: none;
+  }
+
+  .hero-heading {
+    font-size: clamp(2.5rem, 10vw, 4rem);
+  }
+
+  .hero-heading::after {
+    display: none;
+  }
+
+  .hero-body {
+    font-size: 0.9rem;
+  }
+
+  /* textShimmer is the most expensive always-on animation on the page and it
+     lives in the hero, where a phone can least afford it: background-position
+     is never composited, and here it drives a background-clip:text fill under
+     a drop-shadow, so every frame re-rasterizes a glyph mask AND a blur, 5s
+     linear infinite. The .is-idle pause above only helps once the hero has
+     scrolled away. Below 768px keep the gradient, drop the motion. */
+  .hero-heading .glow-line {
+    animation: none;
+    background-position: 50% center;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-heading {
+    font-size: clamp(2rem, 12vw, 3rem);
+  }
+
+  .cta-button {
+    font-size: 0.65rem;
+    padding: 0.85rem 1.5rem;
+  }
+
+  /* Height only — width follows from aspect-ratio, keeping the crop identical. */
+  .navbar-logo img {
+    height: 40px;
+  }
+}
+
+/* =====================================================
+   REDUCED MOTION
+   -----------------------------------------------------
+   This file was the only stylesheet in the repo without one — timeline.css,
+   faq.css, footer.css and team/team.css all gate their motion. Entrances
+   resolve to their final state rather than being removed, so nothing that
+   animates in from opacity:0 is left invisible.
+   ===================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-eyebrow,
+  .hero-heading,
+  .hero-body,
+  .cta-button,
+  .scroll-indicator {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .hero-heading .glow-line {
+    animation: none;
+    background-position: 50% center;
+  }
+
+  .scroll-indicator-line::after {
+    animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}

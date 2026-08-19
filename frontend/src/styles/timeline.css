@@ -1,0 +1,302 @@
+/* =====================================================
+   TIMELINE — wormhole scroll section
+   Ported from timeline/style.css.
+   Removed on purpose: the `*`, `body`, `a` and `img, canvas`
+   global rules (globals.css already owns the base layer, and
+   `a { color: amber }` would recolor the navbar on every route),
+   plus the whole `.nav` block — the Next <Navbar /> owns nav now.
+   ===================================================== */
+
+:root {
+  /* Palette lifted directly from "The Wormhole" reference: near-black charcoal,
+     slate blue-grey, warm peach and burnished brown swirling against the dark. */
+  --bg: oklch(0.11 0.006 60);
+  --bg-deep: oklch(0.05 0.005 60);
+  --bg-fade: oklch(0.11 0.006 60 / 0);
+  --ink: oklch(0.94 0.014 75);
+  --ink-dim: oklch(0.70 0.02 272);
+  --ink-faint: oklch(0.50 0.02 272);
+  --line: oklch(0.58 0.03 272 / 0.18);
+  --line-soft: oklch(0.58 0.03 272 / 0.10);
+
+  --amber: oklch(0.73 0.10 48);
+  --amber-bright: oklch(0.83 0.09 54);
+  --amber-dim: oklch(0.6 0.09 48 / 0.55);
+  --amber-glow: oklch(0.7 0.10 48 / 0.28);
+
+  --brown: oklch(0.5 0.05 52);
+  --brown-bright: oklch(0.62 0.055 54);
+  --brown-glow: oklch(0.46 0.05 50 / 0.26);
+
+  --complete: oklch(0.55 0.045 52);
+  --locked: oklch(0.32 0.012 270);
+
+  /* Loaded by next/font in layout.tsx, not a CDN <link> */
+  --font-display: var(--font-chakra), sans-serif;
+  --font-mono: var(--font-martian), monospace;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-soft: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+  --z-canvas: 0;
+  --z-cards: 5;
+  --z-fades: 6;
+  /* 90, not 600. .timeline-section is position:relative with no z-index or
+     isolation, so it is NOT a stacking context and these position:fixed HUD
+     children resolve against the root -- at 600 they painted over the navbar
+     (100) and over an open mobile menu (99), with .hud-corner--tl/--tr landing
+     at top:18px, directly on the logo/hamburger row. Nothing else in the root
+     context exceeds 20, so 90 keeps the HUD above all page content and below
+     the nav layer. */
+  --z-hud: 90;
+}
+
+/* Everything in this file lives inside .timeline-section, which sets the
+   section's own type + background without touching the rest of the site. */
+.timeline-section {
+  position: relative;
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
+
+.timeline-section ::selection { background: var(--amber-glow); color: var(--ink); }
+
+/* HUD chrome — one wrapper so the scroll loop fades the whole group with a
+   single style write. Starts hidden; the landing hero must stay clean. */
+
+.tunnel-hud {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hud-corner {
+  position: fixed; width: 22px; height: 22px; z-index: var(--z-hud); pointer-events: none;
+  border-color: var(--amber-dim); border-style: solid; border-width: 0;
+}
+.hud-corner--tl { top: 18px; left: 18px; border-top-width: 1px; border-left-width: 1px; }
+.hud-corner--tr { top: 18px; right: 18px; border-top-width: 1px; border-right-width: 1px; }
+
+.hud-readout {
+  position: fixed; bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+  z-index: var(--z-hud); pointer-events: none;
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.14em; color: var(--ink-faint); line-height: 1.6;
+}
+.hud-readout--depth { left: max(clamp(20px, 6vw, 52px), calc(env(safe-area-inset-left, 0px) + 12px)); }
+.hud-readout--clock { right: max(clamp(20px, 6vw, 52px), calc(env(safe-area-inset-right, 0px) + 12px)); text-align: right; }
+.hud-readout__label { display: block; }
+.hud-readout__value { font-size: 15px; letter-spacing: 0.06em; }
+.hud-readout--depth .hud-readout__value { color: var(--amber); }
+.hud-readout--clock .hud-readout__value { color: var(--ink); }
+
+@keyframes tunnelPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.4); } }
+@keyframes tunnelBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+/* Canvas */
+
+#tunnel-canvas {
+  position: fixed; inset: 0; z-index: var(--z-canvas);
+  width: 100vw; height: 100vh; height: 100dvh;
+  display: block;
+  /* Opacity is driven per-frame by the scroll loop — a CSS transition here
+     would fight it, so there deliberately isn't one. */
+  opacity: 0;
+}
+
+/* Timeline hero — the bridge between the landing hero and the tunnel */
+
+.timeline-hero {
+  position: relative; z-index: 2;
+  padding: clamp(110px, 16vw, 150px) clamp(24px, 5vw, 48px) 140px;
+  max-width: 1280px; margin: 0 auto;
+  display: flex; align-items: center;
+  will-change: opacity, filter, transform;
+}
+/* The immersive near-full-viewport height (with its centered text + orbit graphic) only
+   reads as intentional when there's enough width for the orbit to fill the leftover space.
+   Below that, keep the section sized to its content instead -- otherwise short/narrow
+   viewports get a large empty gap above and below the centered text that looks like a
+   broken black band rather than a design choice. */
+@media (min-width: 861px) {
+  .timeline-hero { min-height: 92vh; min-height: 92dvh; }
+}
+.timeline-hero__content { max-width: 620px; position: relative; z-index: 2; }
+.timeline-hero__eyebrow { font-size: 12.5px; letter-spacing: 0.2em; color: var(--amber-dim); margin-bottom: 22px; }
+.timeline-hero__title {
+  font-family: var(--font-display); font-weight: 300;
+  font-size: clamp(3.4rem, 8.6vw, 7.4rem);
+  letter-spacing: 0.03em; line-height: 0.96; color: var(--ink); margin: 0;
+  text-wrap: balance;
+}
+.timeline-hero__rule { width: 64px; height: 2px; background: var(--amber); margin: 28px 0; }
+.timeline-hero__sub { font-family: var(--font-mono); font-size: 16px; line-height: 1.75; color: var(--ink-dim); max-width: 440px; margin: 0; }
+
+.timeline-hero__orbit {
+  position: absolute; right: clamp(0px, 2vw, 40px); top: 50%; transform: translateY(-50%);
+  color: var(--ink-faint); z-index: 1; opacity: 0.75;
+  width: clamp(200px, 26vw, 320px); height: clamp(200px, 26vw, 320px);
+}
+.timeline-hero__orbit svg { width: 100%; height: 100%; display: block; }
+
+.timeline-hero__scrollcue {
+  position: absolute; left: clamp(24px, 5vw, 48px); bottom: 48px; z-index: 2;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 10.5px; letter-spacing: 0.18em; color: var(--ink-faint);
+}
+.timeline-hero__scrolldot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); animation: tunnelBlink 1.8s ease-in-out infinite; flex-shrink: 0; }
+
+/* Tunnel */
+
+.tunnel-track { position: relative; }
+
+.tunnel-viewport {
+  position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; z-index: 1;
+}
+
+.tunnel-vignette {
+  position: absolute; inset: 0; z-index: var(--z-fades);
+  box-shadow: inset 0 0 260px 40px oklch(0.04 0.006 60 / 0.8);
+  pointer-events: none;
+  opacity: 0;
+}
+.tunnel-fade { position: absolute; left: 0; right: 0; height: 240px; z-index: var(--z-fades); pointer-events: none; }
+/* Fade toward --bg-fade (alpha-zero --bg), not the `transparent` keyword: transparent is
+   rgba(0,0,0,0), so gradients into it mix in pure black mid-fade and read as a hard dark
+   seam against the hero. --top's opacity (and the vignette's, above) is driven by JS from
+   how close .tunnel-viewport is to actually sticking, since before it locks to the top of
+   the screen it still renders in normal flow -- these overlays would otherwise appear as a
+   hard-edged box floating between the hero and the first card. */
+.tunnel-fade--top { top: 0; background: linear-gradient(var(--bg), var(--bg-fade)); opacity: 0; }
+.tunnel-fade--bottom { bottom: 0; background: linear-gradient(var(--bg-fade), var(--bg)); }
+
+.card-layer { position: absolute; inset: 0; z-index: var(--z-cards); }
+
+.round-card {
+  position: absolute; top: 0; left: 0;
+  width: min(360px, 84vw);
+  transform: translate3d(-50%, -50%, 0);
+  will-change: transform, opacity;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.round-card__panel {
+  cursor: pointer;
+  /* Was oklch(... / 0.82) + backdrop-filter: blur(8px). All six cards are
+     translate3d'd every frame by lib/tunnel.ts, and a backdrop blur makes each
+     one re-sample and re-blur everything behind it at its new position — the
+     single worst compositing case on the page. Over a tunnel this dark the
+     extra 0.1 of opacity is visually near-identical. */
+  background: oklch(0.12 0.01 60 / 0.92);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 20px 22px;
+  transition: border-color 220ms var(--ease-out), box-shadow 220ms var(--ease-out), transform 160ms var(--ease-out);
+}
+.round-card__panel:active { transform: scale(0.985); }
+
+.round-card--active .round-card__panel { border-color: var(--amber-dim); box-shadow: 0 0 46px var(--amber-glow), 0 10px 34px rgba(0,0,0,.5); }
+.round-card--complete .round-card__panel { border-color: oklch(0.5 0.05 52 / 0.4); box-shadow: 0 10px 26px rgba(0,0,0,.4); }
+.round-card--locked .round-card__panel { border-color: oklch(0.32 0.012 270 / 0.4); box-shadow: 0 10px 22px rgba(0,0,0,.35); }
+
+.round-card__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 12px; }
+.round-card__code { font-size: 11px; letter-spacing: 0.16em; color: var(--ink-faint); }
+.round-card--active .round-card__code { color: var(--amber); }
+.round-card--complete .round-card__code { color: var(--brown-bright); }
+.round-card__date { font-size: 10px; letter-spacing: 0.1em; color: var(--ink-faint); }
+
+.round-card__title { font-family: var(--font-display); font-size: 19px; font-weight: 500; letter-spacing: 0.03em; color: var(--ink); margin-bottom: 8px; }
+.round-card--locked .round-card__title { color: var(--ink-faint); }
+
+.round-card__summary { font-size: 12.5px; line-height: 1.65; color: var(--ink-dim); margin: 0 0 14px; }
+
+.round-card__status { display: flex; align-items: center; gap: 8px; }
+.round-card__dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: var(--ink-dim); border: 1px solid transparent; }
+.round-card--active .round-card__dot { background: var(--amber); }
+.round-card--complete .round-card__dot { background: var(--brown-bright); }
+.round-card--locked .round-card__dot { background: transparent; border-color: var(--locked); }
+.round-card__statustext { font-size: 10px; letter-spacing: 0.14em; color: var(--ink-faint); }
+.round-card--active .round-card__statustext { color: var(--amber); }
+.round-card--complete .round-card__statustext { color: var(--brown-bright); }
+.round-card__hint { margin-left: auto; font-size: 9.5px; letter-spacing: 0.12em; color: var(--amber-dim); }
+
+.round-card__detail {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  filter: blur(2px);
+  transition: grid-template-rows 340ms var(--ease-in-out), opacity 260ms var(--ease-out), filter 260ms var(--ease-out);
+}
+.round-card__detail-inner { overflow: hidden; min-height: 0; }
+.round-card--open .round-card__detail { grid-template-rows: 1fr; opacity: 1; filter: blur(0); }
+
+.round-card__briefing { font-size: 12.5px; line-height: 1.75; color: var(--ink-dim); margin: 14px 0 12px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.round-card__objective { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--line-soft); font-size: 11px; letter-spacing: 0.06em; }
+.round-card__objective:last-child { border-bottom: none; }
+.round-card__objective-label { color: var(--ink-dim); }
+.round-card__objective-status { font-size: 9.5px; letter-spacing: 0.1em; color: var(--ink-faint); }
+.round-card__objective-status--live { color: var(--amber); }
+
+@media (hover: hover) and (pointer: fine) {
+  .round-card__panel:hover { border-color: var(--amber-dim); }
+}
+
+.round-card--focused .round-card__panel { border-color: var(--amber); box-shadow: 0 0 64px var(--amber-glow), 0 16px 44px rgba(0,0,0,.55); }
+
+/* Progress rail */
+
+.progress-rail {
+  position: fixed; right: max(clamp(18px, 3.6vw, 40px), calc(env(safe-area-inset-right, 0px) + 10px));
+  top: 50%; transform: translateY(-50%);
+  z-index: var(--z-hud); height: min(38vh, 260px);
+  opacity: 0; transition: opacity 500ms var(--ease-out); pointer-events: none;
+}
+.progress-rail.is-visible { opacity: 1; }
+.progress-rail__line { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--line); transform: translateX(-50%); }
+.progress-rail__ticks { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
+.progress-rail__tick {
+  position: relative; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--bg-deep); border: 1px solid var(--ink-faint); z-index: 1;
+  transition: background 220ms var(--ease-out), border-color 220ms var(--ease-out), transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
+}
+.progress-rail__tick--active { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 10px var(--amber-glow); transform: scale(1.5); }
+.progress-rail__label {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  font-size: 9px; letter-spacing: 0.12em; color: var(--ink-faint); white-space: nowrap;
+  opacity: 0; transition: opacity 180ms var(--ease-out);
+}
+.progress-rail__tick--active .progress-rail__label { opacity: 1; color: var(--amber); }
+
+/* Reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline-hero__scrolldot { animation: none; opacity: 0.7; }
+  .round-card__panel, .round-card__detail { transition-duration: 120ms; }
+  .round-card__detail { filter: none; }
+}
+
+/* Mobile */
+
+@media (max-width: 767px) {
+  .timeline-hero { align-items: flex-start; padding-top: clamp(90px, 22vw, 130px); }
+  .timeline-hero__orbit { display: none; }
+  .hud-readout { font-size: 9px; }
+  .round-card { width: min(320px, 88vw); }
+  .progress-rail { display: none; }
+}
+
+/* Short / landscape phones: the fixed HUD, progress rail and generous vertical padding that
+   work at portrait phone heights collide with card content once viewport height drops below
+   ~500px (typical landscape phone), so this collapses them rather than just scaling text down. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hud-readout, .progress-rail, .timeline-hero__orbit { display: none; }
+  .timeline-hero {
+    min-height: auto;
+    padding-top: calc(76px + env(safe-area-inset-top, 0px));
+    padding-bottom: 40px;
+  }
+  .timeline-hero__scrollcue { display: none; }
+  .round-card { width: min(300px, 46vw); }
+  .round-card__panel { padding: 14px 16px; }
+}
