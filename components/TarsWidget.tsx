@@ -272,9 +272,22 @@ export default function TarsWidget() {
     const clock = new THREE.Clock();
     let animationFrameId = 0;
 
+    /* This is a second live WebGL context, at the very bottom of a ~7000px
+       page, and its loop used to run from mount until unmount regardless of
+       whether anyone could see it. Skip the whole frame while off-screen —
+       cheaper than the render, and getDelta() keeps being drained so the walk
+       cycle doesn't jump on the frame it comes back. */
+    let onScreen = true;
+    const visibility = new IntersectionObserver(
+      ([entry]) => { onScreen = entry.isIntersecting; },
+      { rootMargin: "100px" }
+    );
+    visibility.observe(container);
+
     function animate() {
       animationFrameId = requestAnimationFrame(animate);
       const delta = clock.getDelta();
+      if (!onScreen) return;
 
       if (currentState === STATES.IDLE) {
         idleTime += delta;
@@ -326,6 +339,7 @@ export default function TarsWidget() {
       window.removeEventListener("tars-interaction", handleTarsInteraction);
       container.removeEventListener("pointerdown", handlePointerDown);
       resizeObserver.disconnect();
+      visibility.disconnect();
 
       [
         segmentGeo, screenGeo, ridgeGeo, textGeo, dataGeo,

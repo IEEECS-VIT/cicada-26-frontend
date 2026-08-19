@@ -12,6 +12,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
+import Image from "next/image";
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -32,6 +33,15 @@ export default function CrewPortal() {
   const [count, setCount] = useState<number | null>(null); // null = overlay closed
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const tickTimer = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  /* gargantua.mp4 is 2.9MB and autoplays. Phones get the poster still instead:
+     starts false so the server HTML and the first client render agree (no
+     hydration mismatch), then the effect opts desktop in. Same matchMedia gate
+     FaqSection.tsx uses to defer TARS. */
+  const [showVideo, setShowVideo] = useState(false);
+  useEffect(() => {
+    setShowVideo(window.matchMedia("(min-width: 768px)").matches);
+  }, []);
 
   useEffect(
     () => () => {
@@ -86,10 +96,19 @@ export default function CrewPortal() {
     <section className="crew-portal" aria-label="Crew portal">
       <Script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" strategy="lazyOnload" />
 
+      {/* The still is always the base layer and the video stacks over it when
+          present. That gives desktop a real poster without the raw 733KB
+          /891208.jpg the `poster` attribute used to pull (poster bypasses
+          next/image entirely), and gives mobile the same frame for free once
+          the video is gated off — one code path, ~3.6MB lighter on a phone.
+          preload="metadata" so laptops stream rather than pre-buffer 2.9MB. */}
       <div className="portal-bg" aria-hidden="true">
-        <video autoPlay loop muted playsInline poster="/891208.jpg">
-          <source src="/team/gargantua.mp4" type="video/mp4" />
-        </video>
+        <Image src="/891208.jpg" alt="" fill sizes="100vw" quality={75} style={{ objectFit: "cover" }} />
+        {showVideo && (
+          <video autoPlay loop muted playsInline preload="metadata">
+            <source src="/team/gargantua.mp4" type="video/mp4" />
+          </video>
+        )}
       </div>
       <div className="portal-scan" aria-hidden="true" />
 

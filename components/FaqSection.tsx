@@ -145,9 +145,20 @@ export default function FaqSection() {
        lib/tunnel.ts finds this node by that selector to drive its exit fade. */
     <section ref={sectionRef} id="faq" className="faq-section" aria-labelledby="faq-heading">
       {/* Background — reuses the hero's image, already fetched and cached, so
-          the end of the page ties back to its opening at zero extra bytes. */}
+          the end of the page ties back to its opening at zero extra bytes.
+          That claim depends on this quality matching app/page.tsx's hero
+          <Image>: quality lands in the /_next/image query string, and a
+          different q= is a different URL, i.e. a second full fetch.
+
+          75 because that is the only value next.config.js allows. Next 16
+          gates /_next/image on `images.qualities`, which defaults to [75] and
+          400s anything else; the client loader silently coerces the prop to
+          the nearest allowed value. This read 60 against the hero's 90 and
+          both were being served as 75 regardless — declaring 75 is just the
+          declaration catching up with what ships. To actually raise it, add
+          the value to `images.qualities` and change BOTH call sites. */}
       <div className="faq-bg" aria-hidden="true">
-        <Image src="/891208.jpg" alt="" fill sizes="100vw" quality={60} style={{ objectFit: "cover" }} />
+        <Image src="/891208.jpg" alt="" fill sizes="100vw" quality={75} style={{ objectFit: "cover" }} />
         <div className="faq-bg__wash" />
       </div>
       <div className="faq-scanline" aria-hidden="true" />

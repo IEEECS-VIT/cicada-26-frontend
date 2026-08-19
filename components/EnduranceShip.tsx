@@ -124,19 +124,46 @@ const SHADOW_CSS = `
 }
 
 /*
- * Desktop only: ~1600 preserve-3d planes re-project every frame, which
- * roughly halves the frame rate on a phone. Mobile holds the static pose.
+ * One orbit, one duration, every viewport. 60s is the pace on a phone exactly
+ * as it is on a laptop — a slower duration would NOT have been cheaper, since
+ * cost here is per-frame projection work and is indifferent to how far the
+ * ring turns between frames.
+ *
+ * This used to be gated to min-width:769px, with mobile holding a static pose.
+ * The rotation is wanted on mobile, and the silhouette has to stay intact to
+ * get it (see the cull note below), so the frame cost is accepted rather than
+ * bought back. It is bounded: the WAAPI pause further down stops the orbit the
+ * moment the hero scrolls away, which on a phone is within a screen or two.
+ *
+ * Unconditional also closes a real gap: the layout breakpoint in globals.css is
+ * max-width:768px while the gate was min-width:769px, so at a fractional
+ * viewport width — 768.5px, common on scaled displays — BOTH queries were false
+ * and you got the desktop two-column layout with a frozen ship.
  *
  * Note there is no prefers-reduced-motion gate here, and that is deliberate.
  * 360deg / 60s is 6deg per second — ambient, no parallax, no flashing, well
  * under anything vestibular. What reduced-motion should suppress is the
  * vendor's fast 4s entry spin, and that is already gone (animation:none
- * above). To restore the gate, add "and (prefers-reduced-motion:
- * no-preference)" to this query — the ship then holds the pose instead.
+ * above). To restore the gate, wrap this in "@media (prefers-reduced-motion:
+ * no-preference)" — the ship then holds the pose instead.
  */
-@media (min-width: 769px) {
-  .endurance { animation: orbit 60s linear infinite; }
-}
+.endurance { animation: orbit 60s linear infinite; }
+
+/*
+ * NO further cull on mobile. This was tried — .chains and .cylinders hidden
+ * below 768px, to buy the 32.8 -> 54.0 fps in the table above — and it is
+ * wrong. Both are ring-radius structures (79% / 80% of the container, see
+ * endurance.js), i.e. the passages that JOIN the twelve modules, not interior
+ * detail like .nozzle span or .hatch. Hiding them leaves twelve hub cubes
+ * floating unconnected in a circle: the ship stops reading as the Endurance.
+ * Verified visually at 390px.
+ *
+ * The "visible, not done" annotations on those two rows of the table are
+ * therefore binding at every viewport, not just desktop. Everything that was
+ * safe to cull already is. If mobile frame rate has to come down further, the
+ * lever is the WAAPI pause below (already in place) or a three.js rebuild —
+ * not more display:none.
+ */
 `;
 
 /** Returns false if the shadow root doesn't exist yet, so the caller can retry. */

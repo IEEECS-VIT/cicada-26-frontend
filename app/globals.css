@@ -167,22 +167,24 @@ body::before {
 }
 
 .navbar-logo img {
-  /* 120x52 is deliberate: at this aspect, object-fit:cover crops the square
-     down to the ring-and-cicada band (roughly 26%-69% of the source height)
-     and leaves the baked-in wordmark out. The wordmark is only ~9% of the
-     image height — at any navbar-sized rendering it is unreadable, so the
-     mark carries the branding and the hero H1 carries the name. */
+  /* 120:52 is the crop, not just the size: object-fit:cover derives the visible
+     band from the box ASPECT, so at this ratio the square source is cropped to
+     rows 26%-69% — the ring and cicada, minus the baked-in wordmark (only ~9% of
+     the image height, unreadable at navbar scale; the hero H1 carries the name).
+     Hence aspect-ratio + auto width: breakpoints must scale height ALONE, or the
+     band narrows and clips the ring. */
   height: 52px;
-  width: 120px;
+  aspect-ratio: 120 / 52;
+  width: auto;
   object-fit: cover;
   object-position: 50% 45%;
-  /* `screen` only erases a pixel completely at true #000, and JPEG ringing
-     lifts this plate to ~#0a0a0a — hence the visible rectangle. Crush the
-     near-black back down BEFORE the blend (filter runs first), then feather
-     the edges so there is no rectangle left to perceive either way. */
+  /* `screen` only erases a pixel completely at true #000, and JPEG ringing lifts
+     this plate to ~#0a0a0a — contrast() crushes it back down before the blend
+     (filter runs first). No drop-shadow: this JPEG is fully opaque, so the
+     shadow's silhouette is the bounding box, painting the exact orange rectangle
+     the mask below is too wide to feather away. The mark's glow is baked in. */
   mix-blend-mode: screen;
-  filter: brightness(1.04) contrast(1.22)
-          drop-shadow(0 0 10px rgba(244, 162, 51, 0.35));
+  filter: brightness(1.04) contrast(1.22);
   -webkit-mask-image: radial-gradient(118% 118% at 50% 50%, #000 50%, transparent 100%);
   mask-image: radial-gradient(118% 118% at 50% 50%, #000 50%, transparent 100%);
 }
@@ -300,12 +302,57 @@ body::before {
   z-index: 99;
   transform: translateY(-10px);
   opacity: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /*
+   * visibility and pointer-events are load-bearing, not decoration. With
+   * opacity:0 alone this panel still hit-tests: it is a 370px-tall fixed box
+   * pinned under the navbar at z-index 99, above .hero-left (z-10), so every
+   * tap on the hero heading or the CTA landed on an invisible nav link and
+   * navigated away. aria-hidden covers screen readers; only these two cover
+   * the pointer. visibility:hidden also drops the links out of tab order.
+   *
+   * `transition: all` is replaced with an explicit list so visibility can
+   * join it. visibility interpolates discretely -- any intermediate value is
+   * `visible` if either endpoint is -- which means it flips to visible
+   * instantly on open, then holds visible for the full 300ms on close so the
+   * fade-out still plays. No transition-delay juggling required.
+   */
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0.3s;
 }
 
 .mobile-menu.open {
   transform: translateY(0);
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/*
+ * Scrim -- z-index 98 sits under the menu (99) and under the navbar (100), so
+ * the nav row stays lit and the hamburger stays clickable above it. No
+ * backdrop-filter here on purpose: the menu above already carries blur(20px)
+ * and the navbar blur(12px); a third full-viewport backdrop layer is the exact
+ * cost this pass is trying to remove.
+ */
+.mobile-menu-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  background: rgba(0, 0, 5, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s;
+}
+
+.mobile-menu-scrim.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .mobile-menu-link {
@@ -830,6 +877,10 @@ endurance-ship {
     display: flex;
   }
 
+  .mobile-menu-scrim {
+    display: block;
+  }
+
   .hero-section {
     grid-template-columns: 1fr;
     /* text row (auto), ship row (45vh). The scroll-indicator row is gone —
@@ -848,10 +899,9 @@ endurance-ship {
     padding: 2rem 1.5rem 1.5rem;
   }
 
-  /* SHIP AT BOTTOM on mobile. It holds a static pose — the continuous orbit
-     is gated to min-width:769px in the shadow CSS, because ~1600 preserve-3d
-     planes re-projecting every frame roughly halves the frame rate on a
-     phone. See components/EnduranceShip.tsx. */
+  /* SHIP AT BOTTOM on mobile, running the same 60s orbit as desktop with the
+     full silhouette. See components/EnduranceShip.tsx for why no extra detail
+     is culled here. */
   .hero-right {
     grid-column: 1;
     grid-row: 2;
@@ -872,6 +922,17 @@ endurance-ship {
   .hero-body {
     font-size: 0.9rem;
   }
+
+  /* textShimmer is the most expensive always-on animation on the page and it
+     lives in the hero, where a phone can least afford it: background-position
+     is never composited, and here it drives a background-clip:text fill under
+     a drop-shadow, so every frame re-rasterizes a glyph mask AND a blur, 5s
+     linear infinite. The .is-idle pause above only helps once the hero has
+     scrolled away. Below 768px keep the gradient, drop the motion. */
+  .hero-heading .glow-line {
+    animation: none;
+    background-position: 50% center;
+  }
 }
 
 @media (max-width: 480px) {
@@ -884,8 +945,42 @@ endurance-ship {
     padding: 0.85rem 1.5rem;
   }
 
+  /* Height only — width follows from aspect-ratio, keeping the crop identical. */
   .navbar-logo img {
-    height: 36px;
-    width: 116px;
+    height: 40px;
+  }
+}
+
+/* =====================================================
+   REDUCED MOTION
+   -----------------------------------------------------
+   This file was the only stylesheet in the repo without one — timeline.css,
+   faq.css, footer.css and team/team.css all gate their motion. Entrances
+   resolve to their final state rather than being removed, so nothing that
+   animates in from opacity:0 is left invisible.
+   ===================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-eyebrow,
+  .hero-heading,
+  .hero-body,
+  .cta-button,
+  .scroll-indicator {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .hero-heading .glow-line {
+    animation: none;
+    background-position: 50% center;
+  }
+
+  .scroll-indicator-line::after {
+    animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }

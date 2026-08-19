@@ -44,7 +44,12 @@ export default function HomePage() {
           alt="Gargantua black hole — Interstellar cinematic background"
           fill
           priority          /* preloads as LCP image */
-          quality={90}
+          /* 75 is the only value next.config.js permits — Next 16 gates
+             /_next/image on `images.qualities` (default [75]) and 400s
+             anything else, with the loader coercing the prop silently. This
+             said 90 and shipped 75. Must stay in lockstep with the FAQ's
+             reuse of the same file in components/FaqSection.tsx. */
+          quality={75}
           sizes="100vw"
           style={{
             objectFit: "cover",

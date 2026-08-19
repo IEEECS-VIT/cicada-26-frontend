@@ -131,8 +131,15 @@ class TunnelScene {
   mouseX = 0; mouseY = 0;
   targetMouseX = 0; targetMouseY = 0;
 
+  /* Cached in resize() so projectCards doesn't read layout 60x/sec. */
+  viewW = 1; viewH = 1;
+
   private _forward = new THREE.Vector3();
   private _mistColor = new THREE.Color();
+  /* Scratch for projectCards. Without these it ran anchor.world.clone() twice
+     per card per frame -- 12 Vector3 a frame, ~720/sec of pure garbage. */
+  private _local = new THREE.Vector3();
+  private _ndc = new THREE.Vector3();
   /* Everything that holds GPU memory, so the StrictMode remount can free it. */
   private disposables: { dispose(): void }[] = [];
 
@@ -350,6 +357,7 @@ class TunnelScene {
 
   resize() {
     const w = window.innerWidth, h = window.innerHeight;
+    this.viewW = w; this.viewH = h;
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
@@ -426,7 +434,7 @@ class TunnelScene {
   }
 
   projectCards(cardEls: HTMLElement[]) {
-    const w = window.innerWidth, h = window.innerHeight;
+    const w = this.viewW, h = this.viewH;
     this.camera.updateMatrixWorld();
     const viewMatrix = this.camera.matrixWorldInverse;
 
@@ -434,12 +442,12 @@ class TunnelScene {
       const el = cardEls[i];
       if (!el) return;
 
-      const local = anchor.world.clone().applyMatrix4(viewMatrix);
+      const local = this._local.copy(anchor.world).applyMatrix4(viewMatrix);
       const frontDist = -local.z;
 
       if (frontDist <= 0.4) { el.style.opacity = "0"; el.style.pointerEvents = "none"; return; }
 
-      const ndc = anchor.world.clone().project(this.camera);
+      const ndc = this._ndc.copy(anchor.world).project(this.camera);
       if (ndc.z > 1) { el.style.opacity = "0"; el.style.pointerEvents = "none"; return; }
 
       const x = (ndc.x * 0.5 + 0.5) * w;
@@ -505,8 +513,13 @@ export function initTunnel(refs: TunnelRefs): () => void {
   const landing = document.querySelector<HTMLElement>(".blackhole-bg");
   const faq = document.querySelector<HTMLElement>(".faq-section");
 
+  /* Ticked from raf() rather than a setInterval. The interval ran for the whole
+     life of the page, writing textContent to a position:fixed HUD element every
+     second even while that HUD sat at opacity:0 -- so it paid layout+paint for
+     something nobody could see. raf() already computes the same visibility gate
+     it needs (`chrome`), so the tick rides along and skips when hidden. */
   tickClock(clock);
-  const clockTimer = window.setInterval(() => tickClock(clock), 1000);
+  let lastClockTick = 0;
 
   if (!canHover) {
     cards.forEach((el) => {
@@ -560,19 +573,41 @@ export function initTunnel(refs: TunnelRefs): () => void {
   const onPointerMove = (e: PointerEvent) => {
     scene.setMouse((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
   };
-  if (canHover) window.addEventListener("pointermove", onPointerMove);
+  /* passive: it only forwards coordinates to scene.setMouse, never preventDefault. */
+  if (canHover) window.addEventListener("pointermove", onPointerMove, { passive: true });
 
   /* Cached because they only move when the layout does. Reading them inside raf()
-     forced two layout flushes per frame for values that were constant between
-     resizes. measure() must run AFTER setTrackHeight, which changes both. */
-  let heroTop = 0, trackTop = 0, trackHeight = 0;
+     forced a layout flush per frame per value, for values that were constant
+     between resizes. measure() must run AFTER setTrackHeight, which changes both.
+
+     faqTop joined them for the same reason: `faq.getBoundingClientRect().top` is
+     identically `faqTop - scrollY`, so exitT needs no live read. Same identity
+     retires the per-frame `track.getBoundingClientRect()`. Between them plus the
+     cached viewport dimensions that is 4 forced layouts per frame down to 1 --
+     the survivor is `.tunnel-viewport`, which is position:sticky and therefore
+     genuinely not derivable from a cached document position. */
+  let heroTop = 0, trackTop = 0, trackHeight = 0, faqTop = 0, viewW = 1, viewH = 1;
   const measure = () => {
     heroTop = hero.getBoundingClientRect().top + window.scrollY;
     trackTop = track.getBoundingClientRect().top + window.scrollY;
     trackHeight = track.offsetHeight;
+    faqTop = faq ? faq.getBoundingClientRect().top + window.scrollY : 0;
+    viewW = window.innerWidth;
+    viewH = window.innerHeight;
   };
 
-  const onResize = () => { scene.resize(); setTrackHeight(); measure(); };
+  /* rAF-coalesced: onResize re-derives all six card anchors, re-sizes the track
+     and re-measures, and mobile URL-bar show/hide fires resize in bursts. */
+  let resizePending = 0;
+  const onResize = () => {
+    if (resizePending) return;
+    resizePending = requestAnimationFrame(() => {
+      resizePending = 0;
+      scene.resize();
+      setTrackHeight();
+      measure();
+    });
+  };
   window.addEventListener("resize", onResize);
   window.addEventListener("orientationchange", onResize);
 
@@ -605,7 +640,7 @@ export function initTunnel(refs: TunnelRefs): () => void {
     const now = performance.now();
     const scrollY = window.scrollY;
     const start = heroTop;
-    const end = trackTop + trackHeight - window.innerHeight;
+    const end = trackTop + trackHeight - viewH;
     const span = Math.max(end - start, 1);
     if (Math.abs(scrollY - prevScrollY) > 0.5) lastMoveTime = now;
     prevScrollY = scrollY;
@@ -615,7 +650,7 @@ export function initTunnel(refs: TunnelRefs): () => void {
 
     /* Cross-fade: landing visuals out, tunnel + HUD in, over the first half
        viewport of the timeline hero. Replaces the old one-shot `is-visible`. */
-    const enterT = clamp01((scrollY - start) / (window.innerHeight * 0.5));
+    const enterT = clamp01((scrollY - start) / (viewH * 0.5));
 
     /* ...and back out again as the FAQ rises into frame. The HUD readouts and
        the rail are position:fixed, so without this they hang over the FAQ and
@@ -623,9 +658,9 @@ export function initTunnel(refs: TunnelRefs): () => void {
        so the tunnel is still partly lit behind the 220px translucent band at the
        top of .faq-section — that overlap is what makes the seam a cross-fade
        rather than a cut. Shortening this back re-hardens the seam. */
-    const exitT = faq
-      ? clamp01(1 - faq.getBoundingClientRect().top / window.innerHeight)
-      : 0;
+    /* `faqTop - scrollY` IS `faq.getBoundingClientRect().top` — same number,
+       no forced layout. faqTop is cached in measure(). */
+    const exitT = faq ? clamp01(1 - (faqTop - scrollY) / viewH) : 0;
 
     const chrome = enterT * (1 - exitT);
     const chromeOpacity = chrome.toFixed(3);
@@ -633,16 +668,24 @@ export function initTunnel(refs: TunnelRefs): () => void {
     hud.style.opacity = chromeOpacity;
     if (landing) landing.style.opacity = (1 - enterT).toFixed(3);
 
-    const rect = track.getBoundingClientRect();
+    /* Same identity for the track: top ≡ trackTop - scrollY, and
+       bottom ≡ top + trackHeight. Both inputs are cached in measure(). */
+    const trackRectTop = trackTop - scrollY;
     /* `trueInView` alone is not enough to justify snapping. The track's last
        pixels are still technically in view when the FAQ already fills the
        screen, so a reader who stops anywhere on the FAQ — by scrolling or via
        the navbar's FAQs link — used to get dragged thousands of pixels back
        into the tunnel. Once the tunnel has begun fading out (exitT > 0) it is
        never right to pull the page back into it. Same condition the rail uses. */
-    const trueInView = rect.top <= 1 && rect.bottom > 0;
+    const trueInView = trackRectTop <= 1 && trackRectTop + trackHeight > 0;
     const snappable = trueInView && exitT === 0;
     rail.classList.toggle("is-visible", snappable);
+
+    /* Rides the loop instead of a setInterval — see lastClockTick above. */
+    if (chrome > 0.001 && now - lastClockTick >= 1000) {
+      lastClockTick = now;
+      tickClock(clock);
+    }
 
     // Before `.tunnel-viewport` actually locks to the top of the screen, it still
     // renders in normal flow with its vignette/fade already at full strength --
@@ -684,7 +727,7 @@ export function initTunnel(refs: TunnelRefs): () => void {
       if (t >= 1) { snapping = false; lastMoveTime = now; }
     }
 
-    const heroFadeDistance = Math.max(window.innerHeight * 0.62, 1);
+    const heroFadeDistance = Math.max(viewH * 0.62, 1);
     const heroT = clamp01((scrollY - start) / heroFadeDistance);
     hero.style.opacity = (1 - heroT).toFixed(3);
     // Skip the filter property entirely at rest instead of `blur(0px)`: a zero-radius blur
@@ -699,26 +742,13 @@ export function initTunnel(refs: TunnelRefs): () => void {
        state is correct the moment it becomes visible again. frame()'s getDelta is
        clamped at 0.05, so a long gap can't jolt the animation on resume. */
     if (chrome > 0.001) scene.frame(cards, depth);
-    // @ts-ignore TEMP DEBUG
-    (window as any).__tdbg = {
-      scrollY, start, end, span,
-      viewH: window.innerHeight, liveViewH: window.innerHeight,
-      viewW: window.innerWidth, liveViewW: window.innerWidth,
-      mobile: isMobile(),
-      target: scene.targetProgress, smooth: scene.smoothProgress,
-      maxLateral: scene.maxLateral, maxCardScale: scene.maxCardScale,
-      heroTop, trackTop, trackHeight,
-      faqTop: faq ? faq.getBoundingClientRect().top + scrollY : 0,
-      anchors: scene.cardAnchors.map((a) => [a.u, a.world.x, a.world.y, a.world.z]),
-      cam: [scene.camera.position.x, scene.camera.position.y, scene.camera.position.z],
-    };
     rafId = requestAnimationFrame(raf);
   }
   rafId = requestAnimationFrame(raf);
 
   return () => {
     cancelAnimationFrame(rafId);
-    clearInterval(clockTimer);
+    cancelAnimationFrame(resizePending);
     window.removeEventListener("resize", onResize);
     window.removeEventListener("orientationchange", onResize);
     window.removeEventListener("pointermove", onPointerMove);
