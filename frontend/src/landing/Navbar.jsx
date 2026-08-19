@@ -1,24 +1,44 @@
 import { Link, useLocation } from "react-router-dom";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
-const NAV_LINKS = [
-  { label: "HOME",    href: "/" },
-  { label: "ABOUT",   href: "/puzzles" },
-  { label: "FAQs",    href: "/#faq" },
-  { label: "TEAM",    href: "/team" },
-  { label: "LOGIN",   href: "/login" },
-  { label: "DISCORD", href: "/discord" },
-];
-
+const DASHBOARD_PATHS = ["/dashboard"];
 const SCROLL_MS = 900;
 const easeInOutCubic = (t) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+const linkClass = (active) =>
+  `relative font-rajdhani text-[0.8rem] font-semibold uppercase tracking-[0.2em] transition-colors after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-accretion after:transition-[width] hover:text-accretion-bright hover:after:w-full ${
+    active ? "text-accretion" : "text-starlight-dim"
+  }`;
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const pathname = location.pathname;
   const flightRef = useRef(0);
+  const { user } = useAuth();
+  const isParticipant = user?.role === "participant";
+
+  const navLinks = useMemo(
+    () => [
+      { label: "HOME", href: "/" },
+      { label: "ABOUT", href: "/about" },
+      { label: "FAQs", href: "/#faq" },
+      ...(isParticipant ? [{ label: "TEAM", href: "/team" }] : []),
+      user
+        ? { label: "DASHBOARD", href: "/dashboard" }
+        : { label: "LOGIN", href: "/login" },
+      { label: "DISCORD", href: "/discord" },
+    ],
+    [user, isParticipant]
+  );
+
+  const isActive = (href, label) => {
+    if (label === "DASHBOARD") return DASHBOARD_PATHS.includes(pathname);
+    if (label === "ABOUT") return pathname === "/about" || pathname === "/puzzles";
+    return pathname === href;
+  };
 
   useEffect(() => () => cancelAnimationFrame(flightRef.current), []);
 
@@ -49,15 +69,12 @@ export default function Navbar() {
       if (!target) return;
       e.preventDefault();
       setMenuOpen(false);
-
       cancelAnimationFrame(flightRef.current);
       const navH =
         parseInt(getComputedStyle(document.documentElement).getPropertyValue("--nav-height"), 10) || 80;
       const from = window.scrollY;
       const started = performance.now();
-
       const liveTarget = () => target.getBoundingClientRect().top + window.scrollY - navH;
-
       const step = () => {
         const t = Math.min((performance.now() - started) / SCROLL_MS, 1);
         const to = liveTarget();
@@ -71,79 +88,99 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="navbar" role="banner">
+      <header
+        className="pointer-events-none fixed inset-x-0 top-0 z-[100]"
+        role="banner"
+      >
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black via-black/50 to-transparent"
+          aria-hidden="true"
+        />
+        <div className="pointer-events-auto relative z-10 flex h-20 items-center justify-between px-[clamp(1.5rem,5vw,4rem)]">
         <Link
           to="/"
-          className="navbar-logo"
+          className="flex shrink-0 items-center"
           aria-label="Cicada 2067 — Home"
           onClick={() => setMenuOpen(false)}
         >
           <img
-            src="/landing/cicada_logo.jpg"
+            src="/assets/cicada_logo.jpg"
             alt="Cicada 2067"
+            className="h-10 w-auto object-cover object-[50%_45%] mix-blend-screen contrast-125 brightness-105 [aspect-ratio:120/52] [mask-image:radial-gradient(118%_118%_at_50%_50%,#000_50%,transparent_100%)] sm:h-[52px]"
           />
         </Link>
 
-        {/* Desktop Navigation */}
         <nav aria-label="Main navigation">
-          <ul className="navbar-links">
-            {NAV_LINKS.map(({ label, href }) => (
-              <li key={href}>
-                <Link
-                  to={href}
-                  id={`nav-${label.toLowerCase()}`}
-                  className={`navbar-link${label === "DISCORD" ? " discord-link" : ""}${
-                    pathname === href ? " active" : ""
-                  }`}
-                  aria-current={pathname === href ? "page" : undefined}
-                  onClick={href === "/#faq" ? scrollToFaq : undefined}
-                >
-                  {label}
-                </Link>
-              </li>
-            ))}
+          <ul className="hidden items-center gap-[clamp(1.5rem,3vw,2.5rem)] md:flex">
+            {navLinks.map(({ label, href }) => {
+              const active = isActive(href, label);
+              return (
+                <li key={label}>
+                  <Link
+                    to={href}
+                    id={`nav-${label.toLowerCase()}`}
+                    className={linkClass(active)}
+                    aria-current={active ? "page" : undefined}
+                    onClick={href === "/#faq" ? scrollToFaq : undefined}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
-        {/* Hamburger button */}
         <button
-          className={`hamburger${menuOpen ? " open" : ""}`}
+          type="button"
+          data-open={menuOpen || undefined}
+          className="group z-[110] flex min-h-11 min-w-11 flex-col items-center justify-center gap-[5px] bg-transparent p-2 md:hidden"
           onClick={() => setMenuOpen((v) => !v)}
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
           aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
         >
-          <span />
-          <span />
-          <span />
+          <span className="block h-0.5 w-6 bg-accretion shadow-[0_0_4px_rgba(244,162,51,0.4)] transition group-data-[open]:translate-y-[7px] group-data-[open]:rotate-45" />
+          <span className="block h-0.5 w-6 bg-accretion shadow-[0_0_4px_rgba(244,162,51,0.4)] transition group-data-[open]:scale-x-0 group-data-[open]:opacity-0" />
+          <span className="block h-0.5 w-6 bg-accretion shadow-[0_0_4px_rgba(244,162,51,0.4)] transition group-data-[open]:-translate-y-[7px] group-data-[open]:-rotate-45" />
         </button>
+        </div>
       </header>
 
-      {/* Mobile Menu */}
       <nav
         id="mobile-menu"
-        className={`mobile-menu${menuOpen ? " open" : ""}`}
+        className={`fixed inset-x-0 top-20 z-[99] flex flex-col bg-gradient-to-b from-black/90 to-black/95 px-8 py-6 transition md:hidden ${
+          menuOpen
+            ? "pointer-events-auto visible translate-y-0 opacity-100"
+            : "pointer-events-none invisible -translate-y-2.5 opacity-0"
+        }`}
         aria-hidden={!menuOpen}
       >
-        {NAV_LINKS.map(({ label, href }) => (
-          <Link
-            key={href}
-            to={href}
-            className="mobile-menu-link"
-            aria-current={pathname === href ? "page" : undefined}
-            onClick={(e) => {
-              if (href === "/#faq") scrollToFaq(e);
-              setMenuOpen(false);
-            }}
-          >
-            {label}
-          </Link>
-        ))}
+        {navLinks.map(({ label, href }) => {
+          const active = isActive(href, label);
+          return (
+            <Link
+              key={label}
+              to={href}
+              className={`block border-b border-accretion/8 py-4 font-rajdhani text-lg font-semibold uppercase tracking-[0.25em] last:border-0 ${
+                active ? "text-accretion" : "text-starlight-dim hover:text-accretion-bright"
+              }`}
+              aria-current={active ? "page" : undefined}
+              onClick={(e) => {
+                if (href === "/#faq") scrollToFaq(e);
+                setMenuOpen(false);
+              }}
+            >
+              {label}
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* Scrim */}
       <div
-        className={`mobile-menu-scrim${menuOpen ? " open" : ""}`}
+        className={`fixed inset-0 z-[98] bg-black/60 transition md:hidden ${
+          menuOpen ? "pointer-events-auto visible opacity-100" : "pointer-events-none invisible opacity-0"
+        }`}
         onClick={() => setMenuOpen(false)}
         aria-hidden
       />

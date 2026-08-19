@@ -9,7 +9,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import "../styles/footer.css";
+import { Link } from "react-router-dom";
 
 /* Five of these are the chapter's live accounts, carried over from the FAQ
    app's footer. Medium is a placeholder — swap the href, nothing else. */
@@ -44,42 +44,71 @@ const SOCIALS = [
     href: "#",
     path: "M13.54 12a6.8 6.8 0 0 1-6.77 6.82A6.8 6.8 0 0 1 0 12a6.8 6.8 0 0 1 6.77-6.82A6.8 6.8 0 0 1 13.54 12m7.42 0c0 3.54-1.51 6.41-3.38 6.41-1.87 0-3.39-2.87-3.39-6.41s1.52-6.41 3.39-6.41S20.96 8.46 20.96 12M24 12c0 3.17-.53 5.75-1.19 5.75-.66 0-1.19-2.58-1.19-5.75s.53-5.75 1.19-5.75C23.47 6.25 24 8.83 24 12",
   },
+  {
+    name: "Discord",
+    href: "/discord",
+    internal: true,
+    path: "M20.32 4.37A19.8 19.8 0 0 0 15.89 3c-.2.36-.43.85-.59 1.23a18.27 18.27 0 0 0-4.6 0C10.54 3.85 10.3 3.36 10.1 3A19.7 19.7 0 0 0 5.67 4.38C1.73 10.06.88 15.6 1.3 21.07a19.94 19.94 0 0 0 6.05 3.03c.48-.67.91-1.37 1.28-2.12a13.1 13.1 0 0 1-2.01-.96c.17-.12.33-.25.49-.38a14.1 14.1 0 0 0 12.08 0c.16.14.32.26.49.38-.64.38-1.32.7-2.02.96.37.75.8 1.45 1.28 2.12a19.9 19.9 0 0 0 6.06-3.03c.5-6.34-.83-11.83-3.68-16.7M8.02 16.17c-1.18 0-2.15-1.08-2.15-2.4 0-1.33.95-2.41 2.15-2.41s2.18 1.09 2.15 2.41c0 1.32-.95 2.4-2.15 2.4m7.96 0c-1.18 0-2.15-1.08-2.15-2.4 0-1.33.95-2.41 2.15-2.41 1.2 0 2.18 1.09 2.15 2.41 0 1.32-.95 2.4-2.15 2.4",
+  },
 ];
 
 export default function SiteFooter() {
+  const socialClass =
+    "inline-flex h-11 w-11 items-center justify-center text-copper/70 transition hover:bg-white/5 hover:text-accretion focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accretion";
+  const icon = (path) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" className="block h-5 w-5">
+      <path fill="currentColor" d={path} />
+    </svg>
+  );
+
   return (
-    <footer className="site-footer" role="contentinfo">
-      <div className="site-footer__inner">
-        <div className="site-footer__brand">
+    <footer
+      className="relative z-[2] bg-black px-[clamp(20px,5vw,64px)] pt-10 pb-[calc(28px+env(safe-area-inset-bottom,0px))] font-mono"
+      role="contentinfo"
+    >
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[oklch(0.11_0.006_60)] to-black"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-x-[8%] top-0 h-px bg-gradient-to-r from-transparent via-accretion/25 to-transparent"
+        aria-hidden="true"
+      />
+      <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center gap-6 text-center md:flex-row md:justify-between md:text-left">
+        <div className="flex flex-col items-center gap-3.5 md:items-start">
           <img
-            src="/landing/ieee_cs.png"
+            src="/assets/ieee_cs.png"
             alt="IEEE Computer Society — VIT Chapter"
-            className="site-footer__logo"
+            className="block h-[38px] w-auto opacity-90"
           />
-          <p className="site-footer__legal">
+          <p className="m-0 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] uppercase tracking-[0.16em] text-copper/70">
             <span>© IEEE COMPUTER SOCIETY VIT</span>
-            <span className="site-footer__status">
-              <span className="site-footer__dot" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1.5 text-accretion/70">
+              <span className="h-1.5 w-1.5 animate-blink rounded-full bg-accretion motion-reduce:animate-none" aria-hidden="true" />
               STATUS: ONLINE
             </span>
           </p>
         </div>
 
-        <nav className="site-footer__socials" aria-label="Social links">
-          {SOCIALS.map(({ name, href, path }) => (
-            <a
-              key={name}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={name}
-              className="site-footer__social"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path fill="currentColor" d={path} />
-              </svg>
-            </a>
-          ))}
+        <nav className="flex flex-wrap justify-center gap-1" aria-label="Social links">
+          {SOCIALS.map(({ name, href, path, internal }) =>
+            internal ? (
+              <Link key={name} to={href} aria-label={name} className={socialClass}>
+                {icon(path)}
+              </Link>
+            ) : (
+              <a
+                key={name}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={name}
+                className={socialClass}
+              >
+                {icon(path)}
+              </a>
+            )
+          )}
         </nav>
       </div>
     </footer>
