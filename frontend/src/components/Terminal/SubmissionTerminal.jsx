@@ -77,11 +77,14 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
           // Only allow alphanumeric characters (regex test)
           if (!/^[a-zA-Z0-9_ -]+$/.test(answer)) {
              response = "Transmission Error: Invalid characters detected. Use alphanumeric only.";
+             addTerminalCommand(cmd, response);
           } else {
-             response = submitAnswer(answer);
+             addTerminalCommand(cmd, "Transmitting answer for decryption...");
+             submitAnswer(answer).then((res) => {
+               addTerminalCommand(`submit ${answer}`, res);
+             });
           }
         }
-        addTerminalCommand(cmd, response);
         break;
 
       default:

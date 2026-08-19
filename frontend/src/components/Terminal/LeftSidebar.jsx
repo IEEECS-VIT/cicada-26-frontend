@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useGameState } from '../../context/GameStateContext';
-import { CHALLENGE_DATA } from './challengeData';
 import { ChevronDown, ChevronRight, Lock, Unlock, Radar, Route as RouteIcon, Info } from 'lucide-react';
 
 function pad(n) {
@@ -8,7 +7,7 @@ function pad(n) {
 }
 
 export default function LeftSidebar() {
-  const { unlockedRounds, unlockedPhases, currentRound, changeRound, currentPhase, setCurrentPhase, activeTab, setActiveTab } = useGameState();
+  const { unlockedRounds, unlockedPhases, currentRound, changeRound, currentPhase, setCurrentPhase, activeTab, setActiveTab, challengeData } = useGameState();
   const [expandedRound, setExpandedRound] = useState(currentRound);
 
   const [remaining, setRemaining] = useState(3 * 3600 + 46 * 60 + 21); // Mock 3h 46m 21s
@@ -32,10 +31,10 @@ export default function LeftSidebar() {
   };
 
   const calculateOverallProgress = () => {
-    let total = Object.keys(CHALLENGE_DATA).length * 100; // rough max score
+    let total = Object.keys(challengeData || {}).length * 100; // rough max score
     let current = (unlockedRounds.length - 1) * 100;
     // Add current round progress
-    const activeRoundData = CHALLENGE_DATA[currentRound];
+    const activeRoundData = challengeData?.[currentRound];
     if (activeRoundData) {
       current += ((unlockedPhases[currentRound] || 1) / activeRoundData.totalPhases) * 100;
     }
@@ -43,8 +42,8 @@ export default function LeftSidebar() {
   };
 
   const calculateRoundProgress = (roundId) => {
-    const roundData = CHALLENGE_DATA[roundId];
-    if (!unlockedRounds.includes(roundId)) return 0;
+    const roundData = challengeData?.[roundId];
+    if (!roundData || !unlockedRounds.includes(roundId)) return 0;
     // if we've unlocked a round past this one, it's 100%
     if (Math.max(...unlockedRounds) > roundId) return 100;
     
@@ -98,7 +97,7 @@ export default function LeftSidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide pr-2 space-y-4">
-        {Object.entries(CHALLENGE_DATA).map(([roundIdStr, roundData]) => {
+        {(challengeData ? Object.entries(challengeData) : []).map(([roundIdStr, roundData]) => {
           const roundId = parseInt(roundIdStr);
           const isUnlocked = unlockedRounds.includes(roundId);
           const isExpanded = expandedRound === roundId;

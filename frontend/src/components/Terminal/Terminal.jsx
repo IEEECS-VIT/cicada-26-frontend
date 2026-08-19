@@ -18,11 +18,10 @@ function TerminalShell() {
   const [clock, setClock] = useState("20:13:47");
   const [goldenLineProgress, setGoldenLineProgress] = useState(0);
 
-  // Simple overall progress calculation for the golden line
-  const { unlockedRounds, currentRound, unlockedPhases } = useGameState();
+  const { unlockedRounds, currentRound, unlockedPhases, loading, error, challengeData } = useGameState();
   useEffect(() => {
     let current = (unlockedRounds.length - 1) * 100;
-    current += ((unlockedPhases[currentRound] || 1) / 4) * 100; // rough calculation
+    current += ((unlockedPhases[currentRound] || 1) / (challengeData?.[currentRound]?.totalPhases || 4)) * 100; // rough calculation
     setGoldenLineProgress(Math.min(100, Math.round((current / 300) * 100)));
   }, [unlockedRounds, currentRound, unlockedPhases]);
 
@@ -104,7 +103,18 @@ function TerminalShell() {
             </header>
 
             {/* Dynamic Body */}
-            {isTerminalOpen ? <SubmissionTerminal /> : <QuestionPanel />}
+            {loading ? (
+              <div className="flex-1 flex items-center justify-center text-primary/70 text-sm">
+                Loading mission data...
+              </div>
+            ) : error ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+                <p className="text-sm text-red-300 mb-3">{error}</p>
+                <p className="label-mono text-[10px] text-primary/50">CHECK YOUR CONNECTION AND RETRY</p>
+              </div>
+            ) : (
+              isTerminalOpen ? <SubmissionTerminal /> : <QuestionPanel />
+            )}
             
           </div>
         </div>
