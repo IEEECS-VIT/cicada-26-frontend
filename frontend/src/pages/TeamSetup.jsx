@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { createTeam, joinTeam, leaveTeam } from "../api/teams";
-import { LogOut, Rocket, Users, ArrowRight } from "lucide-react";
+import { LogOut, Rocket, Users, ArrowRight, Home } from "lucide-react";
 
 export default function TeamSetup() {
   const { user, teamName, setTeamName, loading, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState("create"); // 'create' | 'join'
+  const [mode, setMode] = useState("create");
   const [teamNameInput, setTeamNameInput] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
@@ -20,7 +20,7 @@ export default function TeamSetup() {
   }, [loading, user, navigate]);
 
   useEffect(() => {
-    if (teamName) setInfo(`You are assigned to TEAM "${teamName}".`);
+    if (teamName) setInfo(`Assigned to ${teamName}.`);
   }, [teamName]);
 
   const handleCreate = async (e) => {
@@ -30,7 +30,7 @@ export default function TeamSetup() {
     try {
       const data = await createTeam(teamNameInput.trim());
       setTeamName(teamNameInput.trim());
-      setInfo(`TEAM "${teamNameInput.trim()}" CREATED. Invite code: ${data.invite_code}`);
+      setInfo(`Crew created. Invite code ${data.invite_code}`);
       setTimeout(() => navigate("/terminal", { replace: true }), 1800);
     } catch (err) {
       setError(err.message);
@@ -45,7 +45,7 @@ export default function TeamSetup() {
     setBusy(true);
     try {
       await joinTeam(inviteCode.trim().toUpperCase());
-      setInfo("Successfully joined the team. Entering mission control...");
+      setInfo("Joined. Entering the arena...");
       setTimeout(() => navigate("/terminal", { replace: true }), 1500);
     } catch (err) {
       setError(err.message);
@@ -59,7 +59,7 @@ export default function TeamSetup() {
     try {
       await leaveTeam();
       setTeamName(null);
-      setInfo("You have left the team.");
+      setInfo("You left the crew.");
     } catch (err) {
       setError(err.message);
     }
@@ -67,118 +67,134 @@ export default function TeamSetup() {
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background text-foreground font-mono">
-        <div className="animate-pulse text-primary">Establishing secure channel...</div>
+      <div className="flex min-h-screen items-center justify-center bg-black font-orbitron text-accretion">
+        <p className="animate-pulse tracking-[0.32em]">ESTABLISHING CHANNEL</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background text-foreground font-mono px-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center opacity-15 pointer-events-none" style={{ backgroundImage: "url(/landing/891208.jpg)" }} />
-      <div className="absolute inset-0 bg-black/50 pointer-events-none" />
-
-      <div className="relative z-10 w-full max-w-lg panel p-6 sm:p-10">
-        <div className="flex items-center justify-between mb-6">
+    <div className="flex min-h-dvh w-full items-center justify-center bg-black px-4 py-12 text-starlight sm:px-6 sm:py-16">
+      <div className="w-full max-w-xl">
+        <div className="mb-8 flex flex-col gap-4 sm:mb-10 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
           <div>
-            <p className="label-mono text-primary/70">CREW ASSIGNMENT</p>
-            <h1 className="font-display text-2xl tracking-[0.18em] text-primary">TEAM DEPLOYMENT</h1>
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="mb-5 inline-flex items-center gap-2 font-rajdhani text-[11px] tracking-[0.36em] text-copper transition hover:text-accretion"
+            >
+              <Home className="h-3.5 w-3.5" /> HOME
+            </button>
+            <p className="mb-3 font-rajdhani text-[11px] tracking-[0.42em] text-accretion">CREW ASSIGNMENT</p>
+            <h1 className="font-orbitron text-3xl tracking-[0.14em] sm:text-4xl">DEPLOY</h1>
+            <p className="mt-3 max-w-md text-sm leading-7 text-copper">
+              Assemble a crew or enter an invite code. Five people. One vessel.
+            </p>
           </div>
           {user && (
-            <button onClick={logout} className="flex items-center gap-2 px-3 py-2 border border-[#D19B83]/60 rounded text-primary hover:bg-primary/20 transition-colors text-xs">
+            <button
+              type="button"
+              onClick={logout}
+              className="inline-flex min-h-11 w-fit items-center gap-2 border border-copper/30 px-3 py-2 font-rajdhani text-[11px] tracking-[0.2em] text-copper hover:border-accretion hover:text-accretion"
+            >
               <LogOut className="h-4 w-4" /> SIGNOUT
             </button>
           )}
         </div>
 
         {user && (
-          <div className="mb-6 bg-black/40 border border-[#D19B83]/30 rounded p-3 text-sm">
-            <p className="text-primary/80">OPERATOR: <span className="text-primary">{user.display_name || user.email}</span></p>
-            {teamName && (
-              <p className="mt-1 text-primary/80">TEAM: <span className="text-primary">{teamName}</span></p>
-            )}
-          </div>
+          <p className="mb-6 font-rajdhani text-sm tracking-[0.16em] text-copper">
+            {user.display_name || user.email}
+            {teamName ? ` · ${teamName}` : ""}
+          </p>
         )}
 
-        {info && (
-          <div className="mb-4 border border-[#D19B83]/40 bg-[#D19B83]/10 rounded p-3 text-sm text-primary/90">{info}</div>
-        )}
-        {error && (
-          <div className="mb-4 border border-red-400/50 bg-red-500/10 rounded p-3 text-sm text-red-300">{error}</div>
-        )}
+        {info && <p className="mb-4 border border-accretion/30 px-4 py-3 text-sm text-accretion">{info}</p>}
+        {error && <p className="mb-4 border border-red-400/40 px-4 py-3 text-sm text-red-300">{error}</p>}
 
         {teamName ? (
-          <div className="text-center">
-            <p className="text-sm text-foreground/70 mb-6">You are already deployed with a team.</p>
-            <div className="flex flex-col gap-3">
-              <button onClick={() => navigate("/terminal")} className="w-full flex items-center justify-center gap-2 rounded-md border border-[#D19B83] px-4 py-3 font-display text-sm tracking-[0.18em] uppercase text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
-                <Rocket className="h-4 w-4" /> Enter Terminal
-              </button>
-              <button onClick={handleLeave} className="w-full rounded-md border border-[#D19B83]/60 px-4 py-3 font-display text-sm tracking-[0.18em] uppercase text-primary/70 hover:bg-[#D19B83]/20 transition-colors">
-                Leave Team
-              </button>
-            </div>
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/terminal")}
+              className="inline-flex min-h-14 items-center justify-center gap-2 border border-accretion bg-accretion px-4 font-orbitron text-[11px] tracking-[0.22em] text-black hover:bg-accretion-bright"
+            >
+              <Rocket className="h-4 w-4" /> ENTER ARENA
+            </button>
+            <button
+              type="button"
+              onClick={handleLeave}
+              className="inline-flex min-h-14 items-center justify-center border border-copper/30 px-4 font-orbitron text-[11px] tracking-[0.22em] text-copper hover:border-accretion hover:text-accretion"
+            >
+              LEAVE CREW
+            </button>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2 mb-6">
-              <button
-                onClick={() => setMode("create")}
-                className={`flex items-center justify-center gap-2 rounded-md border px-4 py-3 font-display text-sm tracking-widest uppercase transition-colors ${
-                  mode === "create" ? "border-[#D19B83] bg-[#D19B83]/20 text-primary" : "border-[#D19B83]/40 text-foreground/70 hover:bg-[#D19B83]/10"
-                }`}
-              >
-                <Rocket className="h-4 w-4" /> Create
-              </button>
-              <button
-                onClick={() => setMode("join")}
-                className={`flex items-center justify-center gap-2 rounded-md border px-4 py-3 font-display text-sm tracking-widest uppercase transition-colors ${
-                  mode === "join" ? "border-[#D19B83] bg-[#D19B83]/20 text-primary" : "border-[#D19B83]/40 text-foreground/70 hover:bg-[#D19B83]/10"
-                }`}
-              >
-                <Users className="h-4 w-4" /> Join
-              </button>
+            <div className="mb-8 flex gap-6 overflow-x-auto border-b border-accretion/20 sm:gap-8">
+              {[
+                ["create", "CREATE", Rocket],
+                ["join", "JOIN", Users],
+              ].map(([id, label, Icon]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setMode(id)}
+                  className={`relative pb-3 font-rajdhani text-sm tracking-[0.28em] ${
+                    mode === id ? "text-accretion" : "text-copper/70 hover:text-starlight"
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </span>
+                  {mode === id && <span className="absolute inset-x-0 bottom-0 h-px bg-accretion" />}
+                </button>
+              ))}
             </div>
 
             {mode === "create" ? (
-              <form onSubmit={handleCreate} className="space-y-4">
+              <form onSubmit={handleCreate} className="space-y-5">
                 <div>
-                  <label className="label-mono text-[10px] text-primary/60 mb-2 block">TEAM NAME</label>
+                  <label className="mb-2 block font-rajdhani text-[11px] tracking-[0.28em] text-copper">CREW NAME</label>
                   <input
                     value={teamNameInput}
                     onChange={(e) => setTeamNameInput(e.target.value)}
                     required
                     maxLength={40}
-                    placeholder="Enter your team name"
-                    className="w-full bg-black/40 border border-[#D19B83]/50 rounded px-4 py-3 outline-none text-primary placeholder:text-primary/30 focus:border-[#D19B83]"
+                    placeholder="Name your vessel"
+                    className="min-h-12 w-full border border-copper/25 bg-black px-4 py-3 text-base text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                   />
                 </div>
-                <button disabled={busy} className="w-full flex items-center justify-center gap-2 rounded-md border border-[#D19B83] px-4 py-3 font-display text-sm tracking-[0.18em] uppercase text-primary hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-50">
-                  <ArrowRight className="h-4 w-4" /> {busy ? "Deploying..." : "Create Team"}
+                <button
+                  disabled={busy}
+                  className="inline-flex min-h-14 w-full items-center justify-center gap-2 border border-accretion bg-accretion font-orbitron text-[11px] tracking-[0.22em] text-black hover:bg-accretion-bright disabled:opacity-50"
+                >
+                  <ArrowRight className="h-4 w-4" /> {busy ? "DEPLOYING" : "CREATE CREW"}
                 </button>
               </form>
             ) : (
-              <form onSubmit={handleJoin} className="space-y-4">
+              <form onSubmit={handleJoin} className="space-y-5">
                 <div>
-                  <label className="label-mono text-[10px] text-primary/60 mb-2 block">INVITE CODE</label>
+                  <label className="mb-2 block font-rajdhani text-[11px] tracking-[0.28em] text-copper">INVITE CODE</label>
                   <input
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value)}
                     required
                     maxLength={6}
                     placeholder="XXXXXX"
-                    className="w-full bg-black/40 border border-[#D19B83]/50 rounded px-4 py-3 outline-none text-primary placeholder:text-primary/30 focus:border-[#D19B83] uppercase tracking-[0.4em] text-center"
+                    className="min-h-12 w-full border border-copper/25 bg-black px-4 py-3 text-center font-orbitron text-base tracking-[0.4em] text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                   />
                 </div>
-                <button disabled={busy} className="w-full flex items-center justify-center gap-2 rounded-md border border-[#D19B83] px-4 py-3 font-display text-sm tracking-[0.18em] uppercase text-primary hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-50">
-                  <ArrowRight className="h-4 w-4" /> {busy ? "Joining..." : "Join Team"}
+                <button
+                  disabled={busy}
+                  className="inline-flex min-h-14 w-full items-center justify-center gap-2 border border-accretion bg-accretion font-orbitron text-[11px] tracking-[0.22em] text-black hover:bg-accretion-bright disabled:opacity-50"
+                >
+                  <ArrowRight className="h-4 w-4" /> {busy ? "JOINING" : "JOIN CREW"}
                 </button>
               </form>
             )}
-
-            <p className="label-mono text-[10px] text-primary/40 mt-6 text-center">
-              MAX 5 CREW MEMBERS PER TEAM
-            </p>
+            <p className="mt-8 text-center font-rajdhani text-[11px] tracking-[0.28em] text-copper/60">MAX 5 CREW</p>
           </>
         )}
       </div>

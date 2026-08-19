@@ -1,217 +1,178 @@
-"use client";
-
-/*
- * CrewPortal.tsx — the /team HUD
- * ─────────────────────────────────────────────────────────────────
- * Ported from Team-page/index.html. The markup is the source's, minus
- * its own <nav> and footer chrome — <Navbar /> and <SiteFooter /> in
- * page.tsx own those now so /team matches every other route.
- *
- * The source drove everything through document.getElementById; here the
- * toast, crew selection and countdown are state. Styles live in team.css.
- * ─────────────────────────────────────────────────────────────────
- */
-
 import { useCallback, useEffect, useRef, useState } from "react";
-
-const CREW = ["COOPER", "BRAND", "MURPH", "DOYLE", "NAME 5", "NAME 6"];
-const TEAM_CODE = "CICADA-2067-X9";
-const PROGRESS_SEGMENTS = 14;
-const PROGRESS_ON = 6;
+import { Link, useNavigate } from "react-router-dom";
+import { fetchMyTeam } from "../api/teams";
+import { useAuth } from "../context/AuthContext";
 
 export default function CrewPortal() {
+  const { user, teamName } = useAuth();
+  const navigate = useNavigate();
+  const [team, setTeam] = useState(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
-  const [selected, setSelected] = useState(CREW[0]);
-  const [count, setCount] = useState(null); // null = overlay closed
+  const [selectedId, setSelectedId] = useState(null);
   const toastTimer = useRef(undefined);
-  const tickTimer = useRef(undefined);
-
-  /* gargantua.mp4 is 2.9MB and autoplays. Phones get the poster still instead:
-     starts false so the server HTML and the first client render agree (no
-     hydration mismatch), then the effect opts desktop in. Same matchMedia gate
-     FaqSection.tsx uses to defer TARS. */
   const [showVideo, setShowVideo] = useState(false);
+
   useEffect(() => {
     setShowVideo(window.matchMedia("(min-width: 768px)").matches);
   }, []);
 
-  useEffect(
-    () => () => {
-      clearTimeout(toastTimer.current);
-      clearInterval(tickTimer.current);
-    },
-    []
-  );
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchMyTeam();
+        if (cancelled) return;
+        setTeam(data.team);
+        setSelectedId(data.team?.members?.[0]?.id || null);
+      } catch (err) {
+        if (cancelled) return;
+        if (err.status === 404) {
+          navigate("/team-setup", { replace: true });
+          return;
+        }
+        setError(err.message || "Unable to reach mission command.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(""), 2500);
+    toastTimer.current = setTimeout(() => setToast(""), 2200);
   }, []);
 
   const copyTeamCode = () => {
-    navigator.clipboard.writeText(TEAM_CODE).catch(() => {});
-    showToast(`TEAM CODE "${TEAM_CODE}" COPIED TO CLIPBOARD`);
+    if (!team?.invite_code) return;
+    navigator.clipboard.writeText(team.invite_code).catch(() => {});
+    showToast(`INVITE CODE ${team.invite_code} COPIED`);
   };
 
-  const initLaunch = () => {
-    clearInterval(tickTimer.current);
-    setCount(5);
-    showToast("LAUNCH SEQUENCE ENGAGED · STANDBY");
-
-    tickTimer.current = setInterval(() => {
-      setCount((c) => {
-        if (c === null || c > 1) return (c ?? 1) - 1;
-        /* Hit zero: swap to the warp panel, fire confetti, auto-close.
-           The confetti script is CDN-loaded, so guard it — the sequence
-           still completes if it never arrived. */
-        clearInterval(tickTimer.current);
-        window.confetti?.({
-          particleCount: 130,
-          spread: 100,
-          origin: { y: 0.6 },
-          colors: ["#C6B9B0", "#E8DDD5", "#FFF8F2", "#64D2FF"],
-        });
-        setTimeout(resetLaunch, 2000);
-        return 0;
-      });
-    }, 900);
-  };
-
-  const resetLaunch = () => {
-    clearInterval(tickTimer.current);
-    setCount(null);
-    showToast("RETURNED TO MISSION COMMAND");
-  };
+  const members = team?.members || [];
+  const displayName = team?.name || teamName || "UNASSIGNED";
 
   return (
-    <section className="crew-portal" aria-label="Crew portal">
-      {/* The still is always the base layer and the video stacks over it when
-          present. That gives desktop a real poster without the raw 733KB
-          /891208.jpg the `poster` attribute used to pull (poster bypasses
-          next/image entirely), and gives mobile the same frame for free once
-          the video is gated off — one code path, ~3.6MB lighter on a phone.
-          preload="metadata" so laptops stream rather than pre-buffer 2.9MB. */}
-      <div className="portal-bg" aria-hidden="true">
-        <img src="/landing/891208.jpg" alt="" style={{ objectFit: "cover", position: "absolute", inset: 0, width: "100%", height: "100%" }} />
+    <section className="relative isolate min-h-dvh overflow-hidden bg-black pt-[var(--nav-height)] text-copper" aria-label="Crew portal">
+      <div className="absolute inset-0" aria-hidden="true">
+        <img src="/assets/891208.jpg" alt="" className="h-full w-full object-cover" />
         {showVideo && (
-          <video autoPlay loop muted playsInline preload="metadata">
-            <source src="/landing/team/gargantua.mp4" type="video/mp4" />
+          <video autoPlay loop muted playsInline preload="metadata" className="absolute inset-0 h-full w-full object-cover">
+            <source src="/assets/gargantua.mp4" type="video/mp4" />
           </video>
         )}
+        <div className="absolute inset-0 bg-black/65" />
+        <div className="absolute inset-0 bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_3px,rgba(0,0,0,0.18)_3px,rgba(0,0,0,0.18)_4px)] opacity-40" />
       </div>
-      <div className="portal-scan" aria-hidden="true" />
 
-      <div className="corner-frame cf-tl" aria-hidden="true" />
-      <div className="corner-frame cf-tr" aria-hidden="true" />
-      <div className="corner-frame cf-bl" aria-hidden="true" />
-      <div className="corner-frame cf-br" aria-hidden="true" />
+      <div className="pointer-events-none absolute left-4 top-[calc(var(--nav-height)+1rem)] h-8 w-8 border-l border-t border-copper/50 sm:left-6 sm:h-10 sm:w-10" aria-hidden="true" />
+      <div className="pointer-events-none absolute right-4 top-[calc(var(--nav-height)+1rem)] h-8 w-8 border-r border-t border-copper/50 sm:right-6 sm:h-10 sm:w-10" aria-hidden="true" />
+      <div className="pointer-events-none absolute bottom-6 left-4 h-8 w-8 border-b border-l border-copper/50 sm:bottom-8 sm:left-6 sm:h-10 sm:w-10" aria-hidden="true" />
+      <div className="pointer-events-none absolute bottom-6 right-4 h-8 w-8 border-b border-r border-copper/50 sm:bottom-8 sm:right-6 sm:h-10 sm:w-10" aria-hidden="true" />
 
-      <div className="micro micro-bl" aria-hidden="true">
-        LAT: 0.00
-        <br />
-        STATUS: NORMAL
-      </div>
-      <div className="micro micro-br" aria-hidden="true">STATUS: NORMAL</div>
-      <div className="micro micro-side-l" aria-hidden="true">BLINKINGS DISCOVER</div>
-
-      <div className="portal-app">
-        <div className="center-col">
-          {/* ENDURANCE — 01 */}
-          <div
-            className="hud-panel ship-panel team-name-panel"
-            onClick={() => showToast("VESSEL ENDURANCE-01 · HULL NOMINAL · ALL SYSTEMS GO")}
-          >
-            <div className="sys-label">SYS READY</div>
-            <div className="ship-name">
-              <span className="plus">—✛—</span>
-              ENDURANCE — 01
-              <span className="plus">—✛—</span>
-            </div>
-            <div className="sys-sub">SYS READY · HULL NOMINAL · ALL SYSTEMS GO</div>
-          </div>
-
-          {/* TEAM CODE */}
-          <div className="hud-panel ship-panel team-code-btn" onClick={copyTeamCode}>
-            <div className="dots" aria-hidden="true"><span /><span /><span /></div>
-            <div className="sys-label">TEAM CODE</div>
-            <div className="ship-name team-code-text">TEAM CODE</div>
-          </div>
-
-          {/* CREW MANIFEST */}
-          <div className="crew-section">
-            <div className="crew-title">CREW MANIFEST</div>
-            <div className="crew-grid">
-              {CREW.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  className={`crew-card${selected === name ? " selected" : ""}`}
-                  aria-pressed={selected === name}
-                  onClick={() => {
-                    setSelected(name);
-                    showToast(`CREW MEMBER ACTIVE: ${name}`);
-                  }}
-                >
-                  <div className="card-meta-top">
-                    <span>
-                      LAT: 0.00 <span className="card-status-dot" />
-                    </span>
-                    <span>SYS READY</span>
-                  </div>
-                  <div className="card-name">{name}</div>
-                  <div className="card-meta-bot">
-                    <span>STATUS: ENRL</span>
-                    <div className="card-dots"><span /><span /><span /></div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Progress */}
-          <div className="prog-wrap">
-            <div className="prog-bar" aria-hidden="true">
-              {Array.from({ length: PROGRESS_SEGMENTS }, (_, i) => (
-                <div key={i} className={`prog-seg${i < PROGRESS_ON ? " on" : ""}`} />
-              ))}
-            </div>
-            <div className="prog-label">MISSION PHASE: 02 · ORBITAL APPROACH</div>
-          </div>
-
-          {/* Launch */}
-          <div className="launch-wrap">
-            <button type="button" className="launch-btn" onClick={initLaunch}>
-              INITIALIZE LAUNCH
+      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-var(--nav-height))] w-full max-w-4xl flex-col items-center justify-center px-4 py-12 sm:px-6 sm:py-16">
+        {loading ? (
+          <p className="font-orbitron text-xs tracking-[0.4em] text-accretion">RETRIEVING CREW MANIFEST</p>
+        ) : error ? (
+          <div className="max-w-md text-center">
+            <p className="font-orbitron text-lg tracking-[0.2em] text-starlight">SIGNAL LOST</p>
+            <p className="mt-3 text-sm text-copper/80">{error}</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-8 border border-accretion px-6 py-3 font-orbitron text-[11px] tracking-[0.28em] text-accretion transition hover:bg-accretion/10"
+            >
+              RETRY UPLINK
             </button>
-            <div className="mission-status">MISSION STATUS: AWAITING_INPUT</div>
           </div>
-        </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="w-full max-w-xl border border-copper/35 bg-black/55 px-6 py-5 text-center backdrop-blur-sm"
+              onClick={() => showToast(`VESSEL ${displayName.toUpperCase()}`)}
+            >
+              <p className="break-words font-orbitron text-lg tracking-[0.16em] text-starlight sm:text-2xl sm:tracking-[0.28em]">
+                — {displayName.toUpperCase()} —
+              </p>
+              <p className="mt-2 text-[10px] tracking-[0.22em] text-copper/70">
+                {members.length} {members.length === 1 ? "CREW MEMBER" : "CREW MEMBERS"}
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={copyTeamCode}
+              className="mt-4 w-full max-w-xl border border-copper/25 bg-black/45 px-6 py-4 text-center backdrop-blur-sm transition hover:border-accretion/50"
+            >
+              <p className="text-[10px] tracking-[0.28em] text-accretion">INVITE CODE · TAP TO COPY</p>
+              <p className="mt-1 break-all font-orbitron text-lg tracking-[0.28em] text-starlight sm:tracking-[0.35em]">
+                {team?.invite_code || "————"}
+              </p>
+            </button>
+
+            <div className="mt-10 w-full max-w-xl">
+              <p className="mb-4 text-center text-[11px] tracking-[0.35em] text-copper/80">CREW MANIFEST</p>
+              {members.length === 0 ? (
+                <p className="border border-dashed border-copper/25 py-8 text-center text-sm text-copper/70">
+                  No crew on board yet.
+                </p>
+              ) : (
+                <div className={`grid gap-3 ${members.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
+                  {members.map((member) => {
+                    const active = selectedId === member.id;
+                    const you = member.id === user?.id;
+                    return (
+                      <button
+                        key={member.id}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => {
+                          setSelectedId(member.id);
+                          showToast(member.display_name.toUpperCase());
+                        }}
+                        className={`border bg-black/50 px-5 py-6 text-left backdrop-blur-sm transition ${
+                          active ? "border-accretion shadow-[0_0_24px_rgba(244,162,51,0.18)]" : "border-copper/25 hover:border-copper/55"
+                        }`}
+                      >
+                        <p className="break-words font-orbitron text-base tracking-[0.12em] text-starlight sm:text-lg sm:tracking-[0.18em]">
+                          {member.display_name.toUpperCase()}
+                        </p>
+                        <p className="mt-2 text-[10px] tracking-[0.22em] text-accretion/80">
+                          {member.is_leader ? "CAPTAIN" : "CREW"}
+                          {you ? " · YOU" : ""}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <Link
+              to="/terminal"
+              className="mt-10 inline-flex border border-accretion px-10 py-4 font-orbitron text-xs tracking-[0.35em] text-accretion transition hover:bg-accretion/10 hover:tracking-[0.4em]"
+            >
+              ENTER ARENA →
+            </Link>
+          </>
+        )}
       </div>
 
-      {/* Countdown / warp overlay */}
-      {count !== null && (
-        <div className="launch-overlay" role="dialog" aria-live="polite" aria-label="Launch sequence">
-          {count > 0 ? (
-            <div style={{ textAlign: "center" }}>
-              {/* key forces the pop animation to replay on every tick */}
-              <div className="countdown" key={count}>{count}</div>
-              <div className="countdown-subtext">WARP DRIVE CHARGING · STABILIZING GRAVITY VECTOR</div>
-            </div>
-          ) : (
-            <div style={{ textAlign: "center", padding: "0 20px" }}>
-              <div className="warp-title">WARP DRIVES ENGAGED</div>
-              <div className="warp-status">STATUS: HYPERSPACE TRAJECTORY ACQUIRED</div>
-              <button type="button" className="warp-btn" onClick={resetLaunch}>
-                RETURN TO MISSION COMMAND
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className={`hud-toast${toast ? " show" : ""}`} role="status">
-        <span className="toast-tag">[SYS_NOTIFY]</span> {toast}
+      <div
+        className={`pointer-events-none fixed bottom-8 left-1/2 z-20 -translate-x-1/2 border border-copper/30 bg-black/80 px-4 py-2 text-[11px] tracking-[0.18em] text-copper transition ${
+          toast ? "opacity-100" : "opacity-0"
+        }`}
+        role="status"
+      >
+        {toast}
       </div>
     </section>
   );
