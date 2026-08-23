@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { loginWithToken } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
+  const { refresh } = useAuth();
   const [status, setStatus] = useState("Verifying handshake...");
 
   useEffect(() => {
@@ -21,6 +23,9 @@ export default function AuthCallback() {
 
       try {
         const login = await loginWithToken(accessToken);
+        if (cancelled) return;
+
+        await refresh(); // sync AuthContext so the next page's auth guard sees the logged-in user
         if (cancelled) return;
 
         if (login.redirectUrl) {
@@ -42,7 +47,7 @@ export default function AuthCallback() {
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [navigate, refresh]);
 
   return (
     <div className="relative isolate flex min-h-dvh w-full items-center justify-center overflow-hidden bg-black px-6 text-starlight">
