@@ -1,39 +1,300 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  ArrowUpRight, Check, ChevronRight, Clock3, Copy, LogOut, Rocket,
-  ShieldCheck, UsersRound,
-} from "lucide-react";
-import Navbar from "../landing/Navbar";
+import { useEffect, useMemo, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import styles from "./Dashboard.module.css";
 
-function initials(name = "") {
-  return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "U";
+const ACCENT = "#e0a279";
+const SCRAMBLE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#%&*/";
+const ROLL_MS = 38; // re-roll quantum, so it reads as a terminal not a 60fps blur
+const TAP_HOLD_MS = 380; // churn time for a tap, since touch has no "still here"
+const TAP_SLOP_PX = 10; // beyond this the gesture was a scroll, not a tap
+
+const cx = (...names) => names.map((n) => styles[n]).filter(Boolean).join(" ");
+
+// structural characters stay put so the string keeps its shape while scrambling
+const isFixedChar = (ch) => ch === " " || ch === "-" || ch === "@" || ch === ".";
+
+// p is how much of the string has resolved; p<=0 is fully scrambled, p>=1 is plain text
+function roll(text, p) {
+  const cut = p * text.length;
+  let str = "";
+  for (let i = 0; i < text.length; i++) {
+    str += p >= 1 || i < cut || isFixedChar(text[i])
+      ? text[i]
+      : SCRAMBLE_CHARS[(Math.random() * SCRAMBLE_CHARS.length) | 0];
+  }
+  return str;
 }
 
-function formatDate(value) {
-  if (!value) return "—";
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+// churn indefinitely; runs until resolveScramble takes over
+function holdScramble(el, text, lockWidth) {
+  cancelAnimationFrame(el._raf);
+  let lastRoll = 0;
+  const step = (now) => {
+    if (now - lastRoll >= ROLL_MS) {
+      lastRoll = now;
+      el.textContent = roll(text, 0);
+      if (lockWidth) {
+        el.style.minWidth = Math.max(parseFloat(el.style.minWidth) || 0, el.offsetWidth) + "px";
+      }
+    }
+    el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
 }
 
-function DetailRow({ label, value, mono = false }) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-b border-accretion/10 py-3 last:border-0">
-      <span className="font-rajdhani text-[11px] tracking-[0.2em] text-copper/70">{label}</span>
-      <span className={`truncate text-right text-sm text-starlight ${mono ? "font-mono text-xs tracking-[0.08em]" : ""}`}>{value}</span>
-    </div>
-  );
+function resolveScramble(el, text, dur, delay) {
+  cancelAnimationFrame(el._raf);
+  const start = performance.now();
+  let lastRoll = 0;
+  const step = (now) => {
+    const p = Math.max(0, Math.min(1, (now - start - delay) / dur));
+    if (p >= 1 || now - lastRoll >= ROLL_MS) {
+      lastRoll = now;
+      el.textContent = roll(text, p);
+    }
+    if (p < 1) el._raf = requestAnimationFrame(step);
+    else {
+      el._raf = 0;
+      el.style.minWidth = "";
+    }
+  };
+  el._raf = requestAnimationFrame(step);
 }
 
 export default function Dashboard() {
   const { user, teamName, loading, logout } = useAuth();
   const navigate = useNavigate();
-  const hasTeam = Boolean(teamName);
+
+  const appRef = useRef(null);
+  const skyRef = useRef(null);
+  const videoRef = useRef(null);
+  const statusLineRef = useRef(null);
+  const clockRef = useRef(null);
+  const nameRef = useRef(null);
+  const teamRef = useRef(null);
+  const team2Ref = useRef(null);
+  const regRef = useRef(null);
+  const mailRef = useRef(null);
 
   useEffect(() => {
     if (loading) return;
     if (!user) navigate("/login", { replace: true });
   }, [loading, user, navigate]);
+
+  const hasTeam = Boolean(teamName);
+  const displayName = (user?.display_name || user?.email?.split("@")[0] || "Participant").toUpperCase();
+  const team = (teamName || "NO CREW ASSIGNED").toUpperCase();
+  const regNo = (user?.register_no || "UNASSIGNED").toUpperCase();
+  const email = user?.email || "—";
+  const readyLine = hasTeam
+    ? "ALL SYSTEMS NOMINAL · YOU ARE CLEAR TO PROCEED"
+    : "CREW UNASSIGNED · SET UP YOUR CREW TO PROCEED";
+
+  const fields = useMemo(
+    () => [
+      { ref: nameRef, value: displayName, target: "self" },
+      { ref: teamRef, value: team, target: "parent" },
+      { ref: team2Ref, value: team, target: "self" },
+      { ref: regRef, value: regNo, target: "parent" },
+      { ref: mailRef, value: email, target: "parent" },
+    ],
+    [displayName, team, regNo, email]
+  );
+
+  useEffect(() => {
+    if (loading || !user || !appRef.current) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    appRef.current.style.setProperty("--acc", ACCENT);
+    const cleanupFns = [];
+
+    function tickClock() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, "0");
+      if (clockRef.current) clockRef.current.textContent = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    }
+    tickClock();
+    const clockTimer = setInterval(tickClock, 1000);
+    cleanupFns.push(() => clearInterval(clockTimer));
+
+    // Hover-to-decrypt. Gate on the event's own pointerType rather than a media query:
+    // a touch laptop reports `pointer: coarse` even with a mouse attached.
+    fields.forEach((f) => {
+      const el = f.ref.current;
+      if (!el) return;
+      const target = (f.target === "parent" ? el.parentElement : el) || el;
+
+      const onEnter = (e) => { if (e.pointerType !== "touch") holdScramble(el, f.value, true); };
+      const onLeave = (e) => { if (e.pointerType !== "touch") resolveScramble(el, f.value, 520, 0); };
+      target.addEventListener("pointerenter", onEnter);
+      target.addEventListener("pointerleave", onLeave);
+
+      // Touch has no hover, so a tap stands in for it: churn briefly, then resolve.
+      let sx = 0, sy = 0;
+      const onDown = (e) => { if (e.pointerType === "touch") { sx = e.clientX; sy = e.clientY; } };
+      const onUp = (e) => {
+        if (e.pointerType !== "touch") return;
+        if (Math.hypot(e.clientX - sx, e.clientY - sy) > TAP_SLOP_PX) return; // scrolled
+        clearTimeout(el._tap);
+        holdScramble(el, f.value, false);
+        el._tap = setTimeout(() => resolveScramble(el, f.value, 520, 0), TAP_HOLD_MS);
+      };
+      target.addEventListener("pointerdown", onDown, { passive: true });
+      target.addEventListener("pointerup", onUp, { passive: true });
+
+      cleanupFns.push(() => {
+        target.removeEventListener("pointerenter", onEnter);
+        target.removeEventListener("pointerleave", onLeave);
+        target.removeEventListener("pointerdown", onDown);
+        target.removeEventListener("pointerup", onUp);
+        cancelAnimationFrame(el._raf);
+        clearTimeout(el._tap);
+      });
+    });
+
+    if (statusLineRef.current) statusLineRef.current.textContent = "DECRYPTING CREW RECORD…";
+    fields.forEach((f, i) => {
+      if (f.ref.current) resolveScramble(f.ref.current, f.value, 1200, i * 170);
+    });
+    const introTimer = setTimeout(() => {
+      if (statusLineRef.current) statusLineRef.current.textContent = readyLine;
+    }, 1200 + (fields.length - 1) * 170);
+    cleanupFns.push(() => clearTimeout(introTimer));
+
+    const sigilVideo = videoRef.current;
+    if (sigilVideo) {
+      const kick = () => { const r = sigilVideo.play(); if (r) r.catch(() => {}); };
+      kick();
+      sigilVideo.addEventListener("canplay", kick, { once: true });
+      const kickEvents = ["pointerdown", "keydown"];
+      kickEvents.forEach((evt) => document.addEventListener(evt, kick, { once: true, passive: true }));
+      cleanupFns.push(() => {
+        sigilVideo.removeEventListener("canplay", kick);
+        kickEvents.forEach((evt) => document.removeEventListener(evt, kick));
+      });
+    }
+
+    // starfield canvas
+    const c = skyRef.current;
+    if (c) {
+      const ctx = c.getContext("2d");
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      let w = 0, h = 0, stars = [], streaks = [], nextStreak = 900, rafId = 0;
+      const mouse = { x: 0.5, y: 0.5, cx: 0.5, cy: 0.5 };
+
+      const build = () => {
+        w = c.clientWidth || window.innerWidth;
+        h = c.clientHeight || window.innerHeight;
+        c.width = Math.round(w * dpr);
+        c.height = Math.round(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        stars = [];
+        for (let i = 0; i < 240; i++) {
+          const z = Math.random();
+          stars.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            z,
+            r: 0.35 + z * 1.25,
+            ph: Math.random() * Math.PI * 2,
+            sp: 0.09 + z * 0.05 + Math.random() * 0.04,
+            warm: Math.random() < 0.34,
+          });
+        }
+      };
+
+      const onResize = () => build();
+      window.addEventListener("resize", onResize);
+      build();
+
+      const onMouseMove = (e) => {
+        mouse.x = e.clientX / window.innerWidth;
+        mouse.y = e.clientY / window.innerHeight;
+      };
+      if (!reduceMotion) window.addEventListener("mousemove", onMouseMove);
+
+      let last = performance.now();
+      const frame = (now) => {
+        const dt = Math.min(now - last, 48);
+        last = now;
+        mouse.cx += (mouse.x - mouse.cx) * 0.045;
+        mouse.cy += (mouse.y - mouse.cy) * 0.045;
+        ctx.clearRect(0, 0, w, h);
+
+        for (const s of stars) {
+          s.x -= s.sp * dt * 0.055;
+          if (s.x < -4) { s.x = w + 4; s.y = Math.random() * h; }
+          s.ph += dt * 0.0016;
+          const tw = 0.55 + 0.45 * Math.sin(s.ph);
+          const px = s.x + (mouse.cx - 0.5) * -26 * s.z;
+          const py = s.y + (mouse.cy - 0.5) * -18 * s.z;
+          const a = (0.18 + s.z * 0.62) * tw;
+          ctx.beginPath();
+          ctx.fillStyle = s.warm ? `rgba(246,214,184,${a.toFixed(3)})` : `rgba(228,232,244,${a.toFixed(3)})`;
+          ctx.arc(px, py, s.r, 0, 6.2832);
+          ctx.fill();
+          if (s.z > 0.88) {
+            ctx.fillStyle = `rgba(246,206,168,${(a * 0.1).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(px, py, s.r * 5, 0, 6.2832);
+            ctx.fill();
+          }
+        }
+
+        nextStreak -= dt;
+        if (nextStreak <= 0) {
+          const burst = Math.random() < 0.22 ? 2 + ((Math.random() * 2) | 0) : 1;
+          for (let i = 0; i < burst; i++) {
+            streaks.push({
+              x: w * (0.2 + Math.random() * 0.95),
+              y: h * (Math.random() * 0.8 - 0.08),
+              len: 70 + Math.random() * 190,
+              sp: 0.32 + Math.random() * 0.5,
+              slope: 0.28 + Math.random() * 0.22,
+              life: -i * 220,
+              dur: 720 + Math.random() * 620,
+            });
+          }
+          nextStreak = 900 + Math.random() * 2400;
+        }
+        for (let i = streaks.length - 1; i >= 0; i--) {
+          const s = streaks[i];
+          s.life += dt;
+          if (s.life < 0) continue;
+          const p = s.life / s.dur;
+          if (p >= 1) { streaks.splice(i, 1); continue; }
+          const ease = p < 0.4 ? p / 0.4 : (1 - p) / 0.6;
+          s.x -= dt * s.sp;
+          s.y += dt * s.sp * s.slope;
+          const g = ctx.createLinearGradient(s.x, s.y, s.x + s.len, s.y - s.len * s.slope);
+          g.addColorStop(0, `rgba(255,238,218,${(0.8 * ease).toFixed(3)})`);
+          g.addColorStop(0.45, `rgba(255,206,158,${(0.3 * ease).toFixed(3)})`);
+          g.addColorStop(1, "rgba(255,190,140,0)");
+          ctx.strokeStyle = g;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(s.x, s.y);
+          ctx.lineTo(s.x + s.len, s.y - s.len * s.slope);
+          ctx.stroke();
+          ctx.fillStyle = `rgba(255,246,232,${(0.85 * ease).toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, 1.5, 0, 6.2832);
+          ctx.fill();
+        }
+
+        rafId = requestAnimationFrame(frame);
+      };
+      rafId = requestAnimationFrame(frame);
+
+      cleanupFns.push(() => {
+        cancelAnimationFrame(rafId);
+        window.removeEventListener("resize", onResize);
+        window.removeEventListener("mousemove", onMouseMove);
+      });
+    }
+
+    return () => cleanupFns.forEach((fn) => fn());
+  }, [loading, user, fields, readyLine]);
 
   if (loading || !user) {
     return (
@@ -43,51 +304,138 @@ export default function Dashboard() {
     );
   }
 
-  const displayName = user.display_name || user.email?.split("@")[0] || "Participant";
-
   return (
-    <div className="relative isolate min-h-dvh overflow-hidden bg-black text-starlight">
-      <Navbar />
-      <div className="pointer-events-none absolute inset-0 -z-10 opacity-40" aria-hidden="true">
-        <img src="/assets/starry-bg.jpg" alt="" className="h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_12%,rgba(244,162,51,0.15),transparent_32%),linear-gradient(180deg,rgba(0,0,0,0.18),#000_86%)]" />
-      </div>
+    <div className={cx("cd-app")} ref={appRef}>
+      <div className={cx("cd-bg-image")} />
+      <div className={cx("cd-bg-overlay")} />
+      <canvas ref={skyRef} className={cx("cd-sky")} />
+      <div className={cx("cd-glow", "cd-glow--right")} />
+      <div className={cx("cd-glow", "cd-glow--left")} />
+      <div className={cx("cd-vignette")} />
 
-      <main className="mx-auto w-full max-w-7xl px-5 pb-16 pt-32 sm:px-8 lg:px-12">
-        <div className="mb-12 flex flex-col justify-between gap-7 border-b border-accretion/20 pb-8 md:flex-row md:items-end">
-          <div className="animate-fade-in">
-            <p className="mb-4 flex items-center gap-3 font-rajdhani text-[11px] tracking-[0.42em] text-accretion"><span className="inline-block h-2 w-2 rounded-full bg-accretion shadow-[0_0_12px_var(--color-accretion)]" /> PARTICIPANT CONSOLE</p>
-            <h1 className="max-w-3xl font-orbitron text-3xl font-black uppercase leading-[1.08] tracking-[0.08em] sm:text-5xl lg:text-6xl">Welcome back,<br /><span className="text-accretion">{displayName.split(" ")[0]}.</span></h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-copper">Your mission status, crew assignment, and access point for Cicada 2067.</p>
-          </div>
-          <button type="button" onClick={logout} className="inline-flex min-h-11 items-center gap-2 self-start border border-copper/25 px-4 font-rajdhani text-[11px] tracking-[0.22em] text-copper transition hover:border-accretion hover:text-accretion md:self-auto"><LogOut className="h-3.5 w-3.5" /> SIGN OUT</button>
-        </div>
-
-        <div className="grid gap-5 lg:grid-cols-[1.4fr_0.8fr]">
-          <section className="panel relative overflow-hidden p-6 sm:p-8">
-            <div className="absolute right-0 top-0 h-32 w-32 border-l border-b border-accretion/15" aria-hidden="true" />
-            <div className="relative flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-center gap-5"><div className="flex h-16 w-16 shrink-0 items-center justify-center border border-accretion bg-accretion/10 font-orbitron text-xl text-accretion">{initials(displayName)}</div><div><p className="font-rajdhani text-[11px] tracking-[0.32em] text-copper">IDENTITY VERIFIED</p><h2 className="mt-2 font-orbitron text-xl tracking-[0.08em]">{displayName}</h2><p className="mt-1 truncate text-sm text-copper">{user.email}</p></div></div>
-              <div className="flex items-center gap-2 font-rajdhani text-[11px] tracking-[0.24em] text-accretion"><ShieldCheck className="h-4 w-4" /> ACTIVE</div>
+      <div className={cx("cd-shell")}>
+        <header className={cx("cd-header")}>
+          <Link to="/" className={cx("cd-brand")}>
+            <div className={cx("cd-logo")}>
+              <div className={cx("cd-logo__ring")} />
+              <img src="/assets/cicada_logo.jpg" alt="" className={cx("cd-logo__img")} />
             </div>
-            <div className="mt-8 grid gap-x-8 sm:grid-cols-2"><DetailRow label="REGISTER NO." value={user.register_no || "Not assigned"} mono /><DetailRow label="ACCESS LEVEL" value={user.role || "participant"} /><DetailRow label="ENLISTED" value={formatDate(user.created_at)} /><DetailRow label="TEAM STATUS" value={hasTeam ? "Crew assigned" : "Awaiting crew"} /></div>
-          </section>
+            <div className={cx("cd-brand-text")}>
+              <div className={cx("cd-brand-title")}>CICADA 2067</div>
+              <div className={cx("cd-brand-sub")}>LISTEN. ADAPT. SURVIVE.</div>
+            </div>
+          </Link>
 
-          <section className={`relative overflow-hidden border p-6 sm:p-8 ${hasTeam ? "border-accretion/50 bg-accretion/10" : "border-copper/25 bg-black/60"}`}>
-            <div className="mb-8 flex items-start justify-between"><div><p className="font-rajdhani text-[11px] tracking-[0.32em] text-copper">CREW ASSIGNMENT</p><h2 className="mt-3 font-orbitron text-2xl tracking-[0.08em]">{hasTeam ? teamName || "CREW ASSIGNED" : "NO CREW YET"}</h2></div><UsersRound className="h-6 w-6 text-accretion" /></div>
-            <p className="max-w-sm text-sm leading-7 text-copper">{hasTeam ? "Your crew is ready. Enter the arena when the mission window opens." : "Every mission needs a crew. Create one or join a teammate with an invite code."}</p>
-            <button type="button" onClick={() => navigate(hasTeam ? "/terminal" : "/team-setup")} className="mt-8 inline-flex min-h-12 w-full items-center justify-between border border-accretion bg-accretion px-4 font-orbitron text-[11px] tracking-[0.2em] text-black transition hover:bg-accretion-bright"><span className="flex items-center gap-2">{hasTeam ? <Rocket className="h-4 w-4" /> : <UsersRound className="h-4 w-4" />} {hasTeam ? "ENTER ARENA" : "SET UP CREW"}</span><ArrowUpRight className="h-4 w-4" /></button>
-          </section>
+          <nav className={cx("cd-nav")}>
+            <Link to="/about" className={cx("cd-nav__link")}>ABOUT</Link>
+            <Link to="/puzzles" className={cx("cd-nav__link")}>PUZZLES</Link>
+            <Link to="/terminal" className={cx("cd-nav__link")}>ROUNDS</Link>
+            <Link to="/terminal" className={cx("cd-nav__link")}>LOGS</Link>
+            <button type="button" onClick={logout} className={cx("cd-nav__link")}>SIGN OUT</button>
+            <div className={cx("cd-nav__status")}>
+              <span className={cx("cd-nav__dot")} />
+              <span>DASHBOARD</span>
+            </div>
+          </nav>
+        </header>
+
+        <div className={cx("cd-welcome-row")}>
+          <div className={cx("cd-welcome")}>
+            <div className={cx("cd-eyebrow")}>CREW DOSSIER &middot; ACCESS GRANTED</div>
+            <div className={cx("cd-welcome__title")}>Welcome back to the hunt.</div>
+          </div>
+          <div className={cx("cd-meta")}>
+            <div className={cx("cd-meta__block", "cd-meta__block--right")}>
+              <div className={cx("cd-meta__label")}>SHIP TIME</div>
+              <div className={cx("cd-meta__value")} ref={clockRef}>--:--:--</div>
+            </div>
+            <div className={cx("cd-meta__divider")} />
+            <div className={cx("cd-meta__block")}>
+              <div className={cx("cd-meta__label")}>SIGNAL</div>
+              <div className={cx("cd-signal")}>
+                <span className={cx("cd-signal__bar")} />
+                <span className={cx("cd-signal__bar")} />
+                <span className={cx("cd-signal__bar")} />
+                <span className={cx("cd-signal__bar")} />
+                <span className={cx("cd-signal__bar")} />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-5 grid gap-5 md:grid-cols-3">
-          <section className="border border-copper/20 bg-black/60 p-6"><div className="flex items-center justify-between"><p className="font-rajdhani text-[11px] tracking-[0.3em] text-copper">MISSION ACCESS</p><Rocket className="h-5 w-5 text-accretion" /></div><p className="mt-6 font-orbitron text-2xl tracking-[0.08em]">{hasTeam ? "READY" : "LOCKED"}</p><p className="mt-2 text-sm leading-6 text-copper">{hasTeam ? "Arena access is available to your crew." : "Assign yourself to a crew to unlock the arena."}</p></section>
-          <section className="border border-copper/20 bg-black/60 p-6"><div className="flex items-center justify-between"><p className="font-rajdhani text-[11px] tracking-[0.3em] text-copper">ACCOUNT CHECK</p><Check className="h-5 w-5 text-accretion" /></div><p className="mt-6 font-orbitron text-2xl tracking-[0.08em]">100%</p><p className="mt-2 text-sm leading-6 text-copper">Your participant profile is fully registered.</p></section>
-          <section className="border border-copper/20 bg-black/60 p-6"><div className="flex items-center justify-between"><p className="font-rajdhani text-[11px] tracking-[0.3em] text-copper">NEXT SIGNAL</p><Clock3 className="h-5 w-5 text-accretion" /></div><p className="mt-6 font-orbitron text-2xl tracking-[0.08em]">STANDBY</p><p className="mt-2 text-sm leading-6 text-copper">Watch this console for mission updates.</p></section>
+        <div className={cx("cd-panels")}>
+          <div className={cx("cd-panels__scan-wrap")}>
+            <div className={cx("cd-panels__scan")} />
+          </div>
+
+          <div className={cx("cd-panel--left")}>
+            <div className={cx("cd-operative")}>
+              <div className={cx("cd-eyebrow")}>MAIN</div>
+              <div className={cx("cd-operative__name-row")}>
+                <div className={cx("cd-scramble", "cd-hoverable", "cd-operative__name")} ref={nameRef}>{displayName}</div>
+                <span className={cx("cd-operative__cursor")} />
+              </div>
+              <div className={cx("cd-clearance")}>
+                <span>CLEARANCE VERIFIED</span>
+                <span className={cx("cd-clearance__line")} />
+              </div>
+            </div>
+
+            <div className={cx("cd-grid2")}>
+              <div className={cx("cd-grid2__cell")}>
+                <div className={cx("cd-grid2__label")}>TEAM</div>
+                <div className={cx("cd-scramble", "cd-grid2__value")} ref={teamRef}>{team}</div>
+              </div>
+              <div className={cx("cd-grid2__cell")}>
+                <div className={cx("cd-grid2__label")}>REGISTRATION NO</div>
+                <div className={cx("cd-scramble", "cd-grid2__value")} ref={regRef}>{regNo}</div>
+              </div>
+              <div className={cx("cd-grid2__cell", "cd-grid2__cell--span2")}>
+                <div className={cx("cd-grid2__label")}>EMAIL ID</div>
+                <div className={cx("cd-scramble", "cd-grid2__value", "cd-grid2__value--truncate")} ref={mailRef}>{email}</div>
+              </div>
+            </div>
+
+            <div className={cx("cd-actions")}>
+              <div className={cx("cd-enter-btn")} onClick={() => navigate(hasTeam ? "/terminal" : "/team-setup")}>
+                <span>{hasTeam ? "ENTER TERMINAL" : "SET UP CREW"}</span>
+                <span className={cx("cd-enter-btn__arrow")}>&#8594;</span>
+              </div>
+              <div className={cx("cd-status-line")} ref={statusLineRef}>{readyLine}</div>
+            </div>
+          </div>
+
+          <div className={cx("cd-panel--right")}>
+            <div className={cx("cd-sigil")}>
+              <div className={cx("cd-sigil__glow")} />
+              <video
+                ref={videoRef}
+                className={cx("cd-sigil__video")}
+                src="/assets/dashboard-blackhole.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                disablePictureInPicture
+                aria-hidden="true"
+              />
+              <div className={cx("cd-sigil__ring")} />
+              <div className={cx("cd-sigil__ring-dashed")} />
+            </div>
+
+            <div className={cx("cd-sigil-caption")}>
+              <div className={cx("cd-eyebrow")}>TEAM</div>
+              <div className={cx("cd-scramble", "cd-hoverable", "cd-sigil-caption__team")} ref={team2Ref}>{team}</div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-8 flex flex-col gap-4 border-t border-accretion/15 pt-6 sm:flex-row sm:items-center sm:justify-between"><p className="font-rajdhani text-[11px] tracking-[0.26em] text-copper/60">CICADA 2067 / PARTICIPANT ID {user.id?.slice(0, 8).toUpperCase()}</p><button type="button" onClick={() => navigator.clipboard?.writeText(user.id)} className="inline-flex items-center gap-2 self-start font-rajdhani text-[11px] tracking-[0.2em] text-copper hover:text-accretion"><Copy className="h-3.5 w-3.5" /> COPY ID <ChevronRight className="h-3.5 w-3.5" /></button></div>
-      </main>
+        <footer className={cx("cd-footer")}>
+          <span>CICADA 2067 &#183; CREW TERMINAL</span>
+          <span>DECRYPTION KEY HELD LOCALLY</span>
+        </footer>
+      </div>
     </div>
   );
 }
