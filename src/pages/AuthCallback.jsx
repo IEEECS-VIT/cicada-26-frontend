@@ -2,47 +2,88 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { loginWithToken } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
+  const { refresh } = useAuth();
   const [status, setStatus] = useState("Verifying handshake...");
 
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      const accessToken = data.session?.access_token;
+    const processSession = async (session) => {
+      const accessToken = session?.access_token;
       if (!accessToken) {
         setStatus("No session found. Returning to sign in...");
-        setTimeout(() => !cancelled && navigate("/login", { replace: true }), 1200);
+        setTimeout(() => !cancelled && navigate("/login", { replace: true }), 1500);
         return;
       }
 
       try {
+        setStatus("Verifying credentials with server...");
         const login = await loginWithToken(accessToken);
         if (cancelled) return;
 
+        setStatus("Loading user profile...");
+        const authData = await refresh();
+        if (cancelled) return;
+
+        const effectiveUser = authData?.user || login.user;
+        const isAdmin = login.is_approved_admin || effectiveUser?.role === "admin" || effectiveUser?.role === "GOD";
+        const hasTeam = Boolean(authData?.team_name || effectiveUser?.team_id);
+
         if (login.redirectUrl) {
           navigate(login.redirectUrl, { replace: true });
-        } else if (login.is_approved_admin) {
+        } else if (isAdmin) {
           navigate("/admin", { replace: true });
-        } else if (login.user?.team_id) {
+        } else if (hasTeam) {
           navigate("/terminal", { replace: true });
         } else {
           navigate("/team-setup", { replace: true });
         }
       } catch (err) {
         if (cancelled) return;
-        setStatus(err.message || "Authentication failed.");
-        setTimeout(() => !cancelled && navigate("/login", { replace: true }), 2000);
+        console.error("Authentication handshake error:", err);
+        setStatus(err.message || "Authentication failed. Returning to sign in...");
+        setTimeout(() => !cancelled && navigate("/login", { replace: true }), 2500);
+      }
+    };
+
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session) {
+        await processSession(data.session);
+      } else {
+        // Listen for auth state change if session is still processing from URL hash/code
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+          if (session) {
+            authListener.subscription.unsubscribe();
+            await processSession(session);
+          }
+        });
+
+        // Fallback timeout in case no session event fires
+        setTimeout(() => {
+          if (!cancelled) {
+            authListener.subscription.unsubscribe();
+            supabase.auth.getSession().then(({ data: fallbackData }) => {
+              if (fallbackData?.session) {
+                processSession(fallbackData.session);
+              } else if (!cancelled) {
+                setStatus("No session found. Returning to sign in...");
+                setTimeout(() => !cancelled && navigate("/login", { replace: true }), 1500);
+              }
+            });
+          }
+        }, 1500);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [navigate, refresh]);
 
   return (
     <div className="relative isolate flex min-h-dvh w-full items-center justify-center overflow-hidden bg-black px-6 text-starlight">

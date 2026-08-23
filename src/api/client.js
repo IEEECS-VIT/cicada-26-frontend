@@ -1,3 +1,5 @@
+import { supabase } from "../lib/supabase";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export function getAdminKey() {
@@ -11,6 +13,17 @@ function setAdminKey(value) {
 
 export async function api(path, { method = "GET", body, admin = false } = {}) {
   const headers = { "Content-Type": "application/json" };
+
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  } catch {
+    /* ignore error getting session */
+  }
+
   if (admin) {
     const key = getAdminKey();
     if (key) headers["x-admin-key"] = key;
