@@ -159,12 +159,7 @@ export default function FaqSection() {
                 <div className="mt-3.5 text-[11px] tracking-[0.2em] text-accretion">TARS</div>
               </div>
             )}
-            <dl className="mt-8 w-full border-t border-white/10 pt-7 text-xs uppercase tracking-[0.14em] text-copper/60">
-              <div className="mb-4">METADATA_HEADER:</div>
-              <div className="flex gap-2 py-0.5"><dt>FILE_NAME:</dt><dd className="m-0 text-accretion/70">FAQ_HUNT.DAT</dd></div>
-              <div className="flex gap-2 py-0.5"><dt>SIZE:</dt><dd className="m-0 text-accretion/70">128.4 KB</dd></div>
-              <div className="flex gap-2 py-0.5"><dt>ENCRYPTION:</dt><dd className="m-0 text-accretion/70">AES-XTS-512</dd></div>
-            </dl>
+
           </div>
 
           <div className="flex flex-col gap-3">
@@ -173,9 +168,8 @@ export default function FaqSection() {
               return (
                 <div
                   key={item.id}
-                  className={`border bg-black/55 transition ${
-                    isOpen ? "border-accretion/50" : "border-white/10 hover:border-white/20"
-                  }`}
+                  className={`border bg-black/55 transition ${isOpen ? "border-accretion/50" : "border-white/10 hover:border-white/20"
+                    }`}
                 >
                   <button
                     type="button"
@@ -198,9 +192,8 @@ export default function FaqSection() {
                   <div
                     id={`faq-panel-${item.id}`}
                     role="region"
-                    className={`grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ${
-                      isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                    }`}
+                    className={`grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                      }`}
                   >
                     <div className="min-h-0 overflow-hidden">
                       {item.answer && (

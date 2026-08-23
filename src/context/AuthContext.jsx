@@ -17,9 +17,11 @@ export function AuthProvider({ children }) {
       const data = await fetchMe();
       setUser(data.user);
       setTeamName(data.team_name || null);
+      return data;
     } catch {
       setUser(null);
       setTeamName(null);
+      return null;
     } finally {
       setLoading(false);
     }
