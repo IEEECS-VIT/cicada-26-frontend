@@ -1,11 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useGameState } from '../../context/GameStateContext';
-import { Power } from 'lucide-react';
+import { Power, Send, Terminal as TerminalIcon } from 'lucide-react';
+
+const QUICK_COMMANDS = [
+  { label: 'submit <key>', action: 'fill', value: 'submit ' },
+  { label: 'help', action: 'exec', value: 'help' },
+  { label: 'guidelines', action: 'exec', value: 'guidelines' },
+  { label: 'faq', action: 'exec', value: 'faq' },
+  { label: 'clear', action: 'exec', value: 'clear' },
+  { label: 'exit', action: 'exec', value: 'exit' },
+];
 
 export default function SubmissionTerminal() {
   const { setIsTerminalOpen, terminalHistory, addTerminalCommand, clearTerminal, submitAnswer } = useGameState();
   const [input, setInput] = useState('');
   const endRef = useRef(null);
+  const inputRef = useRef(null);
 
   const scrollToBottom = () => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -15,11 +25,10 @@ export default function SubmissionTerminal() {
     scrollToBottom();
   }, [terminalHistory]);
 
-  const handleCommand = (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const executeCommandString = (rawCmd) => {
+    const cmd = rawCmd.trim();
+    if (!cmd) return;
 
-    const cmd = input.trim();
     const parts = cmd.split(' ');
     const baseCmd = parts[0].toLowerCase();
     
@@ -31,8 +40,8 @@ export default function SubmissionTerminal() {
   submit <answer>  - Submit an alphanumeric code for decryption
   guidelines       - View mission rules and submission protocol
   faq              - View frequently asked questions
-  history          - View past submissions
   clear            - Clear terminal output
+  exit             - Exit and return to main panel
   help             - Show this message`;
         addTerminalCommand(cmd, response);
         break;
@@ -59,22 +68,22 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
         clearTerminal();
         break;
 
-      case 'history':
-        response = terminalHistory
-          .filter(h => h.command.toLowerCase().startsWith('submit'))
-          .map(h => `[${new Date(h.timestamp).toLocaleTimeString()}] ${h.command} -> ${h.response}`)
-          .join('\n');
-        if (!response) response = "No submissions found in current session.";
-        addTerminalCommand(cmd, response);
+      case 'exit':
+      case 'quit':
+      case 'close':
+      case 'terminate':
+      case 'q':
+      case ':q':
+        addTerminalCommand(cmd, 'Terminating secure shell session...');
+        setIsTerminalOpen(false);
         break;
 
       case 'submit':
         if (parts.length < 2) {
           response = "Syntax Error: Missing answer payload. Usage: submit <answer>";
+          addTerminalCommand(cmd, response);
         } else {
-          // Join the rest in case answer has spaces, though usually alphanumeric
           const answer = parts.slice(1).join(' ');
-          // Only allow alphanumeric characters (regex test)
           if (!/^[a-zA-Z0-9_ -]+$/.test(answer)) {
              response = "Transmission Error: Invalid characters detected. Use alphanumeric only.";
              addTerminalCommand(cmd, response);
@@ -96,38 +105,63 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
     setInput('');
   };
 
+  const handleCommand = (e) => {
+    e.preventDefault();
+    executeCommandString(input);
+  };
+
+  const handleQuickChip = (chip) => {
+    if (chip.action === 'fill') {
+      setInput(chip.value);
+      inputRef.current?.focus();
+    } else {
+      executeCommandString(chip.value);
+    }
+  };
+
   return (
-    <div className="panel relative z-20 flex min-h-0 flex-1 flex-col p-3 sm:p-6">
-      
-      <div className="flex flex-col justify-between gap-3 border-b border-accretion/40 pb-3 mb-3 shrink-0 sm:mb-4 sm:flex-row sm:items-center sm:pb-4">
-        <div>
-          <h2 className="font-orbitron text-lg tracking-[0.16em] text-accretion sm:text-2xl sm:tracking-[0.2em]">SECURE TERMINAL</h2>
-          <p className="label-mono text-[10px] text-accretion/70 mt-1 sm:text-xs">Awaiting input...</p>
+    <div className="panel relative z-20 flex min-h-0 flex-1 flex-col p-2.5 sm:p-5">
+      {/* Header */}
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-accretion/30 pb-2 mb-2 sm:mb-3 sm:pb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-accretion/40 bg-accretion/15 text-accretion shrink-0">
+            <TerminalIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h2 className="font-orbitron text-xs xs:text-sm font-bold tracking-[0.14em] text-accretion sm:text-lg sm:tracking-[0.18em] truncate">
+                SECURE TERMINAL
+              </h2>
+              <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            </div>
+            <p className="label-mono text-[8px] text-accretion/70 sm:text-[9px] truncate">SHELL READY • AWAITING CIPHER</p>
+          </div>
         </div>
+
         <button
+          type="button"
           onClick={() => setIsTerminalOpen(false)}
-          className="flex min-h-11 items-center justify-center gap-2 border border-accretion/60 px-3 py-2 text-accretion transition-colors hover:bg-accretion/20 sm:px-4"
+          className="flex min-h-[34px] items-center gap-1.5 rounded-lg border border-accretion/50 bg-black/40 px-2.5 py-1 text-accretion transition-all hover:bg-accretion hover:text-black sm:min-h-[38px] sm:px-3.5"
         >
-          <Power className="w-4 h-4 shrink-0" />
-          <span className="font-orbitron text-[10px] tracking-widest uppercase sm:text-xs">Terminate</span>
+          <Power className="h-3.5 w-3.5 shrink-0" />
+          <span className="font-orbitron text-[10px] tracking-wider uppercase sm:text-xs">Exit</span>
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto font-mono text-sm sm:text-base space-y-2 pb-4 text-accretion/90">
-        <div className="mb-6 opacity-70">
+      {/* Output history */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 font-mono text-xs sm:text-sm text-accretion/90 scrollbar-hide">
+        <div className="mb-3 opacity-60 text-[11px] sm:text-xs border-b border-accretion/20 pb-2">
           <p>CICADA 2067 SECURE SHELL v2.4.1</p>
-          <p>Connection established. Encryption key verified.</p>
-          <p>Type 'help' for a list of available commands.</p>
-          <br/>
+          <p>Channel encrypted. Tap command chips below or type instructions.</p>
         </div>
 
         {terminalHistory.map((entry, idx) => (
           <div key={idx} className="space-y-1">
-            <div className="flex gap-2">
-              <span className="text-accretion/50">&gt;</span>
-              <span className="text-accretion break-all">{entry.command}</span>
+            <div className="flex items-start gap-1.5 text-accretion font-medium">
+              <span className="text-accretion/60 select-none">&gt;</span>
+              <span className="break-all">{entry.command}</span>
             </div>
-            <div className="pl-4 whitespace-pre-wrap opacity-80 break-words mb-4">
+            <div className="pl-3.5 whitespace-pre-wrap opacity-80 break-words mb-3 text-starlight text-[11px] sm:text-xs leading-relaxed">
               {entry.response}
             </div>
           </div>
@@ -135,20 +169,54 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
         <div ref={endRef} />
       </div>
 
-      <form onSubmit={handleCommand} className="mt-4 shrink-0 relative flex items-center border-t border-accretion/40 pt-4">
-        <span className="absolute left-0 text-accretion font-mono text-xl select-none">&gt;</span>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          className="w-full bg-transparent border-none outline-none font-mono text-base text-accretion pl-6 placeholder:text-accretion/30"
-          placeholder="Enter command..."
-          autoFocus
-          spellCheck="false"
-          autoComplete="off"
-        />
+      {/* Mobile Quick Action Chips */}
+      <div className="mt-2 shrink-0 border-t border-accretion/25 pt-2">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-hide">
+          {QUICK_COMMANDS.map((chip, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => handleQuickChip(chip)}
+              className="shrink-0 rounded-md border border-accretion/35 bg-black/50 px-2 py-1 font-mono text-[10px] text-accretion/85 transition-colors hover:border-accretion hover:bg-accretion/20 hover:text-accretion active:scale-95"
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Command input form */}
+      <form onSubmit={handleCommand} className="mt-1.5 shrink-0 flex items-center gap-1.5">
+        <div className="relative flex-1 flex items-center rounded-lg border border-accretion/50 bg-black/60 px-2.5 py-1.5 focus-within:border-accretion focus-within:shadow-[0_0_10px_rgba(209,155,131,0.3)]">
+          <span className="text-accretion font-mono text-sm sm:text-base select-none mr-2">&gt;</span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className="w-full bg-transparent border-none outline-none font-mono text-sm sm:text-base text-accretion placeholder:text-accretion/30"
+            placeholder="Type command (e.g. submit KEY)..."
+            autoFocus
+            spellCheck="false"
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoComplete="off"
+            enterKeyHint="send"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={!input.trim()}
+          className={`flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-lg border transition-all shrink-0 ${
+            input.trim()
+              ? 'border-accretion bg-accretion text-black shadow-[0_0_10px_rgba(209,155,131,0.4)] cursor-pointer active:scale-95'
+              : 'border-accretion/30 bg-black/40 text-accretion/40 cursor-not-allowed'
+          }`}
+          aria-label="Send command"
+        >
+          <Send className="h-4 w-4" />
+        </button>
       </form>
-      
     </div>
   );
 }
