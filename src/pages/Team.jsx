@@ -1,13 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../landing/Navbar";
 import SiteFooter from "../landing/SiteFooter";
 import CrewPortal from "../landing/CrewPortal";
+import TeamSetup from "./TeamSetup";
 import { useAuth } from "../context/AuthContext";
 
 export default function Team() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [showSetup, setShowSetup] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -28,11 +30,15 @@ export default function Team() {
     );
   }
 
+  if (showSetup) {
+    return <TeamSetup />;
+  }
+
   return (
     <>
       <Navbar />
       <main>
-        <CrewPortal />
+        <CrewPortal onNoTeam={() => setShowSetup(true)} />
       </main>
       <SiteFooter />
     </>
