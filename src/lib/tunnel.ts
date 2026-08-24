@@ -28,106 +28,12 @@ const PALETTE = {
   starCool: 0xffffff,
 };
 
-export type RoundStatus = "COMPLETE" | "ACTIVE" | "LOCKED";
-
-export interface Round {
-  code: string;
-  title: string;
-  date: string;
-  status: RoundStatus;
-  summary: string;
-  briefing: string;
-  objectives: [string, string][];
-}
-
-export const ROUNDS: Round[] = [
-  {
-    code: "01 BRIEF",
-    title: "REGISTRATION",
-    date: "10:00 – 10:30",
-    status: "ACTIVE",
-    summary: "IDs checked. Attendance logged. The briefing begins.",
-    briefing:
-      "Participant IDs and attendance are verified on arrival. Mission control then walks the crew through the event, the rules, the guidelines, and the storyline — including fair play, safety, and how the day proceeds.",
-    objectives: [
-      ["VERIFY IDs", "PENDING"],
-      ["LOG ATTENDANCE", "PENDING"],
-      ["BRIEF THE CREW", "PENDING"],
-    ],
-  },
-  {
-    code: "02 R1",
-    title: "INITIATION",
-    date: "10:30 – 13:00",
-    status: "LOCKED",
-    summary: "Platform access opens. The first cryptic sequence begins.",
-    briefing:
-      "Teams receive access to the event platform and work through cryptic, logical, and observational challenges. Clues unlock checkpoints. Crews decode together and reconstruct the first fragments of the mystery.",
-    objectives: [
-      ["ACCESS PLATFORM", "LOCKED"],
-      ["CLEAR CHECKPOINTS", "LOCKED"],
-      ["RECOVER FRAGMENTS", "LOCKED"],
-    ],
-  },
-  {
-    code: "03 HOLD",
-    title: "LUNCH & CUT",
-    date: "13:00 – 14:00",
-    status: "LOCKED",
-    summary: "Round 1 is scored. The shortlist is named.",
-    briefing:
-      "Round 1 submissions are evaluated while crews stand down for lunch. Teams shortlisted for the next round are announced before the afternoon burn.",
-    objectives: [
-      ["EVALUATE ROUND 1", "LOCKED"],
-      ["ANNOUNCE SHORTLIST", "LOCKED"],
-    ],
-  },
-  {
-    code: "04 R2",
-    title: "ROUND TWO",
-    date: "14:00 – 16:00",
-    status: "LOCKED",
-    summary: "Qualified crews decode the deeper transmission.",
-    briefing:
-      "Qualified teams continue through advanced clues and encrypted fragments. The work is to connect what Round 1 already gave you and reconstruct key portions of the hidden transmission. A major breakthrough qualifies a crew for the final.",
-    objectives: [
-      ["DECODE FRAGMENTS", "LOCKED"],
-      ["LINK PRIOR CLUES", "LOCKED"],
-      ["QUALIFY FOR FINAL", "LOCKED"],
-    ],
-  },
-  {
-    code: "05 R3",
-    title: "ROUND THREE",
-    date: "16:00 – 17:00",
-    status: "LOCKED",
-    summary: "Finalists take the map. The last clues go live.",
-    briefing:
-      "Finalist teams receive a themed map and the concluding clues. They navigate designated campus locations, recover the remaining fragments of the transmission, and solve the last challenge. Submit the final solution to close the reconstruction.",
-    objectives: [
-      ["NAVIGATE CAMPUS", "LOCKED"],
-      ["RECOVER FRAGMENTS", "LOCKED"],
-      ["SUBMIT FINAL", "LOCKED"],
-    ],
-  },
-  {
-    code: "06 END",
-    title: "RESULTS",
-    date: "17:00 – 17:30",
-    status: "LOCKED",
-    summary: "Finals verified. Winners named. The hunt closes.",
-    briefing:
-      "Final submissions are verified. Winners and runners-up are announced, prizes are given, and the day ends with a vote of thanks. Eight hours, 10:00 to 18:00.",
-    objectives: [
-      ["VERIFY FINALS", "LOCKED"],
-      ["ANNOUNCE STANDING", "LOCKED"],
-      ["CLOSE THE HUNT", "LOCKED"],
-    ],
-  },
-];
-
-export const statusClass = (status: RoundStatus) =>
-  status === "ACTIVE" ? "active" : status === "COMPLETE" ? "complete" : "locked";
+/* The round content lives in ./rounds — a THREE-free module, so /about can read
+   it without this file's `import * as THREE` dragging WebGL onto that route.
+   Re-exported here so existing importers (TimelineSection) don't change. */
+import { ROUNDS } from "./rounds";
+export { ROUNDS, statusClass } from "./rounds";
+export type { Round, RoundStatus } from "./rounds";
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
