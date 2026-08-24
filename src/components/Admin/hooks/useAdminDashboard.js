@@ -4,7 +4,7 @@ import { useAuth } from '../../../context/AuthContext';
 import {
   listUsers, getAdminChallenges, getAdminProgress, getLeaderboard,
   approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
-  createChallenge, adminOverride,
+  createChallenge, updateChallenge, adminOverride,
 } from '../../../api/admin';
 import {
   INITIAL_TEAMS,
@@ -849,13 +849,19 @@ export function useAdminDashboard() {
   };
 
   // CHALLENGE HANDLERS
-  const handleToggleLockChallenge = (challengeId, currentLockStatus) => {
-    setChallenges(challenges.map(c => {
-      if (c.id === challengeId) {
-        return { ...c, isLocked: !currentLockStatus };
-      }
-      return c;
-    }));
+  const handleToggleLockChallenge = async (challengeId, currentLockStatus) => {
+    try {
+      const newActiveStatus = currentLockStatus; // If true (locked), we unlock (active: true)
+      await updateChallenge(challengeId, { is_active: newActiveStatus });
+      setChallenges(challenges.map(c => {
+        if (c.id === challengeId) {
+          return { ...c, isLocked: !currentLockStatus };
+        }
+        return c;
+      }));
+    } catch (err) {
+      alert(err.message || 'Failed to toggle challenge lock status');
+    }
   };
 
   const handleToggleHintChallenge = (challengeId, currentHintStatus) => {
