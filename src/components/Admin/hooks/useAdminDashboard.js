@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { supabase } from '../../../lib/supabase';
 import {
   listUsers, getAdminChallenges, getAdminProgress, getLeaderboard,
   approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
@@ -547,10 +548,22 @@ export function useAdminDashboard() {
     try {
       let newAsset;
       if (fileOrAsset.name && fileOrAsset.size !== undefined) {
+        // Actually upload to Supabase Storage (requires a public 'assets' bucket)
+        const filePath = `challenges/${challengeId}/${Date.now()}_${fileOrAsset.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('assets')
+          .upload(filePath, fileOrAsset, { upsert: true });
+          
+        if (uploadError) throw new Error("Upload failed: " + uploadError.message);
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('assets')
+          .getPublicUrl(filePath);
+
         newAsset = {
           type: 'file',
           name: fileOrAsset.name,
-          url: `https://assets.cicada.org/uploads/${encodeURIComponent(fileOrAsset.name)}`
+          url: publicUrlData.publicUrl
         };
       } else {
         newAsset = {
