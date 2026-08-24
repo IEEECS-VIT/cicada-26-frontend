@@ -29,9 +29,8 @@ export default function HeroSection() {
     <section
       id="hero"
       aria-label="Hero"
-      className={`relative grid min-h-dvh w-full grid-cols-1 grid-rows-[auto_45vh] items-stretch overflow-clip pt-[calc(var(--nav-height)+1rem)] md:min-h-screen md:grid-cols-[52%_48%] md:grid-rows-[1fr_auto] md:pt-[var(--nav-height)] max-lg:md:grid-cols-[60%_40%] ${
-        heroActive ? "" : "[&_.glow-line]:[animation-play-state:paused]"
-      }`}
+      className={`relative grid min-h-dvh w-full grid-cols-1 grid-rows-[auto_45vh] items-stretch overflow-clip pt-[calc(var(--nav-height)+1rem)] md:min-h-screen md:grid-cols-[52%_48%] md:grid-rows-[1fr_auto] md:pt-[var(--nav-height)] max-lg:md:grid-cols-[60%_40%] ${heroActive ? "" : "[&_.glow-line]:[animation-play-state:paused]"
+        }`}
     >
       <div className="relative z-10 flex min-h-0 flex-col justify-center px-6 pb-6 pt-8 md:min-h-[calc(100vh-var(--nav-height))] md:row-start-1 md:px-[clamp(2rem,6vw,6rem)] md:pr-[clamp(1rem,3vw,3rem)] md:py-[clamp(2rem,6vw,6rem)]">
         <p
@@ -69,7 +68,7 @@ export default function HeroSection() {
         </Link>
       </div>
 
-      <div className="relative col-start-1 row-start-2 min-h-0 pointer-events-none md:col-start-2 md:row-start-1" aria-hidden="true">
+      <div className="relative col-start-1 row-start-2 min-h-0 pointer-events-none md:col-start-2 md:row-start-1 md:-translate-y-16" aria-hidden="true">
         <Suspense fallback={null}>
           <EnduranceShip idle={!heroActive} />
         </Suspense>

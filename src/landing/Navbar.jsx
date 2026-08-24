@@ -17,7 +17,7 @@ export default function Navbar() {
   const location = useLocation();
   const pathname = location.pathname;
   const flightRef = useRef(0);
-  const { user } = useAuth();
+  const { user, teamName } = useAuth();
   const isParticipant = user?.role === "participant";
 
   const navLinks = useMemo(
@@ -31,12 +31,13 @@ export default function Navbar() {
         : { label: "LOGIN", href: "/login" },
       { label: "DISCORD", href: "/discord" },
     ],
-    [user, isParticipant]
+    [user, isParticipant, teamName]
   );
 
   const isActive = (href, label) => {
     if (label === "DASHBOARD") return DASHBOARD_PATHS.includes(pathname);
     if (label === "ABOUT") return pathname === "/about" || pathname === "/puzzles";
+    if (label === "TEAM") return pathname === "/team";
     return pathname === href;
   };
 
