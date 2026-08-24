@@ -1,0 +1,992 @@
+/* =====================================================
+   ABOUT — /about, the mission dossier
+
+   Every colour and font here is a timeline.css :root token.
+   That file is imported by app/about/page.tsx alongside this
+   one, for the same reason app/team/page.tsx imports it: it
+   owns --bg / --ink / --amber / --font-display / --font-mono
+   and is otherwise scoped to .timeline-section.
+
+   Deliberately NOT globals.css's hex tokens. --color-accretion
+   (#F4A233, bright orange) and --amber (oklch 0.73 0.10 48,
+   muted terracotta) are visibly different oranges; a page that
+   uses both reads as two designs stapled together. The FAQ,
+   timeline, footer and team page all made the same call.
+   ===================================================== */
+
+/*
+ * No `background` and no `isolation` on purpose.
+ *
+ * An opaque background here painted over globals.css's body::before starfield,
+ * which is why every section below the header read as flat black. And
+ * isolation:isolate would make this a stacking context, trapping .ad-atmos
+ * (position:fixed, z-index:-1) — it needs to resolve against the root so it
+ * layers above the starfield and below the content, not above the starfield
+ * only within this box.
+ */
+.about-page {
+  position: relative;
+  font-family: var(--font-mono);
+  color: var(--ink);
+  padding-top: var(--nav-height);
+  overflow-x: clip;
+}
+
+.about-page ::selection { background: var(--amber-glow); color: var(--ink); }
+
+/* Shared section shell. One rhythm for the whole page; sections vary by
+   layout, not by padding, so the vertical cadence stays even. */
+.ad-section {
+  position: relative;
+  padding: clamp(64px, 9vw, 112px) clamp(20px, 5vw, 64px);
+}
+
+.ad-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+/* ── Shared type ───────────────────────────────────────
+   .ad-eyebrow appears three times on this page, not eight.
+   The HUD tag line is the site's voice (see faq.css's
+   "// DATA_ARCHIVE_ACCESS"), but one above every heading is
+   wallpaper — the other five sections lead with the heading.
+   ───────────────────────────────────────────────────── */
+
+.ad-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--amber-dim);
+  margin: 0 0 16px;
+}
+
+.ad-h2 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(1.6rem, 4.2vw, 2.6rem);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 0;
+  text-wrap: balance;
+}
+
+.ad-rule {
+  width: 56px;
+  height: 2px;
+  background: var(--amber);
+  margin: 22px 0 26px;
+}
+
+.ad-lede {
+  font-size: 14px;
+  line-height: 1.85;
+  /* --ink-dim, never --ink-faint. --ink-faint is ~3.6:1 on --bg: fine for a
+     9px HUD label, not for a sentence someone has to read. */
+  color: var(--ink-dim);
+  max-width: 68ch;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+/* Inline text link. The page's only buttons are the two in the closing CTA;
+   every other destination is one of these, so there is exactly one call to
+   action per intent. */
+.ad-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--amber);
+  text-decoration: none;
+  padding-bottom: 3px;
+  border-bottom: 1px solid oklch(0.73 0.10 48 / 0.3);
+  transition: border-color 200ms var(--ease-out), color 200ms var(--ease-out);
+}
+
+.ad-link__arrow {
+  transition: transform 200ms var(--ease-out);
+}
+
+.ad-link:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ad-link:hover { color: var(--amber-bright); border-bottom-color: var(--amber); }
+  .ad-link:hover .ad-link__arrow { transform: translateX(4px); }
+}
+
+/* Values that are still unknown. Same size and position as a real value, just
+   dimmed, so a half-filled dossier reads as pending rather than broken. */
+.ad-tbd {
+  color: var(--ink-faint);
+  letter-spacing: 0.14em;
+}
+
+/* =====================================================
+   1 — DOSSIER HEADER            (asymmetric split)
+   ===================================================== */
+
+/* Overrides .ad-section's symmetric rhythm: the navbar already supplies the
+   air above, and the header needs more room below it than between it and the
+   nav. Padding lives here, NOT on .ad-header, or the two stack and the title
+   floats 200px down the viewport. */
+.ad-header-wrap {
+  padding-top: clamp(36px, 5vw, 64px);
+  padding-bottom: clamp(72px, 10vw, 120px);
+}
+
+.ad-header {
+  display: grid;
+  gap: clamp(40px, 6vw, 72px);
+  align-items: center;
+}
+
+@media (min-width: 960px) {
+  .ad-header { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); }
+}
+
+/* =====================================================
+   BACKDROP
+   -----------------------------------------------------
+   Spans from the true top of the page (y=0, behind the translucent
+   navbar) down past the header, and dissolves rather than stopping.
+
+   overflow: hidden is load-bearing. .ad-backdrop__drift is scaled and
+   translated, so without it the image renders ~13px taller than its
+   box on every side — and that overhang sits BELOW the wash, which is
+   what put a bright unwashed strip of accretion disk across the seam.
+   Clip the box and the wash always covers the full image.
+   ===================================================== */
+
+.ad-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: min(940px, 108vh);
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ad-backdrop__drift {
+  position: absolute;
+  /* Inset negatively so the drift below never exposes a bare edge. */
+  inset: -6%;
+  animation: adDrift 72s ease-in-out infinite alternate;
+}
+
+/*
+ * opacity and blur belong on the IMAGE, not on a shared ancestor. Set on a
+ * parent, .ad-backdrop__wash inherits them too — a 0.4-opacity blurred scrim
+ * darkens nothing, which is the whole reason it exists.
+ */
+.ad-backdrop__drift img {
+  opacity: 0.42;
+  filter: blur(1.5px);
+}
+
+/*
+ * Barely-there parallax. 72s and ~2% of travel: nobody watches it happen, they
+ * just never catch the page sitting perfectly still. Transform only, so it
+ * composites and costs nothing per frame.
+ */
+@keyframes adDrift {
+  from { transform: scale(1.04) translate3d(-0.8%, -0.5%, 0); }
+  to   { transform: scale(1.09) translate3d(0.8%, 0.6%, 0); }
+}
+
+/*
+ * The fade-out. A single gradient does both jobs: it seats the copy over the
+ * bright half of the image, and it ramps to opaque --bg well before the
+ * backdrop's own bottom edge (85%, not 100%) so the box ends inside a region
+ * that is already solid. That is why there is no seam to see.
+ */
+.ad-backdrop__wash {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    oklch(0.09 0.005 60 / 0.72) 0%,
+    oklch(0.10 0.006 60 / 0.42) 22%,
+    oklch(0.10 0.006 60 / 0.52) 50%,
+    oklch(0.09 0.005 60 / 0.88) 74%,
+    var(--bg) 88%,
+    var(--bg) 100%
+  );
+}
+
+/* Horizontal companion to the wash: keeps the left column dark enough for the
+   title regardless of where the accretion disk lands at a given width. */
+.ad-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    oklch(0.08 0.004 60 / 0.82) 0%,
+    oklch(0.09 0.005 60 / 0.45) 38%,
+    transparent 68%
+  );
+}
+
+/* =====================================================
+   ATMOSPHERE
+   -----------------------------------------------------
+   .about-page deliberately paints NO opaque background — an opaque
+   fill here covered globals.css's body::before starfield (z-index -2,
+   25 layered radial-gradients) and left every section below the
+   header flat black. Removing it lets that existing starfield read
+   through the entire page at zero cost, and this fixed layer only
+   adds warmth and a vignette on top.
+   ===================================================== */
+
+.ad-atmos {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 78% 8%, oklch(0.30 0.05 52 / 0.13) 0%, transparent 58%),
+    radial-gradient(90% 70% at 12% 92%, oklch(0.24 0.035 268 / 0.11) 0%, transparent 60%),
+    radial-gradient(140% 100% at 50% 50%, transparent 42%, oklch(0.04 0.004 60 / 0.6) 100%),
+    /* Last layer paints first: a flat scrim that knocks the starfield back to
+       atmosphere. At full strength body::before reads as confetti behind body
+       copy — the stars should suggest depth, not compete for attention. */
+    linear-gradient(oklch(0.08 0.005 60 / 0.38), oklch(0.08 0.005 60 / 0.38));
+}
+
+.ad-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  /* Ceiling well under the 6rem shout line; the page is a briefing, not a hero. */
+  font-size: clamp(2.6rem, 7vw, 4.6rem);
+  letter-spacing: 0.02em;
+  line-height: 1.02;
+  color: var(--ink);
+  margin: 0;
+  text-wrap: balance;
+}
+
+.ad-title__sub {
+  display: block;
+  color: var(--amber);
+}
+
+.ad-header__sub {
+  font-size: 14.5px;
+  line-height: 1.8;
+  color: var(--ink-dim);
+  max-width: 46ch;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+/* Orbit figure. Built like timeline.css's .timeline-hero__orbit so it reads as
+   the same instrument, but a different plot: two dashed shells plus a course
+   arc, not three concentric rings. */
+.ad-orbit {
+  justify-self: center;
+  width: clamp(220px, 34vw, 340px);
+  color: var(--ink-faint);
+  opacity: 0.8;
+}
+
+.ad-orbit svg { width: 100%; height: auto; display: block; }
+
+.ad-orbit__spin {
+  transform-origin: 160px 160px;
+  animation: adOrbit 46s linear infinite;
+}
+
+@keyframes adOrbit {
+  to { transform: rotate(360deg); }
+}
+
+/* =====================================================
+   2 — WHAT YOU ARE SIGNING UP FOR   (editorial prose)
+   ===================================================== */
+
+.ad-brief__body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 4px;
+}
+
+/* Hairline spec strip. Hairlines on the group, not under every row: a rule
+   under each of four items is four times the ink for none of the meaning. */
+.ad-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  margin-top: clamp(40px, 5vw, 56px);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--line-soft);
+}
+
+.ad-strip__cell {
+  background: var(--bg);
+  padding: 22px 20px 24px;
+}
+
+/* --ink-dim, not --ink-faint. This names the value beside it, so it is content,
+   and --ink-faint is ~3.6:1 on --bg (under AA). Size and tracking already say
+   "secondary"; the colour does not also need to. Same call on .ad-vital__label. */
+.ad-strip__label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 10px;
+}
+
+.ad-strip__value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+}
+
+/* =====================================================
+   3 — MISSION VITALS                  (HUD panel grid)
+   ===================================================== */
+
+.ad-vitals__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: clamp(32px, 4vw, 44px);
+}
+
+@media (min-width: 720px) {
+  .ad-vitals__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1000px) {
+  /* Deliberately not three equal columns. The dates and the rounds note carry
+     real copy and land in the wide column; equal thirds read as a template. */
+  .ad-vitals__grid { grid-template-columns: 2fr 1fr 1fr; }
+}
+
+.ad-vital {
+  position: relative;
+  padding: 22px 24px 24px;
+  background: oklch(0.13 0.01 60 / 0.6);
+  border: 1px solid var(--line-soft);
+  /* Notched corners, the same HUD idiom as team.css's .hud-panel. Note that
+     clip-path clips this element's own box-shadow, so the hover state below
+     uses an inset shadow and a border colour, never an outer glow. */
+  clip-path: polygon(10px 0%, calc(100% - 10px) 0%,
+      100% 10px, 100% calc(100% - 10px),
+      calc(100% - 10px) 100%, 10px 100%,
+      0% calc(100% - 10px), 0% 10px);
+  transition: border-color 220ms var(--ease-out), background 220ms var(--ease-out),
+              transform 220ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ad-vital:hover {
+    border-color: var(--amber-dim);
+    background: oklch(0.15 0.012 60 / 0.7);
+    /* 2px. Enough to feel the panel respond, not enough to notice it move. */
+    transform: translateY(-2px);
+  }
+}
+
+.ad-vital__label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 12px;
+}
+
+.ad-vital__value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(19px, 2.4vw, 25px);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  line-height: 1.25;
+}
+
+.ad-vital__note {
+  display: block;
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--ink-dim);
+  margin-top: 10px;
+}
+
+/* =====================================================
+   4 — HOW IT RUNS                        (stepped rail)
+   ===================================================== */
+
+.ad-steps__list {
+  position: relative;
+  list-style: none;
+  margin: clamp(32px, 4vw, 44px) 0 0;
+  padding: 0 0 0 40px;
+}
+
+/* The rail. Stops 1px short at each end so it reads as a measured span rather
+   than a line that ran off the section. */
+.ad-steps__list::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    var(--amber-dim) 0%,
+    var(--line) 22%,
+    var(--line) 78%,
+    var(--bg-fade) 100%
+  );
+}
+
+.ad-step {
+  position: relative;
+  padding-bottom: 34px;
+}
+
+.ad-step:last-child { padding-bottom: 0; }
+
+.ad-step::before {
+  content: "";
+  position: absolute;
+  left: -38px;
+  top: 7px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--ink-faint);
+  transition: border-color 220ms var(--ease-out), background 220ms var(--ease-out);
+}
+
+/* The first node is filled: it is where a new participant actually starts.
+   Real state, not decoration. */
+.ad-step:first-child::before {
+  background: var(--amber);
+  border-color: var(--amber);
+}
+
+.ad-step__head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.ad-step__index {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--amber-dim);
+}
+
+.ad-step__title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 0;
+}
+
+.ad-step__body {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink-dim);
+  max-width: 62ch;
+  margin: 0;
+}
+
+/* =====================================================
+   5 — THE SIX ROUNDS                 (auto-fit card grid)
+   ===================================================== */
+
+.ad-rounds__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+/*
+ * Explicit columns, not repeat(auto-fit, minmax(...)). auto-fit fits as many as
+ * the width allows, which at 1440px is four — leaving a 4 + 2 row that reads as
+ * a grid that ran out of content. There are exactly six rounds and there always
+ * will be, so 2x3 is the shape; state it.
+ */
+.ad-rounds__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: clamp(32px, 4vw, 44px);
+}
+
+@media (min-width: 620px) {
+  .ad-rounds__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1000px) {
+  .ad-rounds__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Static on purpose. The wormhole on / owns the hover-to-expand briefing; this
+   is the reference view of the same six rounds, so it states them and stops. */
+.ad-round {
+  padding: 20px 22px 22px;
+  background: oklch(0.12 0.01 60 / 0.7);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+}
+
+.ad-round--active { border-color: var(--amber-dim); }
+.ad-round--complete { border-color: oklch(0.5 0.05 52 / 0.4); }
+.ad-round--locked { border-color: oklch(0.32 0.012 270 / 0.4); }
+
+.ad-round__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ad-round__code {
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  color: var(--ink-faint);
+}
+
+.ad-round--active .ad-round__code { color: var(--amber); }
+.ad-round--complete .ad-round__code { color: var(--brown-bright); }
+
+.ad-round__date {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+}
+
+.ad-round__title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.ad-round--locked .ad-round__title { color: var(--ink-faint); }
+
+.ad-round__summary {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink-dim);
+  margin: 0 0 16px;
+}
+
+/* LOCKED / ACTIVE / COMPLETE is the single most useful thing on this card, so
+   it gets a readable colour rather than the HUD's decorative --ink-faint. */
+.ad-round__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+  margin: 0;
+}
+
+/* Semantic, not decorative: this dot is the only thing distinguishing a round
+   that is running from one that has not opened. */
+.ad-round__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--ink-dim);
+  border: 1px solid transparent;
+}
+
+.ad-round--active .ad-round__dot { background: var(--amber); }
+.ad-round--active .ad-round__status { color: var(--amber); }
+.ad-round--complete .ad-round__dot { background: var(--brown-bright); }
+.ad-round--complete .ad-round__status { color: var(--brown-bright); }
+.ad-round--locked .ad-round__dot { background: transparent; border-color: var(--locked); }
+
+/* =====================================================
+   6 — RULES OF ENGAGEMENT        (two-column checklist)
+   ===================================================== */
+
+.ad-protocol__cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(36px, 5vw, 64px);
+  margin-top: clamp(32px, 4vw, 44px);
+}
+
+@media (min-width: 860px) {
+  .ad-protocol__cols { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+}
+
+.ad-protocol__title {
+  font-size: 10.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--amber-dim);
+  margin: 0 0 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.ad-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ad-checklist li {
+  position: relative;
+  padding-left: 26px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-dim);
+}
+
+/* A drawn tick rather than a bullet: this is a manifest, and the mark should
+   read as "checked off". Two rules, one rotated, same trick faq.css uses for
+   its + / x glyph instead of shipping an icon webfont. */
+.ad-checklist li::before,
+.ad-checklist li::after {
+  content: "";
+  position: absolute;
+  background: var(--amber);
+}
+
+/*
+ * The two strokes must MEET, or it reads as a broken chevron. Both rotate about
+ * their left edge / vertical centre, so the short stroke's pivot is (3, 10.5)
+ * and at 45deg over 5px it ends at (3 + 5cos45, 10.5 + 5sin45) = (6.54, 14.04).
+ * The long stroke's pivot is therefore (6.5, 14) — that is where its left/top
+ * come from. Change one and you have to re-derive the other.
+ */
+.ad-checklist li::before {
+  left: 3px;
+  top: 10px;
+  width: 5px;
+  height: 1px;
+  transform: rotate(45deg);
+  transform-origin: left center;
+}
+
+.ad-checklist li::after {
+  left: 6.5px;
+  top: 13.5px;
+  width: 9px;
+  height: 1px;
+  transform: rotate(-45deg);
+  transform-origin: left center;
+}
+
+.ad-protocol__foot {
+  margin-top: clamp(36px, 4vw, 48px);
+  padding-top: 24px;
+  border-top: 1px solid var(--line-soft);
+}
+
+/* =====================================================
+   7 — WHO RUNS IT                   (quiet full band)
+   ===================================================== */
+
+.ad-org {
+  /* Lifted a step off --bg, still the same theme. No inversion anywhere on
+     this page: one theme, top to bottom. Translucent, not solid, so the
+     starfield behind it still reads and the band feels layered on the page
+     rather than cut out of it. */
+  background: oklch(0.15 0.009 60 / 0.72);
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.ad-org__inner {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+  align-items: center;
+}
+
+@media (min-width: 800px) {
+  .ad-org__inner { grid-template-columns: auto minmax(0, 1fr); gap: clamp(40px, 6vw, 72px); }
+}
+
+.ad-org__logo {
+  height: auto;
+  /* The mark is a light PNG on a dark band; nothing to correct, just size it. */
+  opacity: 0.9;
+}
+
+.ad-org__body {
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--ink-dim);
+  max-width: 62ch;
+  margin: 0 0 22px;
+  text-wrap: pretty;
+}
+
+/* =====================================================
+   8 — CLOSING CTA                (centered prompt)
+   ===================================================== */
+
+.ad-cta__inner {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.ad-cta .ad-rule { margin-inline: auto; }
+
+.ad-cta__body {
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--ink-dim);
+  margin: 0 0 34px;
+  text-wrap: pretty;
+}
+
+.ad-cta__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+
+/* Shares the sweep idiom of globals.css .cta-button, restyled against --amber
+   so it does not import that file's brighter orange onto this page. */
+.ad-btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 14px 30px;
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 3px;
+  transition: background 220ms var(--ease-out), border-color 220ms var(--ease-out),
+              color 220ms var(--ease-out), transform 140ms var(--ease-out);
+}
+
+/* Instant physical feedback on press. 0.97 is felt, not seen. */
+.ad-btn:active { transform: scale(0.97); }
+
+.ad-btn:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}
+
+.ad-btn__sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, oklch(0.83 0.09 54 / 0.14), transparent);
+  transform: translateX(-100%);
+  transition: transform 620ms var(--ease-out);
+}
+
+/* Primary: amber text on a tinted fill with a solid amber border. Contrast of
+   --amber on --bg is ~7:1, comfortably past AA for this size. */
+.ad-btn--primary {
+  color: var(--amber-bright);
+  border: 1px solid var(--amber);
+  background: oklch(0.73 0.10 48 / 0.08);
+}
+
+/* Secondary: same shape, quieter. Its border is visible against --bg on its
+   own, so it never becomes an invisible ghost button. */
+.ad-btn--ghost {
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  background: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ad-btn--primary:hover { background: oklch(0.73 0.10 48 / 0.16); }
+  .ad-btn--ghost:hover { color: var(--ink); border-color: var(--amber-dim); }
+  .ad-btn:hover .ad-btn__sweep { transform: translateX(100%); }
+}
+
+/* =====================================================
+   SCROLL REVEAL
+
+   The hidden state is gated on `.js`, which AboutDossier adds on
+   mount. Without JavaScript, without an IntersectionObserver, or in
+   a headless renderer, none of these rules apply and the page ships
+   fully visible — a reveal must enhance a readable default, never
+   gate content behind a transition that may never fire.
+
+   transform + opacity only, and a transition rather than keyframes
+   so a fast scroll retargets mid-flight instead of restarting.
+   ===================================================== */
+
+.about-page.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.about-page.js [data-reveal] {
+  transition: opacity 420ms var(--ease-out), transform 420ms var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 55ms);
+}
+
+.about-page.js [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Motion that describes what it reveals ─────────────
+   Three overrides on the generic slide-up, each because the element is a
+   specific thing and a generic entrance would say nothing about it. Higher
+   specificity than the block above (4 classes/attrs vs 3), so they win.
+   ───────────────────────────────────────────────────── */
+
+/* A rule is a line. It should be DRAWN, left to right, not slid into place.
+   scaleX, not width — width is a layout property and would reflow the column. */
+.about-page.js .ad-rule[data-reveal] {
+  opacity: 1;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.about-page.js .ad-rule[data-reveal].is-in { transform: scaleX(1); }
+
+.about-page.js .ad-cta .ad-rule[data-reveal] { transform-origin: center; }
+
+/*
+ * The step rail draws downward as the sequence arrives — the one motion on
+ * this page that carries meaning, because the rail IS the progression.
+ * The <ol> itself is pinned visible; only its ::before animates, so the five
+ * steps keep their own independent stagger.
+ */
+.about-page.js .ad-steps__list[data-reveal] {
+  opacity: 1;
+  transform: none;
+}
+
+.about-page.js .ad-steps__list[data-reveal]::before {
+  transform: scaleY(0);
+  transform-origin: top center;
+  transition: transform 1100ms var(--ease-out);
+}
+
+.about-page.js .ad-steps__list[data-reveal].is-in::before { transform: scaleY(1); }
+
+/*
+ * Only the ACTIVE round blinks. This is state, not decoration: it is the one
+ * round a visitor can do something about right now. Same cadence as
+ * timeline.css's tunnelBlink so the two views of these rounds agree.
+ */
+.ad-round--active .ad-round__dot {
+  animation: adBlink 1.8s ease-in-out infinite;
+}
+
+@keyframes adBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+/* =====================================================
+   RESPONSIVE
+   ===================================================== */
+
+@media (max-width: 767px) {
+  /* 0.3em tracking pushes the 38-character dossier tag to ~376px, which wraps
+     "PUBLIC" onto its own line inside a 350px content box. Tighten the tracking
+     rather than shortening the line — the tag is the voice. */
+  .ad-eyebrow { font-size: 10px; letter-spacing: 0.18em; }
+
+  .ad-orbit { width: min(240px, 62vw); }
+  .ad-lede, .ad-header__sub { font-size: 13.5px; }
+  .ad-steps__list { padding-left: 32px; }
+  .ad-step::before { left: -30px; }
+  .ad-vital { padding: 18px 18px 20px; }
+  .ad-btn { width: 100%; justify-content: center; padding-inline: 20px; }
+  .ad-cta__row { flex-direction: column; }
+}
+
+/* Short landscape phones: the header's two columns plus a 340px orbit leave no
+   room for the title, so drop the figure rather than shrinking everything. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .ad-orbit { display: none; }
+  .ad-header { padding-block: 48px; }
+}
+
+/* =====================================================
+   REDUCED MOTION
+   Matches the gate every other stylesheet in this repo carries.
+   Entrances resolve to their final state rather than being removed,
+   so nothing that reveals from opacity:0 is left invisible.
+   ===================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .about-page.js [data-reveal],
+  .about-page.js .ad-rule[data-reveal],
+  .about-page.js .ad-steps__list[data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  /* Resolve to the drawn state rather than dropping the rules and the rail. */
+  .about-page.js .ad-rule[data-reveal] { transform: scaleX(1); }
+
+  .about-page.js .ad-steps__list[data-reveal]::before {
+    transform: scaleY(1);
+    transition: none;
+  }
+
+  .ad-orbit__spin,
+  .ad-backdrop__drift,
+  .ad-round--active .ad-round__dot { animation: none; }
+
+  /* The drift's `from` keyframe is also its resting composition; without this
+     the backdrop snaps to an unscaled image and exposes the box edge. */
+  .ad-backdrop__drift { transform: scale(1.06); }
+
+  .ad-btn,
+  .ad-btn__sweep,
+  .ad-link,
+  .ad-link__arrow,
+  .ad-vital,
+  .ad-step::before {
+    transition-duration: 1ms;
+  }
+}
