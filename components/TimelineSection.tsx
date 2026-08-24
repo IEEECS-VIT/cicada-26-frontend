@@ -64,7 +64,8 @@ export default function TimelineSection() {
   }, []);
 
   return (
-    <section className="timeline-section" aria-label="Timeline">
+    /* id: target of the /about page's "fly the full timeline" link. */
+    <section id="timeline" className="timeline-section" aria-label="Timeline">
       {/* HUD chrome — one wrapper, faded in as a group by the scroll loop */}
       <div className="tunnel-hud" ref={hudRef} aria-hidden="true">
         <div className="hud-corner hud-corner--tl" />

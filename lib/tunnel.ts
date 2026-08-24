@@ -28,47 +28,12 @@ const PALETTE = {
   starCool: 0xffffff,
 };
 
-export type RoundStatus = "COMPLETE" | "ACTIVE" | "LOCKED";
-
-export interface Round {
-  code: string;
-  title: string;
-  date: string;
-  status: RoundStatus;
-  summary: string;
-  briefing: string;
-  objectives: [string, string][];
-}
-
-export const ROUNDS: Round[] = [
-  { code: 'ROUND 01', title: 'FIRST CONTACT', date: '14 MAR 2067', status: 'COMPLETE',
-    summary: 'Initial transmission decoded. Entry accepted.',
-    briefing: 'A single burst signal repeated for six days before it was caught. Once isolated, the payload resolved into an invitation, not a threat.',
-    objectives: [['ISOLATE SIGNAL', 'COMPLETE'], ['DECODE PAYLOAD', 'COMPLETE'], ['CONFIRM ENTRY', 'COMPLETE']] },
-  { code: 'ROUND 02', title: 'CIPHER PROTOCOL', date: '02 APR 2067', status: 'ACTIVE',
-    summary: 'Decode the transmission. Uncover the next coordinate.',
-    briefing: 'A looping numeric transmission repeats every eleven seconds. Isolate the pattern, invert it, and the next coordinate resolves.',
-    objectives: [['DECODE PAYLOAD', 'IN PROGRESS'], ['VERIFY CHECKSUM', 'PENDING'], ['SUBMIT COORDINATE', 'LOCKED']] },
-  { code: 'ROUND 03', title: 'DEEP FIELD SCAN', date: '21 APR 2067', status: 'LOCKED',
-    summary: 'Coordinates unlock at close of Round 02.',
-    briefing: 'Long range scan protocols are staged and waiting on authorization from the prior round.',
-    objectives: [['SCAN ARRAY', 'LOCKED'], ['TRIANGULATE', 'LOCKED'], ['LOG COORDINATE', 'LOCKED']] },
-  { code: 'ROUND 04', title: 'SIGNAL TRIANGULATION', date: '09 MAY 2067', status: 'LOCKED',
-    summary: 'Three signals converge on a single origin.',
-    briefing: 'Details classified until the prior round clears.',
-    objectives: [['CROSS REFERENCE', 'LOCKED'], ['PLOT VECTOR', 'LOCKED'], ['LOG COORDINATE', 'LOCKED']] },
-  { code: 'ROUND 05', title: 'THE LONG SILENCE', date: '28 MAY 2067', status: 'LOCKED',
-    summary: 'No transmission is still a transmission.',
-    briefing: 'Details classified until the prior round clears.',
-    objectives: [['MONITOR FREQUENCY', 'LOCKED'], ['INTERPRET SILENCE', 'LOCKED'], ['LOG COORDINATE', 'LOCKED']] },
-  { code: 'ROUND 06', title: 'FINAL DESCENT', date: '16 JUN 2067', status: 'LOCKED',
-    summary: 'Last coordinate. No return signal past this point.',
-    briefing: 'Details classified until the prior round clears.',
-    objectives: [['CONFIRM DESCENT', 'LOCKED'], ['BRACE', 'LOCKED'], ['ARRIVE', 'LOCKED']] },
-];
-
-export const statusClass = (status: RoundStatus) =>
-  status === "ACTIVE" ? "active" : status === "COMPLETE" ? "complete" : "locked";
+/* The round content lives in ./rounds — a THREE-free module, so /about can read
+   it without this file's `import * as THREE` dragging WebGL onto that route.
+   Re-exported here so existing importers (TimelineSection) don't change. */
+import { ROUNDS } from "./rounds";
+export { ROUNDS, statusClass } from "./rounds";
+export type { Round, RoundStatus } from "./rounds";
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
