@@ -40,6 +40,10 @@ export async function updateChallenge(id, payload) {
   return api(`/api/admin/challenges/${id}`, { method: "PUT", admin: true, body: payload });
 }
 
+export async function addAsset(challengeId, payload) {
+  return api(`/api/admin/challenges/${challengeId}/assets`, { method: "POST", admin: true, body: payload });
+}
+
 export async function deleteChallenge(id) {
   return api(`/api/admin/challenges/${id}`, { method: "DELETE", admin: true });
 }
