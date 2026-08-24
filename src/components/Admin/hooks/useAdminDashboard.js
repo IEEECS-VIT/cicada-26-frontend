@@ -4,7 +4,7 @@ import { useAuth } from '../../../context/AuthContext';
 import {
   listUsers, getAdminChallenges, getAdminProgress, getLeaderboard,
   approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
-  createChallenge, updateChallenge, adminOverride,
+  createChallenge, updateChallenge, addAsset, adminOverride,
 } from '../../../api/admin';
 import {
   INITIAL_TEAMS,
@@ -178,6 +178,13 @@ export function useAdminDashboard() {
           isApprovedAdmin: x.role === 'admin' || x.role === 'GOD' ? x.is_admin_approved !== false : false,
           teamId: x.team_id || null,
         })));
+        const solvedCountsByRound = {};
+        (prog.data || []).forEach(p => {
+            (p.completed_challenges || []).forEach(round => {
+                solvedCountsByRound[round] = (solvedCountsByRound[round] || 0) + 1;
+            });
+        });
+
         setChallenges((ch.data || []).map((x) => ({
           id: x.id,
           title: x.name,
@@ -186,7 +193,7 @@ export function useAdminDashboard() {
           points: x.points || 0,
           isLocked: x.is_active === false,
           hintsEnabled: true,
-          solvedCount: 0,
+          solvedCount: solvedCountsByRound[x.order_number] || 0,
           timeLimit: x.time_limit || 0,
           assets: (x.assets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
         })));
@@ -536,47 +543,55 @@ export function useAdminDashboard() {
   // --- DIRECT ASSET MANAGEMENT HANDLERS ---
   
   // API Endpoint: POST Add Asset
-  const handleAddAssetToChallengeDirect = (challengeId, fileOrAsset) => {
-    let newAsset;
-    if (fileOrAsset.name && fileOrAsset.size !== undefined) {
-      newAsset = {
-        name: fileOrAsset.name,
-        url: `https://assets.cicada.org/uploads/${encodeURIComponent(fileOrAsset.name)}`
-      };
-    } else {
-      newAsset = {
-        name: fileOrAsset.name,
-        url: fileOrAsset.url || '#'
-      };
-    }
-
-    setChallenges(challenges.map(c => {
-      if (c.id === challengeId) {
-        const existingAssets = c.assets || [];
-        if (existingAssets.some(a => a.name === newAsset.name)) {
-          return c;
-        }
-        return {
-          ...c,
-          assets: [...existingAssets, newAsset]
+  const handleAddAssetToChallengeDirect = async (challengeId, fileOrAsset) => {
+    try {
+      let newAsset;
+      if (fileOrAsset.name && fileOrAsset.size !== undefined) {
+        newAsset = {
+          type: 'file',
+          name: fileOrAsset.name,
+          url: `https://assets.cicada.org/uploads/${encodeURIComponent(fileOrAsset.name)}`
+        };
+      } else {
+        newAsset = {
+          type: 'file',
+          name: fileOrAsset.name,
+          url: fileOrAsset.url || '#'
         };
       }
-      return c;
-    }));
 
-    const chal = challenges.find(c => c.id === challengeId);
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: 'system',
-      teamName: 'SYSTEM',
-      challengeId: challengeId,
-      challengeTitle: 'Add Asset',
-      answer: `Asset "${newAsset.name}" added to challenge "${chal ? chal.title : challengeId}"`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
+      await addAsset(challengeId, newAsset);
+
+      setChallenges(challenges.map(c => {
+        if (c.id === challengeId) {
+          const existingAssets = c.assets || [];
+          if (existingAssets.some(a => a.name === newAsset.name)) {
+            return c;
+          }
+          return {
+            ...c,
+            assets: [...existingAssets, newAsset]
+          };
+        }
+        return c;
+      }));
+
+      const chal = challenges.find(c => c.id === challengeId);
+      const newLog = {
+        id: `log-${Date.now()}`,
+        teamId: 'system',
+        teamName: 'SYSTEM',
+        challengeId: challengeId,
+        challengeTitle: 'Add Asset',
+        answer: `Asset "${newAsset.name}" added to challenge "${chal ? chal.title : challengeId}"`,
+        correct: true,
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        attempts: 0
+      };
+      setLogs([newLog, ...logs]);
+    } catch (err) {
+      alert(err.message || 'Failed to add asset');
+    }
   };
 
   // API Endpoint: PUT Edit Asset
