@@ -5,7 +5,7 @@ import { GameStateProvider } from "../context/GameStateContext";
 import Terminal from "../components/Terminal/Terminal";
 import HuntCountdown from "./HuntCountdown";
 import { HUNT_LOCK_ENABLED, isHuntOpen } from "../config/hunt";
-import { LogOut, Home } from "lucide-react";
+import { LogOut, Home, LayoutDashboard } from "lucide-react";
 
 export default function TerminalPage() {
   const { user, teamName, loading, logout } = useAuth();
@@ -28,7 +28,7 @@ export default function TerminalPage() {
 
   if (loading || !user || !teamName) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black font-orbitron text-accretion">
+      <div className="terminal-theme flex min-h-screen items-center justify-center bg-black font-orbitron text-accretion">
         <p className="animate-pulse tracking-[0.32em]">ACCESSING TERMINAL</p>
       </div>
     );
@@ -45,37 +45,51 @@ export default function TerminalPage() {
 
   if (lockParticipants) {
     return (
-      <HuntCountdown
-        teamName={teamName}
-        onOpen={() => setHuntOpen(true)}
-        onLogout={logout}
-      />
+      <div className="terminal-theme">
+        <HuntCountdown
+          teamName={teamName}
+          onOpen={() => setHuntOpen(true)}
+          onLogout={logout}
+        />
+      </div>
     );
   }
 
   return (
     <GameStateProvider>
-      <div className="flex h-dvh flex-col bg-black text-starlight">
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-accretion/20 px-3 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-4 sm:py-3">
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <div className="terminal-theme flex h-dvh flex-col bg-black text-starlight">
+        <div className="flex shrink-0 items-center justify-between gap-1.5 border-b border-accretion/20 px-2.5 py-1.5 pt-[max(0.375rem,env(safe-area-inset-top))] sm:px-4 sm:py-2">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="inline-flex min-h-11 items-center gap-1.5 font-rajdhani text-[11px] tracking-[0.18em] text-copper hover:text-accretion sm:tracking-[0.22em]"
+              className="inline-flex items-center gap-1 py-1 px-1.5 font-rajdhani text-[11px] tracking-[0.14em] text-copper transition-colors hover:text-accretion sm:text-xs sm:tracking-[0.22em] rounded"
             >
-              <Home className="h-3.5 w-3.5 shrink-0" /> HOME
+              <Home className="h-3.5 w-3.5 shrink-0" />
+              <span className="inline">HOME</span>
             </button>
-            <span className="hidden text-copper/30 sm:inline">|</span>
-            <span className="min-w-0 truncate font-rajdhani text-[11px] tracking-[0.16em] text-copper sm:tracking-[0.22em]">
-              CREW: <span className="text-accretion">{teamName}</span>
+            <span className="text-copper/30">|</span>
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard")}
+              className="inline-flex items-center gap-1 py-1 px-1.5 font-rajdhani text-[11px] tracking-[0.14em] text-copper transition-colors hover:text-accretion sm:text-xs sm:tracking-[0.22em] rounded"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
+              <span className="inline">DASHBOARD</span>
+            </button>
+            <span className="text-copper/30">|</span>
+            <span className="min-w-0 truncate font-rajdhani text-[11px] tracking-[0.12em] text-copper sm:text-xs sm:tracking-[0.22em]">
+              <span className="hidden xs:inline">CREW: </span>
+              <span className="text-accretion font-medium">{teamName}</span>
             </span>
           </div>
           <button
             type="button"
             onClick={logout}
-            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 font-rajdhani text-[11px] tracking-[0.18em] text-copper hover:text-accretion sm:tracking-[0.22em]"
+            className="inline-flex shrink-0 items-center gap-1 py-1 px-1.5 font-rajdhani text-[11px] tracking-[0.14em] text-copper transition-colors hover:text-accretion sm:text-xs sm:tracking-[0.22em] rounded"
           >
-            <LogOut className="h-3.5 w-3.5" /> SIGNOUT
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden xs:inline">SIGNOUT</span>
           </button>
         </div>
         <div className="min-h-0 flex-1">

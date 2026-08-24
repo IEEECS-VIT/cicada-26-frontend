@@ -92,8 +92,20 @@
 }
 
 @utility panel {
-  border: 1px solid color-mix(in oklab, var(--color-accretion) 45%, transparent);
-  background: color-mix(in oklab, black 80%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-accretion) 35%, transparent);
+  background: color-mix(in oklab, black 55%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 0.875rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.terminal-theme {
+  --color-accretion: #D19B83;
+  --color-accretion-bright: #E8C0AF;
+  --color-accretion-dim: #A66E57;
+  --color-primary: #D19B83;
+  --color-border: color-mix(in oklab, #D19B83 18%, transparent);
 }
 
 @utility scrollbar-hide {

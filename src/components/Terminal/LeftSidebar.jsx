@@ -30,17 +30,6 @@ export default function LeftSidebar({ onNavigate }) {
     }
   };
 
-  const calculateOverallProgress = () => {
-    let total = Object.keys(challengeData || {}).length * 100; // rough max score
-    let current = (unlockedRounds.length - 1) * 100;
-    // Add current round progress
-    const activeRoundData = challengeData?.[currentRound];
-    if (activeRoundData) {
-      current += ((unlockedPhases[currentRound] || 1) / activeRoundData.totalPhases) * 100;
-    }
-    return Math.min(100, Math.round((current / total) * 100));
-  };
-
   const calculateRoundProgress = (roundId) => {
     const roundData = challengeData?.[roundId];
     if (!roundData || !unlockedRounds.includes(roundId)) return 0;
@@ -53,59 +42,51 @@ export default function LeftSidebar({ onNavigate }) {
   };
 
   return (
-    <div className="panel flex min-h-0 w-full flex-col overflow-y-auto p-3 scrollbar-hide sm:p-4">
+    <div className="panel flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden p-2.5 sm:p-4">
       
       {/* Timers */}
-      <div className="mb-6 border border-accretion/30 bg-black/40 p-3">
-        <div className="flex justify-between items-end">
-          <p className="label-mono text-[9px] uppercase tracking-wider text-accretion/70">Round Time</p>
-          <p className="font-orbitron text-base text-accretion tabular-nums tracking-widest">{hrs}:{mins}:{secs}</p>
+      <div className="mb-2.5 shrink-0 border border-accretion/30 bg-black/40 p-2 sm:p-3 rounded-lg">
+        <div className="flex justify-between items-center gap-2">
+          <p className="label-mono text-[10px] sm:text-xs uppercase tracking-wider text-accretion/80">Round Time</p>
+          <p className="font-orbitron text-sm sm:text-base text-accretion tabular-nums tracking-widest">{hrs}:{mins}:{secs}</p>
         </div>
       </div>
 
       {/* Main Links */}
-      <div className="mb-6 space-y-1">
+      <div className="mb-2.5 shrink-0 space-y-1">
         <button 
           onClick={() => {
             setActiveTab('overview');
             onNavigate?.();
           }}
-          className={`w-full flex items-center gap-3 p-2 rounded transition-colors ${activeTab === 'overview' ? 'bg-accretion/20 text-accretion border border-accretion/40' : 'hover:bg-accretion/10 text-foreground/80 hover:text-accretion'}`}
+          className={`w-full flex items-center gap-2.5 min-h-[36px] p-2 rounded-lg transition-colors ${activeTab === 'overview' ? 'bg-accretion/20 text-accretion border border-accretion/40 shadow-[0_0_8px_rgba(209,155,131,0.2)]' : 'hover:bg-accretion/10 text-foreground/80 hover:text-accretion'}`}
         >
-          <Radar className="w-4 h-4 shrink-0" />
-          <span className="font-orbitron text-xs tracking-widest uppercase">Overview</span>
+          <Radar className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+          <span className="font-orbitron text-[11px] sm:text-xs tracking-widest uppercase">Overview</span>
         </button>
         <button 
           onClick={() => {
             setActiveTab('guidelines');
             onNavigate?.();
           }}
-          className={`w-full flex items-center gap-3 p-2 rounded transition-colors ${activeTab === 'guidelines' ? 'bg-accretion/20 text-accretion border border-accretion/40' : 'hover:bg-accretion/10 text-foreground/80 hover:text-accretion'}`}
+          className={`w-full flex items-center gap-2.5 min-h-[36px] p-2 rounded-lg transition-colors ${activeTab === 'guidelines' ? 'bg-accretion/20 text-accretion border border-accretion/40 shadow-[0_0_8px_rgba(209,155,131,0.2)]' : 'hover:bg-accretion/10 text-foreground/80 hover:text-accretion'}`}
         >
-          <RouteIcon className="w-4 h-4 shrink-0" />
-          <span className="font-orbitron text-xs tracking-widest uppercase">Guidelines</span>
+          <RouteIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+          <span className="font-orbitron text-[11px] sm:text-xs tracking-widest uppercase">Guidelines</span>
         </button>
         <button 
           onClick={() => {
             setActiveTab('faq');
             onNavigate?.();
           }}
-          className={`w-full flex items-center gap-3 p-2 rounded transition-colors ${activeTab === 'faq' ? 'bg-accretion/20 text-accretion border border-accretion/40' : 'hover:bg-accretion/10 text-foreground/80 hover:text-accretion'}`}
+          className={`w-full flex items-center gap-2.5 min-h-[36px] p-2 rounded-lg transition-colors ${activeTab === 'faq' ? 'bg-accretion/20 text-accretion border border-accretion/40 shadow-[0_0_8px_rgba(209,155,131,0.2)]' : 'hover:bg-accretion/10 text-foreground/80 hover:text-accretion'}`}
         >
-          <Info className="w-4 h-4 shrink-0" />
-          <span className="font-orbitron text-xs tracking-widest uppercase">FAQ</span>
+          <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+          <span className="font-orbitron text-[11px] sm:text-xs tracking-widest uppercase">FAQ</span>
         </button>
       </div>
 
-      <div className="mb-6">
-        <p className="label-mono text-xs">Team Progress</p>
-        <div className="mt-2 h-1.5 w-full rounded-full bg-muted">
-          <div className="h-full rounded-full bg-accretion transition-all duration-500" style={{ width: `${calculateOverallProgress()}%` }} />
-        </div>
-        <p className="text-right text-[10px] text-accretion mt-1">{calculateOverallProgress()}%</p>
-      </div>
-
-      <div className="flex-1 overflow-y-auto scrollbar-hide pr-2 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pr-0.5 space-y-2">
         {(challengeData ? Object.entries(challengeData) : []).map(([roundIdStr, roundData]) => {
           const roundId = parseInt(roundIdStr);
           const isUnlocked = unlockedRounds.includes(roundId);
@@ -113,29 +94,32 @@ export default function LeftSidebar({ onNavigate }) {
           const isActive = currentRound === roundId;
 
           return (
-            <div key={roundId} className="border border-accretion/30 rounded bg-black/40">
+            <div key={roundId} className="border border-accretion/30 rounded-lg bg-black/40 overflow-hidden">
               <button 
                 onClick={() => handleRoundClick(roundId)}
-                className={`w-full flex items-center justify-between p-3 transition-colors ${isUnlocked ? 'hover:bg-accretion/10 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                className={`w-full flex items-center justify-between min-h-[40px] p-2.5 transition-colors ${isUnlocked ? 'hover:bg-accretion/10 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                 disabled={!isUnlocked}
               >
                 <div className="flex items-center gap-2">
-                  {isUnlocked ? <Unlock className="w-4 h-4 text-accretion" /> : <Lock className="w-4 h-4 text-muted-foreground" />}
-                  <span className={`font-orbitron tracking-widest text-sm ${isActive ? 'text-accretion font-bold' : 'text-foreground/80'}`}>
+                  {isUnlocked ? <Unlock className="w-3.5 h-3.5 text-accretion shrink-0" /> : <Lock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                  <span className={`font-orbitron tracking-widest text-xs sm:text-sm ${isActive ? 'text-accretion font-bold' : 'text-foreground/80'}`}>
                     {roundData.title.toUpperCase()}
                   </span>
                 </div>
                 {isUnlocked && (
-                  isExpanded ? <ChevronDown className="w-4 h-4 text-accretion" /> : <ChevronRight className="w-4 h-4 text-accretion" />
+                  isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-accretion shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-accretion shrink-0" />
                 )}
               </button>
               
               {isExpanded && isUnlocked && (
-                <div className="p-3 pt-0 space-y-2 border-t border-accretion/30">
-                  <div className="mb-3 mt-2">
-                    <p className="label-mono text-[9px] mb-1">Round Progress</p>
-                    <div className="h-1 w-full rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-accretion" style={{ width: `${calculateRoundProgress(roundId)}%` }} />
+                <div className="p-2.5 pt-0 space-y-1.5 border-t border-accretion/20">
+                  <div className="mb-2 mt-1.5">
+                    <div className="flex justify-between items-center mb-1">
+                      <p className="label-mono text-[8px] text-accretion/70">Sector Clearance</p>
+                      <p className="font-mono text-[9px] text-accretion">{calculateRoundProgress(roundId)}%</p>
+                    </div>
+                    <div className="h-1 w-full rounded-full bg-black/60 border border-accretion/20 overflow-hidden">
+                      <div className="h-full rounded-full bg-accretion shadow-[0_0_6px_#D19B83]" style={{ width: `${calculateRoundProgress(roundId)}%` }} />
                     </div>
                   </div>
                   
@@ -155,9 +139,9 @@ export default function LeftSidebar({ onNavigate }) {
                           }
                         }}
                         disabled={!isPhaseUnlocked}
-                        className={`w-full text-left p-2 rounded flex items-center gap-2 transition-all text-xs ${isPhaseUnlocked ? 'cursor-pointer hover:bg-accretion/20' : 'opacity-40 cursor-not-allowed'} ${isPhaseActive && activeTab === 'overview' ? 'bg-accretion/20 text-accretion border border-accretion/50' : 'text-foreground/70'}`}
+                        className={`w-full text-left min-h-[36px] p-2 rounded-md flex items-center gap-2 transition-all text-xs ${isPhaseUnlocked ? 'cursor-pointer hover:bg-accretion/20' : 'opacity-40 cursor-not-allowed'} ${isPhaseActive && activeTab === 'overview' ? 'bg-accretion/25 text-accretion border border-accretion/60 font-semibold' : 'text-foreground/75'}`}
                       >
-                        {isPhaseUnlocked ? <div className="w-1.5 h-1.5 rounded-full bg-accretion shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full border border-muted-foreground shrink-0" />}
+                        {isPhaseUnlocked ? <div className="w-1.5 h-1.5 rounded-full bg-accretion shrink-0 shadow-[0_0_4px_#D19B83]" /> : <div className="w-1.5 h-1.5 rounded-full border border-muted-foreground shrink-0" />}
                         <span className="truncate">{phaseData.title}</span>
                       </button>
                     );
