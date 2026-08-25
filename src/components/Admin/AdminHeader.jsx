@@ -10,6 +10,9 @@ export default function AdminHeader() {
     authUser,
     safeguardActive,
     setSafeguardActive,
+    ipTrackingEnabled,
+    ipTrackingLoading,
+    handleToggleIpTracking,
     handleLogout,
     logout,
     activeTab,
@@ -51,7 +54,7 @@ export default function AdminHeader() {
           <button
             type="button"
             onClick={() => setSafeguardActive(!safeguardActive)}
-            className={`border px-4 py-2.5 font-rajdhani text-[11px] tracking-[0.22em] ${
+            className={`border px-4 py-2.5 font-rajdhani text-[11px] tracking-[0.22em] transition ${
               safeguardActive ? "border-accretion/50 text-accretion" : "border-red-400/50 text-red-300"
             }`}
             title={safeguardActive ? "Destructive actions locked" : "Destructive actions unlocked"}
@@ -60,12 +63,27 @@ export default function AdminHeader() {
           </button>
           <button
             type="button"
+            onClick={handleToggleIpTracking}
+            disabled={ipTrackingLoading}
+            className={`border px-4 py-2.5 font-rajdhani text-[11px] tracking-[0.22em] transition ${
+              ipTrackingEnabled ? "border-accretion/50 text-accretion hover:bg-accretion/10" : "border-red-400/50 text-red-300 hover:bg-red-500/10"
+            } disabled:opacity-50`}
+            title={
+              ipTrackingEnabled
+                ? "IP Tracking: ON (Challenges locked to first access IP)"
+                : "IP Tracking: OFF (Location locks bypassed)"
+            }
+          >
+            {ipTrackingLoading ? "UPDATING IP..." : ipTrackingEnabled ? "IP TRACKING ON" : "IP TRACKING OFF"}
+          </button>
+          <button
+            type="button"
             onClick={async () => {
               handleLogout();
               await logout();
               navigate("/");
             }}
-            className="inline-flex items-center gap-2 border border-copper/30 px-4 py-2.5 font-rajdhani text-[11px] tracking-[0.22em] text-copper hover:border-accretion hover:text-accretion"
+            className="inline-flex items-center gap-2 border border-copper/30 px-4 py-2.5 font-rajdhani text-[11px] tracking-[0.22em] text-copper hover:border-accretion hover:text-accretion transition"
           >
             <LogOut className="h-3.5 w-3.5" />
             SIGNOUT

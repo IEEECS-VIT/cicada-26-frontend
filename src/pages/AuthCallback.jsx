@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const { refresh } = useAuth();
+  const { refresh, setAuthData } = useAuth();
   const [status, setStatus] = useState("Verifying handshake...");
 
   useEffect(() => {
@@ -25,13 +25,10 @@ export default function AuthCallback() {
         const login = await loginWithToken(accessToken);
         if (cancelled) return;
 
-        setStatus("Loading user profile...");
-        const authData = await refresh();
-        if (cancelled) return;
-
-        const effectiveUser = authData?.user || login.user;
+        setAuthData(login);
+        const effectiveUser = login.user;
         const isAdmin = login.is_approved_admin || effectiveUser?.role === "admin" || effectiveUser?.role === "GOD";
-        const hasTeam = Boolean(authData?.team_name || effectiveUser?.team_id);
+        const hasTeam = Boolean(login.team_name || effectiveUser?.team_id);
 
         if (login.redirectUrl) {
           navigate(login.redirectUrl, { replace: true });
@@ -42,6 +39,7 @@ export default function AuthCallback() {
         } else {
           navigate("/team-setup", { replace: true });
         }
+        refresh(); // Background sync without blocking navigation
       } catch (err) {
         if (cancelled) return;
         console.error("Authentication handshake error:", err);

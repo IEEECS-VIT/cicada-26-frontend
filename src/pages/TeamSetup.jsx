@@ -32,10 +32,9 @@ export default function TeamSetup() {
     try {
       const data = await createTeam(teamNameInput.trim());
       setInfo(`CREW CREATED. INVITE CODE: ${data.invite_code}`);
-      setTimeout(() => {
-        setTeamName(teamNameInput.trim());
-        navigate("/terminal", { replace: true });
-      }, 1800);
+      setTeamName(teamNameInput.trim());
+      refresh();
+      navigate("/terminal", { replace: true });
     } catch (err) {
       setError(err.message.toUpperCase());
     } finally {
@@ -48,12 +47,11 @@ export default function TeamSetup() {
     setError("");
     setBusy(true);
     try {
-      await joinTeam(inviteCode.trim().toUpperCase());
+      const res = await joinTeam(inviteCode.trim().toUpperCase());
       setInfo("JOINED CREW. ENTERING THE ARENA...");
-      setTimeout(async () => {
-        await refresh();
-        navigate("/terminal", { replace: true });
-      }, 1500);
+      if (res?.team_name) setTeamName(res.team_name);
+      refresh();
+      navigate("/terminal", { replace: true });
     } catch (err) {
       setError(err.message.toUpperCase());
     } finally {

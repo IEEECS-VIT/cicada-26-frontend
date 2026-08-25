@@ -193,19 +193,26 @@ export default function Dashboard() {
       `}</style>
       <div 
         ref={appRef}
-        className="relative h-screen bg-[radial-gradient(120%_90%_at_82%_42%,#17100c_0%,#0b0709_42%,#07050a_100%)] text-[#e9dcd2] font-['Chakra_Petch',system-ui,sans-serif] overflow-hidden box-border selection:bg-[#e0a279]/30"
+        className="relative min-h-screen bg-[radial-gradient(120%_90%_at_82%_42%,#17100c_0%,#0b0709_42%,#07050a_100%)] text-[#e9dcd2] font-['Chakra_Petch',system-ui,sans-serif] overflow-x-hidden box-border selection:bg-[#e0a279]/30 flex flex-col justify-center"
       >
         <DashboardBackground />
 
-        <div className="relative z-[2] max-w-[1280px] mx-auto pt-[100px] px-11 pb-5 flex flex-col gap-5 h-screen">
-          <div className="flex items-center justify-between gap-10">
-            <div className="flex items-center gap-[26px] font-mono">
-              <div className="flex flex-col gap-1.5">
+        {/* HUD Corner Brackets */}
+        <div className="pointer-events-none absolute left-4 top-[calc(var(--nav-height)+1rem)] h-8 w-8 border-l border-t border-[#e0a279]/50 sm:left-6 sm:h-10 sm:w-10 z-[1]" aria-hidden="true" />
+        <div className="pointer-events-none absolute right-4 top-[calc(var(--nav-height)+1rem)] h-8 w-8 border-r border-t border-[#e0a279]/50 sm:right-6 sm:h-10 sm:w-10 z-[1]" aria-hidden="true" />
+        <div className="pointer-events-none absolute bottom-6 left-4 h-8 w-8 border-b border-l border-[#e0a279]/50 sm:bottom-8 sm:left-6 sm:h-10 sm:w-10 z-[1]" aria-hidden="true" />
+        <div className="pointer-events-none absolute bottom-6 right-4 h-8 w-8 border-b border-r border-[#e0a279]/50 sm:bottom-8 sm:right-6 sm:h-10 sm:w-10 z-[1]" aria-hidden="true" />
+
+        <div className="relative z-[2] max-w-[1280px] mx-auto w-full pt-[calc(var(--nav-height)+1rem)] px-4 sm:px-8 pb-8 flex flex-col justify-center gap-5">
+          {/* Top Status Bar */}
+          <div className="flex items-center justify-between gap-6 px-1">
+            <div className="flex items-center gap-6 sm:gap-8 font-mono">
+              <div className="flex flex-col gap-1">
                 <div className="text-[11px] tracking-[0.28em] text-[#b3a191]">SHIP TIME</div>
-                <div className="text-[22px] font-light tracking-[0.14em] text-[#f0e2d5]" ref={clockRef}>--:--:--</div>
+                <div className="text-xl sm:text-2xl font-light tracking-[0.14em] text-[#f0e2d5]" ref={clockRef}>--:--:--</div>
               </div>
               <div className="w-px h-10 bg-[#e0a279]/18" />
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <div className="text-[11px] tracking-[0.28em] text-[#b3a191]">SIGNAL</div>
                 <div className="flex items-end gap-[3px] h-[22px]">
                   <span className="w-[3px] h-full bg-[#e0a279]/85 origin-bottom animate-[cd-bar_1.4s_ease-in-out_infinite]" />
@@ -219,7 +226,7 @@ export default function Dashboard() {
             <div>
               <button 
                 onClick={logout} 
-                className="cursor-pointer flex items-center justify-between sm:justify-start gap-11 py-4 px-6 border border-[#e0a279]/45 rounded-[3px] bg-transparent font-mono text-[12px] tracking-[0.28em] text-[#f3e6da] transition-all duration-300 hover:bg-[#e0a279]/10 hover:border-[#e0a279] hover:shadow-[0_0_34px_-8px_rgba(224,162,121,.5)]"
+                className="cursor-pointer flex items-center justify-between sm:justify-start gap-4 sm:gap-8 py-3.5 px-6 sm:px-7 border border-[#e0a279]/45 rounded-[3px] bg-transparent font-mono text-[12px] tracking-[0.28em] text-[#f3e6da] transition-all duration-300 hover:bg-[#e0a279]/10 hover:border-[#e0a279] hover:shadow-[0_0_34px_-8px_rgba(224,162,121,.5)]"
               >
                 <span>LOGOUT</span>
                 <span className="text-[#e0a279]">&#8594;</span>
@@ -227,18 +234,19 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="relative flex-1 grid grid-cols-1 md:grid-cols-[1.55fr_0.95fr] gap-px bg-[#e0a279]/14 border border-[#e0a279]/18 rounded-md overflow-hidden shadow-[0_40px_120px_-40px_rgba(0,0,0,.9),inset_0_1px_0_rgba(255,225,200,.05)] backdrop-blur-[3px] animate-[cd-rise_.9s_ease-out_both] [@media(prefers-reduced-motion:reduce)]:animate-none">
+          {/* Main Profile HUD Card */}
+          <div className="relative w-full grid grid-cols-1 md:grid-cols-[1.55fr_0.95fr] gap-px bg-[#e0a279]/14 border border-[#e0a279]/18 rounded-md overflow-hidden shadow-[0_40px_120px_-40px_rgba(0,0,0,.9),inset_0_1px_0_rgba(255,225,200,.05)] backdrop-blur-[3px] animate-[cd-rise_.9s_ease-out_both] [@media(prefers-reduced-motion:reduce)]:animate-none">
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-[3]">
               <div className="absolute left-0 right-0 top-0 h-[9%] bg-[linear-gradient(180deg,transparent,rgba(232,178,130,.055)_50%,transparent)] animate-[cd-scan_9s_linear_infinite] [@media(prefers-reduced-motion:reduce)]:animate-none" />
             </div>
 
-            <div className="relative bg-[linear-gradient(150deg,rgba(28,20,16,.72)_0%,rgba(14,10,12,.78)_60%,rgba(10,7,10,.82)_100%)] pt-[30px] px-[46px] pb-[24px] flex flex-col gap-6">
+            <div className="relative bg-[linear-gradient(150deg,rgba(28,20,16,.72)_0%,rgba(14,10,12,.78)_60%,rgba(10,7,10,.82)_100%)] p-8 sm:p-11 flex flex-col gap-7 justify-between">
               <div className="flex flex-col gap-3.5">
                 <div className="font-mono text-[11px] tracking-[0.32em] text-[#a89685]">MAIN</div>
                 <div className="flex items-baseline gap-3">
                   <div 
                     ref={nameRef}
-                    className="text-[clamp(26px,6.4vw,46px)] font-light tracking-[0.09em] text-[#f6e9dd] leading-none whitespace-nowrap cursor-default transition-all duration-150 hover:text-[#fff3e6] hover:drop-shadow-[0_0_20px_rgba(224,162,121,.45)] [-webkit-tap-highlight-color:transparent]"
+                    className="text-[clamp(26px,5vw,42px)] font-light tracking-[0.09em] text-[#f6e9dd] leading-none whitespace-nowrap cursor-default transition-all duration-150 hover:text-[#fff3e6] hover:drop-shadow-[0_0_20px_rgba(224,162,121,.45)] [-webkit-tap-highlight-color:transparent]"
                   >
                     {displayName}
                   </div>
@@ -251,7 +259,7 @@ export default function Dashboard() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-[#e0a279]/12">
-                <div className="bg-[#0c090b]/55 py-[22px] px-5 flex flex-col gap-[11px]">
+                <div className="bg-[#0c090b]/55 py-5 px-5 sm:px-6 flex flex-col gap-2">
                   <div className="font-mono text-[11px] tracking-[0.28em] text-[#a89685]">TEAM</div>
                   <div 
                     ref={teamRef}
@@ -260,7 +268,7 @@ export default function Dashboard() {
                     {team}
                   </div>
                 </div>
-                <div className="bg-[#0c090b]/55 py-[22px] px-5 flex flex-col gap-[11px]">
+                <div className="bg-[#0c090b]/55 py-5 px-5 sm:px-6 flex flex-col gap-2">
                   <div className="font-mono text-[11px] tracking-[0.28em] text-[#a89685]">REGISTRATION NO</div>
                   <div 
                     ref={regRef}
@@ -269,16 +277,16 @@ export default function Dashboard() {
                     {regNo}
                   </div>
                 </div>
-                <div className="bg-[#0c090b]/55 py-[22px] px-5 flex flex-col gap-[11px]">
+                <div className="bg-[#0c090b]/55 py-5 px-5 sm:px-6 flex flex-col gap-2">
                   <div className="font-mono text-[11px] tracking-[0.28em] text-[#a89685]">EMAIL ID</div>
                   <div 
                     ref={mailRef}
-                    className="font-mono text-[17px] font-light tracking-[0.05em] text-[#eddfd3] whitespace-nowrap w-fit max-w-full overflow-hidden text-ellipsis cursor-default transition-all duration-150 hover:text-[#fff3e6] hover:drop-shadow-[0_0_20px_rgba(224,162,121,.45)] [-webkit-tap-highlight-color:transparent]"
+                    className="font-mono text-[16px] font-light tracking-[0.05em] text-[#eddfd3] whitespace-nowrap w-fit max-w-full overflow-hidden text-ellipsis cursor-default transition-all duration-150 hover:text-[#fff3e6] hover:drop-shadow-[0_0_20px_rgba(224,162,121,.45)] [-webkit-tap-highlight-color:transparent]"
                   >
                     {email}
                   </div>
                 </div>
-                <div className="bg-[#0c090b]/55 py-[22px] px-5 flex flex-col gap-[11px]">
+                <div className="bg-[#0c090b]/55 py-5 px-5 sm:px-6 flex flex-col gap-2">
                   <div className="font-mono text-[11px] tracking-[0.28em] text-[#a89685]">ROLE</div>
                   <div 
                     ref={roleRef}
@@ -289,9 +297,9 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="mt-auto flex items-center gap-[22px] flex-wrap">
+              <div className="flex items-center gap-5 flex-wrap pt-2">
                 <div 
-                  className="cursor-pointer flex items-center gap-11 py-4 px-[26px] border border-[#e0a279]/45 rounded-[3px] bg-transparent font-mono text-[12px] tracking-[0.28em] text-[#f3e6da] transition-all duration-350 hover:bg-[#e0a279]/10 hover:border-[#e0a279] hover:shadow-[0_0_34px_-8px_rgba(224,162,121,.5)] w-full sm:w-auto justify-between"
+                  className="cursor-pointer flex items-center gap-9 py-4 px-7 border border-[#e0a279]/45 rounded-[3px] bg-transparent font-mono text-[12px] tracking-[0.28em] text-[#f3e6da] transition-all duration-350 hover:bg-[#e0a279]/10 hover:border-[#e0a279] hover:shadow-[0_0_34px_-8px_rgba(224,162,121,.5)] w-full sm:w-auto justify-between"
                   onClick={() => navigate(hasTeam ? "/terminal" : "/team-setup")}
                 >
                   <span>{hasTeam ? "ENTER TERMINAL" : "SET UP CREW"}</span>
@@ -301,12 +309,12 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="relative bg-[linear-gradient(200deg,rgba(18,13,14,.7)_0%,rgba(9,6,9,.82)_100%)] py-[30px] px-10 flex flex-col items-center justify-center gap-[30px]">
-              <div className="relative w-[180px] h-[180px] flex-none flex items-center justify-center">
+            <div className="relative bg-[linear-gradient(200deg,rgba(18,13,14,.7)_0%,rgba(9,6,9,.82)_100%)] p-8 sm:p-11 flex flex-col items-center justify-center gap-7">
+              <div className="relative w-[190px] h-[190px] sm:w-[210px] sm:h-[210px] flex-none flex items-center justify-center">
                 <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(232,168,116,.16),transparent_66%)] animate-[cd-glow_7s_ease-in-out_infinite] [@media(prefers-reduced-motion:reduce)]:animate-none" />
                 <video
                   ref={videoRef}
-                  className="absolute -inset-[34px] w-[calc(100%+68px)] h-[calc(100%+68px)] rounded-full object-cover mix-blend-screen contrast-[1.08] sepia-[.34] -hue-rotate-[8deg] saturate-[1.55] brightness-[1.04] pointer-events-none [mask-image:radial-gradient(circle_closest-side_at_50%_50%,#000_54%,transparent_100%)] [-webkit-mask-image:radial-gradient(circle_closest-side_at_50%_50%,#000_54%,transparent_100%)]"
+                  className="absolute -inset-[32px] w-[calc(100%+64px)] h-[calc(100%+64px)] rounded-full object-cover mix-blend-screen contrast-[1.08] sepia-[.34] -hue-rotate-[8deg] saturate-[1.55] brightness-[1.04] pointer-events-none [mask-image:radial-gradient(circle_closest-side_at_50%_50%,#000_54%,transparent_100%)] [-webkit-mask-image:radial-gradient(circle_closest-side_at_50%_50%,#000_54%,transparent_100%)]"
                   src="/assets/dashboard-blackhole.mp4"
                   autoPlay
                   loop
@@ -324,7 +332,7 @@ export default function Dashboard() {
                 <div className="font-mono text-[11px] tracking-[0.32em] text-[#a89685]">TEAM</div>
                 <div 
                   ref={team2Ref}
-                  className="text-[15px] tracking-[0.22em] text-[#d5c2b4] whitespace-nowrap cursor-default transition-all duration-150 hover:text-[#fff3e6] hover:drop-shadow-[0_0_20px_rgba(224,162,121,.45)] [-webkit-tap-highlight-color:transparent]"
+                  className="text-[16px] tracking-[0.22em] text-[#d5c2b4] whitespace-nowrap cursor-default transition-all duration-150 hover:text-[#fff3e6] hover:drop-shadow-[0_0_20px_rgba(224,162,121,.45)] [-webkit-tap-highlight-color:transparent]"
                 >
                   {team}
                 </div>

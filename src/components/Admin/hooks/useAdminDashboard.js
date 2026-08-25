@@ -6,6 +6,7 @@ import {
   listUsers, getAdminChallenges, getAdminProgress, getLeaderboard,
   approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
   createChallenge, updateChallenge, addAsset, adminOverride,
+  getIpTrackingStatus, toggleIpTracking,
 } from '../../../api/admin';
 import {
   INITIAL_TEAMS,
@@ -130,6 +131,10 @@ export function useAdminDashboard() {
   const [resetLeaderboardConfirmInput, setResetLeaderboardConfirmInput] = useState('');
   const [openActionMenu, setOpenActionMenu] = useState(null);
 
+  // IP Tracking & Location Lock states
+  const [ipTrackingEnabled, setIpTrackingEnabled] = useState(true);
+  const [ipTrackingLoading, setIpTrackingLoading] = useState(false);
+
   // Persist state to localStorage on modification
   useEffect(() => {
     localStorage.setItem('cicada_teams', JSON.stringify(teams));
@@ -167,10 +172,19 @@ export function useAdminDashboard() {
     setLiveError('');
     (async () => {
       try {
-        const [u, ch, prog, lb] = await Promise.all([
+        const [u, ch, prog, lb, ipStatus] = await Promise.all([
           listUsers(), getAdminChallenges(), getAdminProgress(), getLeaderboard(),
+          getIpTrackingStatus().catch((err) => {
+            console.warn('Could not fetch IP tracking status:', err);
+            return null;
+          }),
         ]);
         if (cancelled) return;
+        if (ipStatus && typeof ipStatus.ip_tracking_enabled === 'boolean') {
+          setIpTrackingEnabled(ipStatus.ip_tracking_enabled);
+        } else if (ipStatus && typeof ipStatus.ip_blocking_enabled === 'boolean') {
+          setIpTrackingEnabled(ipStatus.ip_blocking_enabled);
+        }
         setUsers((u.data || []).map((x) => ({
           id: x.id,
           username: x.display_name || x.email,
@@ -234,6 +248,27 @@ export function useAdminDashboard() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isOAuthAdmin]);
+
+  const handleToggleIpTracking = async () => {
+    if (ipTrackingLoading) return;
+    setIpTrackingLoading(true);
+    const targetState = !ipTrackingEnabled;
+    try {
+      const res = await toggleIpTracking(targetState);
+      if (res && typeof res.ip_tracking_enabled === 'boolean') {
+        setIpTrackingEnabled(res.ip_tracking_enabled);
+      } else if (res && typeof res.ip_blocking_enabled === 'boolean') {
+        setIpTrackingEnabled(res.ip_blocking_enabled);
+      } else {
+        setIpTrackingEnabled(targetState);
+      }
+    } catch (err) {
+      console.error('Failed to toggle IP tracking:', err);
+      alert(err.message || 'Failed to toggle IP tracking');
+    } finally {
+      setIpTrackingLoading(false);
+    }
+  };
 
   // --- LOGIN FUNCTION ---
   const handleLogin = (e) => {
@@ -1147,6 +1182,10 @@ export function useAdminDashboard() {
     setBulkAdminsCSVText,
     safeguardActive,
     setSafeguardActive,
+    ipTrackingEnabled,
+    setIpTrackingEnabled,
+    ipTrackingLoading,
+    handleToggleIpTracking,
     showDeleteConfirmModal,
     setShowDeleteConfirmModal,
     deleteConfirmInput,

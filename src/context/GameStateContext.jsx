@@ -63,9 +63,9 @@ export function GameStateProvider({ children }) {
 
   const unlockedRounds = [1];
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     if (!teamName) return;
-    setLoading(true);
+    if (!silent && !challengeData) setLoading(true);
     setError("");
     try {
       const [chals, prog] = await Promise.all([getChallenges(), getProgress()]);
@@ -89,7 +89,7 @@ export function GameStateProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [teamName]);
+  }, [teamName, challengeData]);
 
   useEffect(() => {
     refresh();
@@ -114,7 +114,7 @@ export function GameStateProvider({ children }) {
           if (res.story_fragment) {
             addTerminalCommand(`fragment`, `${res.story_fragment.title}: ${res.story_fragment.content || ""}`);
           }
-          await refresh();
+          await refresh(true);
           return "Correct. " + res.message;
         }
         return res.message || "Incorrect. Please try again.";

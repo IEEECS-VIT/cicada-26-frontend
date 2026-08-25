@@ -59,3 +59,15 @@ export async function removeTeamMember({ target_user_id, team_id }) {
 export async function deleteTeam(team_id) {
   return api("/api/admin/teams/delete-team", { method: "POST", admin: true, body: { team_id } });
 }
+
+export async function getIpTrackingStatus() {
+  return api("/api/admin/challenges/ip-tracking", { admin: true });
+}
+
+export async function toggleIpTracking(enabled) {
+  return api("/api/admin/challenges/ip-tracking/toggle", {
+    method: "POST",
+    admin: true,
+    body: enabled !== undefined ? { enabled } : undefined,
+  });
+}
