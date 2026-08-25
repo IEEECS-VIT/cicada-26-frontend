@@ -1,145 +1,164 @@
-import { Link } from "react-router-dom";
 import Navbar from "../landing/Navbar";
 import SiteFooter from "../landing/SiteFooter";
-import { useAuth } from "../context/AuthContext";
+import BlackHoleBackground from "../components/BlackHoleBackground";
+import { Sparkles, Globe, Layers, Radio, MessageSquare, Terminal, Clock } from "lucide-react";
 
-const PILLARS = [
+const EVENT_FLOW_STEPS = [
   {
-    title: "THE SIGNAL",
-    body: "Cicada 2067 is a cryptic hunt. Puzzles arrive as fragments — ciphers, images, coordinates, dead ends that are not dead. You do not brute-force the void. You listen.",
+    number: "01",
+    title: "Website Access",
+    icon: Globe,
+    text: "Participants will receive access to the CICADA 2067 website at the beginning of the event.",
   },
   {
-    title: "THE CREW",
-    body: "You fly in teams of up to five. No solo crossing. Logic, observation, and stubborn curiosity are the only instruments that still work this close to the horizon.",
+    number: "02",
+    title: "Central Platform",
+    icon: Terminal,
+    text: "The website will serve as the primary platform for accessing challenges, entering answers, progressing through checkpoints, and receiving event updates.",
   },
   {
-    title: "THE CROSSING",
-    body: "Rounds unlock in sequence. Each solved transmission tows the next into range. Time is a tide. Hints exist, and they can cost you.",
+    number: "03",
+    title: "Three Rounds of Challenges",
+    icon: Layers,
+    text: "Participants will progress through three rounds of challenges, with each round introducing increasingly difficult puzzles.",
   },
-];
-
-const MANIFEST = [
-  { label: "Format", value: "Team cryptic hunt" },
-  { label: "Crew size", value: "Up to 5" },
-  { label: "Organiser", value: "IEEE Computer Society, VIT" },
-  { label: "Bring", value: "Laptop, ID, pen, patience" },
-  { label: "OD", value: "Issued if you report on time" },
+  {
+    number: "04",
+    title: "Simultaneous Hints",
+    icon: Radio,
+    text: "Hints cannot be individually requested. Standardised hints will be released to all participants simultaneously at regular intervals.",
+  },
+  {
+    number: "05",
+    title: "Organizer Communications",
+    icon: MessageSquare,
+    text: "Participants may communicate with organizers through the official Discord server for doubts, technical issues, or assistance at designated checkpoints.",
+  },
+  {
+    number: "06",
+    title: "Answer Submissions",
+    icon: Terminal,
+    text: "Answers and submissions must be entered through the official event website unless specifically instructed otherwise.",
+  },
+  {
+    number: "07",
+    title: "Event Close",
+    icon: Clock,
+    text: "The competition and all submissions close at 5:00 PM.",
+    highlight: true,
+  },
 ];
 
 export default function About() {
-  const { user } = useAuth();
-  const isAdmin = user && (user.role === "admin" || user.role === "GOD");
-  const cta = !user
-    ? { to: "/login", label: "BOARD THE VESSEL →" }
-    : isAdmin
-      ? { to: "/admin", label: "ADMIN PANEL →" }
-      : { to: "/terminal", label: "ENTER ARENA →" };
-
   return (
-    <>
-      <div className="fixed inset-0 -z-10 bg-black" aria-hidden="true">
-        <img
-          src="/assets/891208.jpg"
-          alt=""
-          className="h-full w-full object-cover object-[58%_62%] opacity-80 saturate-[1.2] contrast-110"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/35 to-black" />
-      </div>
+    <div className="relative min-h-screen bg-black text-starlight selection:bg-accretion/30 selection:text-starlight font-rajdhani">
+      {/* Black hole + Shooting star background */}
+      <BlackHoleBackground />
 
       <Navbar />
 
-      <main className="relative pt-[var(--nav-height)] text-starlight">
-        <section className="relative mx-auto flex max-w-6xl flex-col justify-start px-5 pb-12 pt-6 md:min-h-[88dvh] md:justify-end md:px-10 md:pb-24 md:pt-16 lg:px-16">
-          <p className="mb-5 flex items-center gap-3 font-rajdhani text-[10px] font-semibold tracking-[0.28em] text-accretion sm:mb-6 sm:gap-4 sm:text-[11px] sm:tracking-[0.48em]">
-            <span className="inline-block h-px w-10 bg-accretion" />
-            EVENT DOSSIER · IEEE CS VIT
-          </p>
-          <h1 className="font-orbitron text-[clamp(3.2rem,10vw,8rem)] font-black leading-[0.88] tracking-[0.06em]">
-            <span className="block bg-gradient-to-r from-starlight via-accretion-bright to-accretion bg-clip-text text-transparent">
-              CICADA
-            </span>
-            <span className="block bg-gradient-to-r from-starlight via-accretion-bright to-accretion bg-clip-text text-transparent">
-              2067
-            </span>
-          </h1>
-          <p className="mt-8 max-w-xl font-rajdhani text-lg tracking-[0.22em] text-accretion">
-            PAST THE EVENT HORIZON
-          </p>
-          <p className="mt-5 max-w-xl text-base leading-8 text-copper sm:text-lg">
-            An interstellar cryptic hunt. Transmissions arrive as puzzles. Your crew is the only instrument that still works this close to the disk. Decode them — or remain in orbit forever.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center gap-6">
-            <Link
-              to={cta.to}
-              className="inline-flex border border-accretion px-8 py-4 font-orbitron text-[11px] tracking-[0.32em] text-accretion transition hover:bg-accretion/10"
-            >
-              {cta.label}
-            </Link>
-            <Link
-              to="/#faq"
-              className="font-rajdhani text-sm tracking-[0.28em] text-copper transition hover:text-accretion-bright"
-            >
-              READ THE ARCHIVE →
-            </Link>
-          </div>
-        </section>
-
-        <section className="relative border-t border-accretion/15 bg-black/55 backdrop-blur-sm">
-          <div className="mx-auto grid max-w-6xl gap-px bg-accretion/10 px-0 sm:grid-cols-3">
-            {PILLARS.map((pillar) => (
-              <article key={pillar.title} className="bg-black/80 px-5 py-10 sm:px-10 sm:py-12">
-                <h2 className="font-orbitron text-sm tracking-[0.28em] text-accretion-bright">
-                  {pillar.title}
-                </h2>
-                <p className="mt-5 max-w-sm text-[15px] leading-7 text-copper">{pillar.body}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="relative mx-auto grid max-w-6xl items-start gap-12 px-5 py-16 sm:px-10 sm:py-24 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16 lg:px-16">
-          <div>
-            <p className="font-rajdhani text-[11px] tracking-[0.4em] text-accretion">FLIGHT PLAN</p>
-            <h2 className="mt-3 font-orbitron text-3xl tracking-[0.12em] sm:text-4xl">
-              THREE BURNS
-              <br />
-              TO THE CORE.
-            </h2>
-            <ol className="mt-10 space-y-8">
-              {[
-                ["Assemble", "Form a crew. Share one invite code. No one crosses alone."],
-                ["Decipher", "Each round is a locked transmission. Solve it to tow the next into range."],
-                ["Escape", "The last puzzle is the event horizon. There is no spectator deck."],
-              ].map(([title, body]) => (
-                <li key={title} className="grid grid-cols-[auto_1fr] gap-5">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-accretion" />
-                  <div>
-                    <p className="font-orbitron text-sm tracking-[0.22em]">{title}</p>
-                    <p className="mt-2 text-[15px] leading-7 text-copper">{body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          <aside className="border border-accretion/25 bg-black/60 p-5 backdrop-blur-md sm:p-8">
-            <p className="font-rajdhani text-[11px] tracking-[0.35em] text-accretion">SHIP MANIFEST</p>
-            <dl className="mt-6 divide-y divide-accretion/10">
-              {MANIFEST.map((row) => (
-                <div key={row.label} className="flex items-baseline justify-between gap-6 py-3.5">
-                  <dt className="text-[11px] uppercase tracking-[0.2em] text-copper/70">{row.label}</dt>
-                  <dd className="text-right text-sm text-starlight">{row.value}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="mt-8 text-xs leading-6 tracking-wide text-copper/70">
-              Prior puzzle experience is optional. Curiosity is not. If you can hold a question longer than an easy answer, you already have clearance.
+      <main className="relative z-10 pt-[var(--nav-height)]">
+        {/* ========================================================================= */}
+        {/* CICADA 2067 SECTION */}
+        {/* ========================================================================= */}
+        <section className="relative mx-auto max-w-5xl px-5 pt-12 pb-16 sm:px-8 md:pt-20 md:pb-24 lg:px-10">
+          <div className="text-center max-w-3xl mx-auto">
+            <p className="inline-flex items-center gap-3 font-rajdhani text-xs font-semibold uppercase tracking-[0.4em] text-accretion sm:text-sm">
+              <span className="h-px w-6 bg-accretion shadow-[0_0_8px_#F4A233]" />
+              INTERSTELLAR TRANSMISSION
+              <span className="h-px w-6 bg-accretion shadow-[0_0_8px_#F4A233]" />
             </p>
-          </aside>
+
+            <h1 className="mt-4 font-orbitron text-[clamp(2.8rem,8vw,5.5rem)] font-black tracking-[0.05em] leading-[0.95]">
+              <span className="bg-gradient-to-r from-starlight via-accretion-bright to-accretion bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(244,162,51,0.35)]">
+                CICADA 2067
+              </span>
+            </h1>
+
+            <p className="mt-6 font-orbitron text-lg sm:text-xl font-bold tracking-[0.18em] text-accretion-bright">
+              The signal was never meant to reach us.
+            </p>
+          </div>
+
+          <div className="mt-10 rounded-2xl border border-accretion/25 bg-black/60 p-6 sm:p-10 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] space-y-6 text-base sm:text-lg leading-relaxed text-copper/90">
+            <p>
+              Buried beneath layers of noise, corrupted data, fragmented transmissions, and impossible patterns lies a message waiting to be decoded. <strong className="text-starlight font-semibold">CICADA 2067</strong> is an interstellar technical puzzle hunt that sends participants through three increasingly difficult rounds of ciphers, hidden data, digital forensics, steganography, and unconventional problem-solving.
+            </p>
+
+            <p className="border-l-2 border-accretion pl-4 sm:pl-6 text-starlight font-medium italic">
+              Every file could be a clue. Every anomaly could be intentional. Every answer takes you one step deeper into the transmission.
+            </p>
+
+            <p className="text-copper">
+              You are free to use every resource available to you, from code and forensic tools to search engines and AI agents. What matters is whether you can recognise the signal before the clock runs out.
+            </p>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* EVENT FLOW SECTION */}
+        {/* ========================================================================= */}
+        <section className="relative border-t border-accretion/20 bg-black/65 py-16 sm:py-24 backdrop-blur-md">
+          <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-10">
+            <div className="text-center max-w-2xl mx-auto">
+              <p className="font-rajdhani text-xs font-semibold uppercase tracking-[0.38em] text-accretion">
+                CHECKPOINTS & PROTOCOL
+              </p>
+              <h2 className="mt-2 font-orbitron text-3xl sm:text-4xl font-black tracking-[0.08em] text-starlight">
+                EVENT FLOW
+              </h2>
+            </div>
+
+            <div className="mt-12 space-y-4 sm:space-y-5">
+              {EVENT_FLOW_STEPS.map((step) => {
+                const Icon = step.icon;
+                return (
+                  <div
+                    key={step.number}
+                    className={`group relative flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 rounded-xl border p-5 sm:p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 ${step.highlight
+                      ? "border-red-500/40 bg-gradient-to-r from-red-950/25 via-black/80 to-black/90 shadow-[0_0_24px_rgba(239,68,68,0.15)]"
+                      : "border-accretion/25 bg-black/70 hover:border-accretion/50 hover:bg-black/85 shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
+                      }`}
+                  >
+                    {/* Number Badge */}
+                    <div className="flex items-center gap-4 shrink-0">
+                      <span
+                        className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border font-mono text-sm font-bold ${step.highlight
+                          ? "border-red-500/40 bg-red-500/10 text-red-400"
+                          : "border-accretion/30 bg-accretion/10 text-accretion-bright"
+                          }`}
+                      >
+                        {step.number}
+                      </span>
+                      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white/5 text-copper sm:hidden">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                    </div>
+
+                    {/* Text Body */}
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-orbitron text-sm font-bold tracking-[0.14em] text-starlight">
+                          {step.title}
+                        </h3>
+                        <Icon
+                          className={`hidden sm:block h-4 w-4 ${step.highlight ? "text-red-400" : "text-accretion"
+                            }`}
+                        />
+                      </div>
+                      <p className="mt-1.5 text-base sm:text-[17px] leading-relaxed text-copper">
+                        {step.text}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </section>
       </main>
 
       <SiteFooter />
-    </>
-  );
+    </div>
+  )
 }
