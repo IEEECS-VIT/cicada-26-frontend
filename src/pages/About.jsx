@@ -1,7 +1,17 @@
+import { useState } from "react";
+import { motion } from "framer-motion";
 import Navbar from "../landing/Navbar";
 import SiteFooter from "../landing/SiteFooter";
 import BlackHoleBackground from "../components/BlackHoleBackground";
-import { Sparkles, Globe, Layers, Radio, MessageSquare, Terminal, Clock } from "lucide-react";
+import {
+  Globe,
+  Layers,
+  Radio,
+  MessageSquare,
+  Terminal,
+  Clock,
+  FoldVertical,
+} from "lucide-react";
 
 const EVENT_FLOW_STEPS = [
   {
@@ -49,9 +59,136 @@ const EVENT_FLOW_STEPS = [
   },
 ];
 
+// Single Accordion Fold Card that uncreases and unfolds in 3D when scrolled down to
+function AccordionFoldCard({ step, index }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const Icon = step.icon;
+
+  // Alternate perspective fold angles for genuine accordion pleated fold physics
+  const initialRotateX = index % 2 === 0 ? -65 : -48;
+
+  return (
+    <div className="relative [perspective:1400px]">
+      {/* Accordion Hinge Joint & Perforation Line connecting each pleat */}
+      {index > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scaleX: 0 }}
+          whileInView={{ opacity: 1, scaleX: 1 }}
+          viewport={{ once: true, margin: "-20px" }}
+          transition={{ duration: 0.5, delay: index * 0.08 }}
+          className="relative my-1 flex items-center justify-between px-6 py-1"
+        >
+          <div className="h-px flex-1 border-t border-dashed border-accretion/30" />
+          <div className="flex items-center gap-2 px-3 font-mono text-[9px] uppercase tracking-[0.25em] text-accretion/60">
+            <span>HINGE // 0{index}</span>
+            <span className="h-1 w-1 rounded-full bg-accretion animate-pulse" />
+            <span>FOLD SEAM</span>
+          </div>
+          <div className="h-px flex-1 border-t border-dashed border-accretion/30" />
+        </motion.div>
+      )}
+
+      {/* 3D Folding Paper Leaf */}
+      <motion.div
+        initial={{
+          rotateX: initialRotateX,
+          opacity: 0,
+          y: -24,
+          scale: 0.94,
+        }}
+        whileInView={{
+          rotateX: 0,
+          opacity: 1,
+          y: 0,
+          scale: 1,
+        }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{
+          duration: 0.85,
+          delay: index * 0.1,
+          ease: [0.16, 1, 0.3, 1], // Smooth paper uncrease curve
+        }}
+        whileHover={{
+          y: -4,
+          scale: 1.015,
+          transition: { duration: 0.25 },
+        }}
+        onHoverStart={() => setIsHovered(true)}
+        onHoverEnd={() => setIsHovered(false)}
+        style={{
+          transformOrigin: "top center",
+          transformStyle: "preserve-3d",
+        }}
+        className={`group relative overflow-hidden rounded-xl border p-5 sm:p-6 backdrop-blur-xl transition-all duration-300 ${
+          step.highlight
+            ? "border-red-500/50 bg-gradient-to-r from-red-950/35 via-black/75 to-black/85 shadow-[0_12px_36px_rgba(239,68,68,0.25)]"
+            : isHovered
+            ? "border-accretion bg-black/80 shadow-[0_12px_36px_rgba(244,162,51,0.3)]"
+            : "border-accretion/25 bg-black/60 hover:border-accretion/60 hover:bg-black/75 shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+        }`}
+      >
+        {/* Paper Fold Crease Shadow overlay that dissolves as it straightens */}
+        <motion.div
+          initial={{ opacity: 0.8 }}
+          whileInView={{ opacity: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, delay: index * 0.1 }}
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/80 via-black/30 to-transparent z-20"
+        />
+
+        {/* Top Paper Edge Light Reflection */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-accretion/60 to-transparent opacity-75" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+          {/* Number Badge */}
+          <div className="flex items-center gap-4 shrink-0">
+            <motion.span
+              animate={isHovered ? { scale: 1.1 } : { scale: 1 }}
+              className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-lg border font-mono text-sm font-bold transition-colors ${
+                step.highlight
+                  ? "border-red-500/60 bg-red-500/15 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                  : isHovered
+                  ? "border-accretion bg-accretion text-black shadow-[0_0_20px_rgba(244,162,51,0.6)]"
+                  : "border-accretion/35 bg-accretion/10 text-accretion-bright"
+              }`}
+            >
+              {step.number}
+            </motion.span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white/5 text-copper sm:hidden">
+              <Icon className="h-4 w-4" />
+            </div>
+          </div>
+
+          {/* Text Body */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <h3 className="font-orbitron text-sm sm:text-base font-bold tracking-[0.14em] text-starlight group-hover:text-accretion-bright transition-colors">
+                {step.title}
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[10px] text-copper/50 hidden sm:inline">
+                  FOLD #{step.number}
+                </span>
+                <Icon
+                  className={`hidden sm:block h-4 w-4 transition-transform group-hover:scale-110 ${
+                    step.highlight ? "text-red-400" : "text-accretion"
+                  }`}
+                />
+              </div>
+            </div>
+            <p className="mt-1.5 text-base sm:text-[17px] leading-relaxed text-copper">
+              {step.text}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function About() {
   return (
-    <div className="relative min-h-screen bg-black text-starlight selection:bg-accretion/30 selection:text-starlight font-rajdhani">
+    <div className="relative min-h-screen text-starlight selection:bg-accretion/30 selection:text-starlight font-rajdhani bg-transparent">
       {/* Black hole + Shooting star background */}
       <BlackHoleBackground />
 
@@ -96,63 +233,38 @@ export default function About() {
         </section>
 
         {/* ========================================================================= */}
-        {/* EVENT FLOW SECTION */}
+        {/* EVENT FLOW (ACCORDION UNFOLD ON SCROLL) */}
         {/* ========================================================================= */}
-        <section className="relative border-t border-accretion/20 bg-black/65 py-16 sm:py-24 backdrop-blur-md">
+        <section className="relative border-t border-accretion/20 bg-black/40 py-16 sm:py-24 backdrop-blur-md">
           <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-10">
-            <div className="text-center max-w-2xl mx-auto">
-              <p className="font-rajdhani text-xs font-semibold uppercase tracking-[0.38em] text-accretion">
-                CHECKPOINTS & PROTOCOL
-              </p>
-              <h2 className="mt-2 font-orbitron text-3xl sm:text-4xl font-black tracking-[0.08em] text-starlight">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.6 }}
+              className="text-center max-w-2xl mx-auto mb-14"
+            >
+              <div className="inline-flex items-center gap-2 rounded-full border border-accretion/30 bg-accretion/10 px-3.5 py-1 text-[11px] font-mono uppercase tracking-[0.28em] text-accretion mb-3">
+                <FoldVertical className="h-3.5 w-3.5" />
+                <span>UNFOLDING FLIGHT DOSSIER</span>
+              </div>
+              <h2 className="font-orbitron text-3xl sm:text-4xl font-black tracking-[0.08em] text-starlight">
                 EVENT FLOW
               </h2>
-            </div>
+              <p className="mt-2 text-sm text-copper/70 font-mono tracking-wider">
+                SCROLL TO UNRAVEL PROTOCOL CHECKPOINTS
+              </p>
+            </motion.div>
 
-            <div className="mt-12 space-y-4 sm:space-y-5">
-              {EVENT_FLOW_STEPS.map((step) => {
-                const Icon = step.icon;
-                return (
-                  <div
-                    key={step.number}
-                    className={`group relative flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 rounded-xl border p-5 sm:p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 ${step.highlight
-                      ? "border-red-500/40 bg-gradient-to-r from-red-950/25 via-black/80 to-black/90 shadow-[0_0_24px_rgba(239,68,68,0.15)]"
-                      : "border-accretion/25 bg-black/70 hover:border-accretion/50 hover:bg-black/85 shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
-                      }`}
-                  >
-                    {/* Number Badge */}
-                    <div className="flex items-center gap-4 shrink-0">
-                      <span
-                        className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border font-mono text-sm font-bold ${step.highlight
-                          ? "border-red-500/40 bg-red-500/10 text-red-400"
-                          : "border-accretion/30 bg-accretion/10 text-accretion-bright"
-                          }`}
-                      >
-                        {step.number}
-                      </span>
-                      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white/5 text-copper sm:hidden">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                    </div>
-
-                    {/* Text Body */}
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-orbitron text-sm font-bold tracking-[0.14em] text-starlight">
-                          {step.title}
-                        </h3>
-                        <Icon
-                          className={`hidden sm:block h-4 w-4 ${step.highlight ? "text-red-400" : "text-accretion"
-                            }`}
-                        />
-                      </div>
-                      <p className="mt-1.5 text-base sm:text-[17px] leading-relaxed text-copper">
-                        {step.text}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+            {/* Accordion Unfolding List */}
+            <div className="space-y-0.5">
+              {EVENT_FLOW_STEPS.map((step, index) => (
+                <AccordionFoldCard
+                  key={step.number}
+                  step={step}
+                  index={index}
+                />
+              ))}
             </div>
           </div>
         </section>
@@ -160,5 +272,5 @@ export default function About() {
 
       <SiteFooter />
     </div>
-  )
+  );
 }
