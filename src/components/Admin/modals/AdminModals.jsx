@@ -139,7 +139,8 @@ export default function AdminModals() {
     handleSaveResetPassword,
     handleSaveProgressOverride,
     handleSaveEditAnswer,
-    handleSaveOverrideChallenge
+    handleSaveOverrideChallenge,
+    handleDeleteTeam
   } = useAdmin();
 
   return (
@@ -603,22 +604,7 @@ export default function AdminModals() {
                   type="button"
                   disabled={deleteConfirmInput !== activeTeam.name}
                   onClick={() => {
-                    setTeams(teams.filter(t => t.id !== activeTeam.id));
-                    const newLog = {
-                      id: `log-${Date.now()}`,
-                      teamId: activeTeam.id,
-                      teamName: activeTeam.name,
-                      challengeId: 'system',
-                      challengeTitle: 'Team Deletion',
-                      answer: 'Team account purged by admin',
-                      correct: false,
-                      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-                      attempts: 0
-                    };
-                    setLogs([newLog, ...logs]);
-                    setShowDeleteConfirmModal(false);
-                    setActiveTeam(null);
-                    setDeleteConfirmInput('');
+                    handleDeleteTeam(activeTeam.id);
                   }}
                   className="flex-1 cursor-pointer border border-red-500 bg-red-600 py-2 font-orbitron text-xs uppercase tracking-wider text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
                 >

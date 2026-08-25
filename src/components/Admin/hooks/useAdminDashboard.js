@@ -5,7 +5,8 @@ import { supabase } from '../../../lib/supabase';
 import {
   listUsers, getAdminChallenges, getAdminProgress, getLeaderboard,
   approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
-  createChallenge, updateChallenge, addAsset, adminOverride,
+  createChallenge, updateChallenge, addAsset, deleteChallenge, adminOverride,
+  removeTeamMember, deleteTeam,
   getIpTrackingStatus, toggleIpTracking,
 } from '../../../api/admin';
 import {
@@ -96,7 +97,7 @@ export function useAdminDashboard() {
   const [newChallengeRound, setNewChallengeRound] = useState(1);
   const [newChallengeAnswer, setNewChallengeAnswer] = useState('');
   const [newChallengePoints, setNewChallengePoints] = useState(100);
-  const [newChallengeTimeLimit, setNewChallengeTimeLimit] = useState(60);
+  const [newChallengeTimeLimit, setNewChallengeTimeLimit] = useState(0);
   const [newChallengeAssets, setNewChallengeAssets] = useState([]);
   const [tempAssetName, setTempAssetName] = useState('');
   const [tempAssetUrl, setTempAssetUrl] = useState('');
@@ -165,27 +166,38 @@ export function useAdminDashboard() {
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState('');
 
-  useEffect(() => {
+  const parseIpStatus = (res) => {
+    if (!res) return null;
+    const root = res.data || res;
+    if (typeof root.ip_tracking_enabled === 'boolean') return root.ip_tracking_enabled;
+    if (typeof root.ip_blocking_enabled === 'boolean') return root.ip_blocking_enabled;
+    if (typeof root.enabled === 'boolean') return root.enabled;
+    if (typeof root.tracking === 'boolean') return root.tracking;
+    if (typeof root.is_enabled === 'boolean') return root.is_enabled;
+    if (typeof root.status === 'string') return root.status === 'enabled' || root.status === 'active';
+    return null;
+  };
+
+  const refreshLive = async () => {
     if (!isAuthenticated || !isOAuthAdmin) return;
-    let cancelled = false;
     setLiveLoading(true);
     setLiveError('');
-    (async () => {
-      try {
-        const [u, ch, prog, lb, ipStatus] = await Promise.all([
-          listUsers(), getAdminChallenges(), getAdminProgress(), getLeaderboard(),
-          getIpTrackingStatus().catch((err) => {
-            console.warn('Could not fetch IP tracking status:', err);
-            return null;
-          }),
-        ]);
-        if (cancelled) return;
-        if (ipStatus && typeof ipStatus.ip_tracking_enabled === 'boolean') {
-          setIpTrackingEnabled(ipStatus.ip_tracking_enabled);
-        } else if (ipStatus && typeof ipStatus.ip_blocking_enabled === 'boolean') {
-          setIpTrackingEnabled(ipStatus.ip_blocking_enabled);
-        }
-        setUsers((u.data || []).map((x) => ({
+    try {
+      const [u, ch, prog, lb, ipStatus] = await Promise.all([
+        listUsers().catch((err) => { console.warn('Could not fetch users:', err); return { data: [] }; }),
+        getAdminChallenges().catch((err) => { console.warn('Could not fetch challenges:', err); return { data: [] }; }),
+        getAdminProgress().catch((err) => { console.warn('Could not fetch progress:', err); return { data: [] }; }),
+        getLeaderboard().catch((err) => { console.warn('Could not fetch leaderboard:', err); return { data: [] }; }),
+        getIpTrackingStatus().catch((err) => { console.warn('Could not fetch IP tracking status:', err); return null; }),
+      ]);
+
+      const parsedIp = parseIpStatus(ipStatus);
+      if (parsedIp !== null) {
+        setIpTrackingEnabled(parsedIp);
+      }
+
+      if (Array.isArray(u?.data)) {
+        setUsers(u.data.map((x) => ({
           id: x.id,
           username: x.display_name || x.email,
           email: x.email,
@@ -193,14 +205,17 @@ export function useAdminDashboard() {
           isApprovedAdmin: x.role === 'admin' || x.role === 'GOD' ? x.is_admin_approved !== false : false,
           teamId: x.team_id || null,
         })));
-        const solvedCountsByRound = {};
-        (prog.data || []).forEach(p => {
-            (p.completed_challenges || []).forEach(round => {
-                solvedCountsByRound[round] = (solvedCountsByRound[round] || 0) + 1;
-            });
-        });
+      }
 
-        setChallenges((ch.data || []).map((x) => ({
+      const solvedCountsByRound = {};
+      (prog?.data || []).forEach(p => {
+        (p.completed_challenges || []).forEach(round => {
+          solvedCountsByRound[round] = (solvedCountsByRound[round] || 0) + 1;
+        });
+      });
+
+      if (Array.isArray(ch?.data) && ch.data.length > 0) {
+        setChallenges(ch.data.map((x) => ({
           id: x.id,
           title: x.name,
           round: x.order_number,
@@ -212,23 +227,27 @@ export function useAdminDashboard() {
           timeLimit: x.time_limit || 0,
           assets: (x.assets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
         })));
-        const lbMap = {};
-        (lb.data || []).forEach((t) => { lbMap[t.team_name] = t.challenges_completed; });
-        const membersByTeamId = {};
-        const membersByTeamName = {};
-        const teamIdByName = {};
-        (u.data || []).forEach((x) => {
-          const label = x.display_name || x.email;
-          if (x.team_id) {
-            (membersByTeamId[x.team_id] ||= []).push(label);
-          }
-          const joinedName = x.teams?.name || x.team_name;
-          if (joinedName) {
-            (membersByTeamName[joinedName] ||= []).push(label);
-            teamIdByName[joinedName] = x.teams?.id || x.team_id || joinedName;
-          }
-        });
-        setTeams((prog.data || []).map((t) => {
+      }
+
+      const lbMap = {};
+      (lb?.data || []).forEach((t) => { lbMap[t.team_name] = t.challenges_completed; });
+      const membersByTeamId = {};
+      const membersByTeamName = {};
+      const teamIdByName = {};
+      (u?.data || []).forEach((x) => {
+        const label = x.display_name || x.email;
+        if (x.team_id) {
+          (membersByTeamId[x.team_id] ||= []).push(label);
+        }
+        const joinedName = x.teams?.name || x.team_name;
+        if (joinedName) {
+          (membersByTeamName[joinedName] ||= []).push(label);
+          teamIdByName[joinedName] = x.teams?.id || x.team_id || joinedName;
+        }
+      });
+
+      if (Array.isArray(prog?.data) && prog.data.length > 0) {
+        setTeams(prog.data.map((t) => {
           const teamKey = t.team_id || teamIdByName[t.team_name] || t.team_name;
           return {
             id: teamKey,
@@ -239,13 +258,16 @@ export function useAdminDashboard() {
             status: 'active',
           };
         }));
-      } catch (err) {
-        if (!cancelled) setLiveError(err.message || 'Failed to load live data.');
-      } finally {
-        if (!cancelled) setLiveLoading(false);
       }
-    })();
-    return () => { cancelled = true; };
+    } catch (err) {
+      setLiveError(err.message || 'Failed to load live data.');
+    } finally {
+      setLiveLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshLive();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isOAuthAdmin]);
 
@@ -255,16 +277,15 @@ export function useAdminDashboard() {
     const targetState = !ipTrackingEnabled;
     try {
       const res = await toggleIpTracking(targetState);
-      if (res && typeof res.ip_tracking_enabled === 'boolean') {
-        setIpTrackingEnabled(res.ip_tracking_enabled);
-      } else if (res && typeof res.ip_blocking_enabled === 'boolean') {
-        setIpTrackingEnabled(res.ip_blocking_enabled);
+      const parsed = parseIpStatus(res);
+      if (parsed !== null) {
+        setIpTrackingEnabled(parsed);
       } else {
         setIpTrackingEnabled(targetState);
       }
     } catch (err) {
       console.error('Failed to toggle IP tracking:', err);
-      alert(err.message || 'Failed to toggle IP tracking');
+      alert('Failed to toggle IP tracking: ' + (err.message || 'Network error'));
     } finally {
       setIpTrackingLoading(false);
     }
@@ -291,118 +312,60 @@ export function useAdminDashboard() {
 
   // --- USER MANAGEMENT HANDLERS ---
   // API Endpoint: POST 09_Approve_Admin
-  const handleApproveAdmin = (userId) => {
-    approveAdmin({ target_user_id: userId }).catch((err) => console.error(err));
-    setUsers(users.map(u => {
-      if (u.id === userId) {
-        return { ...u, isApprovedAdmin: true };
-      }
-      return u;
-    }));
-    
-    const targetUser = users.find(u => u.id === userId);
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: 'system',
-      teamName: 'SYSTEM',
-      challengeId: 'admin_security',
-      challengeTitle: 'Approve Admin',
-      answer: `Admin Approved: ${targetUser ? targetUser.username : userId}`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
+  const handleApproveAdmin = async (userId) => {
+    try {
+      await approveAdmin({ target_user_id: userId });
+      await refreshLive();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to approve admin: ' + (err.message || 'Unknown error'));
+    }
   };
 
   // API Endpoint: POST 10_Toggle_Admin_Role
-  const handleToggleAdminRole = (userId) => {
+  const handleToggleAdminRole = async (userId) => {
     const targetUser = users.find(u => u.id === userId);
     const newRole = targetUser && targetUser.role === 'Admin' ? 'participant' : 'admin';
-    toggleRole({ target_user_id: userId, role: newRole }).catch((err) => console.error(err));
-    setUsers(users.map(u => {
-      if (u.id === userId) {
-        const newRoleUI = u.role === 'Admin' ? 'Participant' : 'Admin';
-        return { 
-          ...u, 
-          role: newRole,
-          isApprovedAdmin: newRole === 'Admin' ? u.isApprovedAdmin : false
-        };
-      }
-      return u;
-    }));
+    try {
+      await toggleRole({ target_user_id: userId, role: newRole });
+      await refreshLive();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to toggle admin role: ' + (err.message || 'Unknown error'));
+    }
   };
 
   // API Endpoint: POST 12_Admin_Delete_User
-  const handleDeleteUser = (userId, username) => {
+  const handleDeleteUser = async (userId, username) => {
     if (window.confirm(`WIPE USER ACCOUNT "${username.toUpperCase()}"? THIS REMOVES THEIR SECURITY PRIVILEGES.`)) {
-      deleteUser({ target_user_id: userId }).catch((err) => console.error(err));
-      setUsers(users.filter(u => u.id !== userId));
-      
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: 'system',
-        teamName: 'SYSTEM',
-        challengeId: 'admin_security',
-        challengeTitle: 'Delete User Account',
-        answer: `Account Purged: ${username}`,
-        correct: false,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
+      try {
+        await deleteUser({ target_user_id: userId });
+        await refreshLive();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to delete user: ' + (err.message || 'Unknown error'));
+      }
     }
   };
 
   // API Endpoint: POST Bulk Import Admins from CSV
-  const handleBulkImportAdmins = (e) => {
+  const handleBulkImportAdmins = async (e) => {
     e.preventDefault();
     if (!bulkAdminsCSVText.trim()) return;
 
-    bulkImportAdmins({ csv_data: bulkAdminsCSVText }).catch((err) => console.error(err));
-
-    const lines = bulkAdminsCSVText.split('\n');
-    const importedUsers = [];
-    lines.forEach((line, idx) => {
-      const parts = line.split(',');
-      if (parts.length >= 2 && parts[0].trim() && parts[1].trim()) {
-        importedUsers.push({
-          id: `user-import-${Date.now()}-${idx}`,
-          username: parts[0].trim(),
-          email: parts[1].trim(),
-          role: 'Admin',
-          isApprovedAdmin: true
-        });
-      }
-    });
-
-    if (importedUsers.length > 0) {
-      setUsers([...users, ...importedUsers]);
-      alert(`SUCCESSFULLY IMPORTED ${importedUsers.length} ADMINISTRATORS.`);
-      
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: 'system',
-        teamName: 'SYSTEM',
-        challengeId: 'admin_security',
-        challengeTitle: 'Bulk Import Admins',
-        answer: `Imported ${importedUsers.length} administrators from CSV`,
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
-    } else {
-      alert('NO VALID DATA DETECTED. CHECK FORMAT (username,email).');
+    try {
+      await bulkImportAdmins({ csv_data: bulkAdminsCSVText });
+      await refreshLive();
+      alert('SUCCESSFULLY IMPORTED ADMINISTRATORS.');
+      setBulkAdminsCSVText('');
+      setShowBulkImportAdminsModal(false);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to import admins: ' + (err.message || 'Unknown error'));
     }
-
-    setBulkAdminsCSVText('');
-    setShowBulkImportAdminsModal(false);
   };
 
   // --- SCORE ADJUSTMENT HANDLER ---
-  // API Endpoint: PATCH Adjust Score Delta (Add or Subtract)
-  // API Endpoint: POST Set Any Score (by Team Name)
   const handleAdjustScore = (e) => {
     e.preventDefault();
     if (!activeTeam) return;
@@ -429,9 +392,7 @@ export function useAdminDashboard() {
       teamName: activeTeam.name,
       challengeId: 'score_adjust',
       challengeTitle: 'Score Adjustment',
-      answer: `Adjusted: ${adjustScoreType.toUpperCase()} ${value} pts. Result: ${
-        adjustScoreType === 'add' ? '+' : adjustScoreType === 'subtract' ? '-' : '='
-      }${value}`,
+      answer: `Adjusted: ${adjustScoreType.toUpperCase()} ${value} pts.`,
       correct: true,
       timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
       attempts: 0
@@ -445,91 +406,52 @@ export function useAdminDashboard() {
 
   // --- MEMBER REMOVAL HANDLER ---
   // API Endpoint: POST 06_Remove_Member
-  const handleRemoveMember = (teamId, memberName) => {
+  const handleRemoveMember = async (teamId, memberName) => {
     if (window.confirm(`REMOVE "${memberName.toUpperCase()}" FROM TEAM?`)) {
-      setTeams(teams.map(t => {
-        if (t.id === teamId) {
-          return {
-            ...t,
-            members: t.members.filter(m => m !== memberName)
-          };
-        }
-        return t;
-      }));
-
-      const team = teams.find(t => t.id === teamId);
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: teamId,
-        teamName: team ? team.name : 'Unknown',
-        challengeId: 'team_roster',
-        challengeTitle: 'Remove Member',
-        answer: `Removed member: ${memberName}`,
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
-      
-      if (activeTeam && activeTeam.id === teamId) {
-        const updatedMembers = activeTeam.members.filter(m => m !== memberName);
-        setEditTeamMembers(updatedMembers.join(', '));
-        setActiveTeam({ ...activeTeam, members: updatedMembers });
+      try {
+        const foundUser = users.find(u => u.username === memberName || u.email === memberName);
+        await removeTeamMember({
+          target_user_id: foundUser?.id || undefined,
+          target_email: foundUser?.email || (!foundUser?.id ? memberName : undefined),
+          team_id: teamId,
+        });
+        await refreshLive();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to remove member: ' + (err.message || 'Unknown error'));
       }
     }
   };
 
   // --- CHALLENGE OPERATION HANDLERS ---
   // API Endpoint: POST Create Challenge with All Assets (Admin)
-  const handleCreateChallenge = (e) => {
+  const handleCreateChallenge = async (e) => {
     e.preventDefault();
     if (!newChallengeTitle.trim()) return;
 
-    createChallenge({
-      order_number: parseInt(newChallengeRound) || 1,
-      name: newChallengeTitle,
-      answer_key: newChallengeAnswer || 'decrypted_key',
-      time_limit: parseInt(newChallengeTimeLimit) || 60,
-      is_active: false,
-      assets: (newChallengeAssets || []).map((a) => ({ type: 'file', url: a.url || '#', name: a.name || 'asset' })),
-    }).catch((err) => console.error(err));
-
-    const newChal = {
-      id: `chal-${Date.now()}`,
-      title: newChallengeTitle,
-      round: parseInt(newChallengeRound),
-      answer: newChallengeAnswer || 'decrypted_key',
-      points: parseInt(newChallengePoints) || 100,
-      timeLimit: parseInt(newChallengeTimeLimit) || 60,
-      isLocked: true,
-      hintsEnabled: false,
-      solvedCount: 0,
-      assets: newChallengeAssets
-    };
-
-    setChallenges([...challenges, newChal]);
-
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: 'system',
-      teamName: 'SYSTEM',
-      challengeId: newChal.id,
-      challengeTitle: 'Create Challenge',
-      answer: `Created: "${newChal.title}" in Round ${newChal.round} (${newChal.points} pts) with ${newChallengeAssets.length} assets`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
-
-    setNewChallengeTitle('');
-    setNewChallengeAnswer('');
-    setNewChallengePoints(100);
-    setNewChallengeTimeLimit(60);
-    setNewChallengeAssets([]);
-    setTempAssetName('');
-    setTempAssetUrl('');
-    setShowCreateChallengeModal(false);
+    const parsedLimit = parseInt(newChallengeTimeLimit) || 0;
+    try {
+      await createChallenge({
+        order_number: parseInt(newChallengeRound) || 1,
+        name: newChallengeTitle.trim(),
+        answer_key: newChallengeAnswer.trim() || 'decrypted_key',
+        time_limit: parsedLimit,
+        is_active: false,
+        assets: (newChallengeAssets || []).map((a) => ({ type: 'file', url: a.url || '#', name: a.name || 'asset' })),
+      });
+      await refreshLive();
+      setNewChallengeTitle('');
+      setNewChallengeAnswer('');
+      setNewChallengePoints(100);
+      setNewChallengeTimeLimit(0);
+      setNewChallengeAssets([]);
+      setTempAssetName('');
+      setTempAssetUrl('');
+      setShowCreateChallengeModal(false);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to create challenge: ' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleAddAssetToChallenge = () => {
@@ -548,32 +470,20 @@ export function useAdminDashboard() {
   };
 
   // API Endpoint: PUT Update Challenge Time Limit (Admin)
-  const handleUpdateTimeLimit = (e) => {
+  const handleUpdateTimeLimit = async (e) => {
     e.preventDefault();
     if (!activeChallenge) return;
 
-    setChallenges(challenges.map(c => {
-      if (c.id === activeChallenge.id) {
-        return { ...c, timeLimit: parseInt(editTimeLimitValue) || 0 };
-      }
-      return c;
-    }));
-
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: 'system',
-      teamName: 'SYSTEM',
-      challengeId: activeChallenge.id,
-      challengeTitle: 'Update Challenge Time Limit',
-      answer: `Time limit set to ${editTimeLimitValue} mins for "${activeChallenge.title}"`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
-
-    setShowTimeLimitModal(false);
-    setActiveChallenge(null);
+    const newLimit = parseInt(editTimeLimitValue) || 0;
+    try {
+      await updateChallenge(activeChallenge.id, { time_limit: newLimit });
+      await refreshLive();
+      setShowTimeLimitModal(false);
+      setActiveChallenge(null);
+    } catch (err) {
+      console.error("Failed to update challenge time limit on backend:", err);
+      alert("Failed to update time limit on backend: " + (err.message || "Unknown error"));
+    }
   };
 
   // --- DIRECT ASSET MANAGEMENT HANDLERS ---
@@ -943,19 +853,19 @@ export function useAdminDashboard() {
     setShowEditAnswerModal(true);
   };
 
-  const handleSaveEditAnswer = (e) => {
+  const handleSaveEditAnswer = async (e) => {
     e.preventDefault();
     if (!activeChallenge) return;
 
-    setChallenges(challenges.map(c => {
-      if (c.id === activeChallenge.id) {
-        return { ...c, answer: editAnswerValue };
-      }
-      return c;
-    }));
-
-    setShowEditAnswerModal(false);
-    setActiveChallenge(null);
+    try {
+      await updateChallenge(activeChallenge.id, { answer_key: editAnswerValue.trim() });
+      await refreshLive();
+      setShowEditAnswerModal(false);
+      setActiveChallenge(null);
+    } catch (err) {
+      console.error("Failed to update challenge answer key on backend:", err);
+      alert("Failed to update answer key on backend: " + (err.message || "Unknown error"));
+    }
   };
 
   const handleOpenOverrideChallenge = (challenge) => {
@@ -964,48 +874,38 @@ export function useAdminDashboard() {
     setShowOverrideChallengeModal(true);
   };
 
-  const handleSaveOverrideChallenge = (e) => {
+  const handleSaveOverrideChallenge = async (e) => {
     e.preventDefault();
     if (!activeChallenge || !overrideChallengeTeamId) return;
 
     const team = teams.find(t => t.id === overrideChallengeTeamId);
     if (!team) return;
 
-    // Simulate direct correct submission
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: team.id,
-      teamName: team.name,
-      challengeId: activeChallenge.id,
-      challengeTitle: activeChallenge.title,
-      answer: '[ADMIN_OVERRIDE_COMPLETION]',
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 1
-    };
-    setLogs([newLog, ...logs]);
+    try {
+      await adminOverride({
+        team_name: team.name,
+        target_challenge_order: (activeChallenge.round || 1) + 1,
+      });
+      await refreshLive();
+      setShowOverrideChallengeModal(false);
+      setActiveChallenge(null);
+    } catch (err) {
+      console.error("Failed to override challenge:", err);
+      alert("Failed to override challenge: " + (err.message || "Unknown error"));
+    }
+  };
 
-    // Increase points for that team
-    setTeams(teams.map(t => {
-      if (t.id === team.id) {
-        return {
-          ...t,
-          points: t.points + activeChallenge.points
-        };
-      }
-      return t;
-    }));
-
-    // Update challenge solved count
-    setChallenges(challenges.map(c => {
-      if (c.id === activeChallenge.id) {
-        return { ...c, solvedCount: c.solvedCount + 1 };
-      }
-      return c;
-    }));
-
-    setShowOverrideChallengeModal(false);
-    setActiveChallenge(null);
+  const handleDeleteTeam = async (teamId) => {
+    try {
+      await deleteTeam(teamId);
+      await refreshLive();
+      setShowDeleteConfirmModal(false);
+      setActiveTeam(null);
+      setDeleteConfirmInput('');
+    } catch (err) {
+      console.error("Failed to delete team:", err);
+      alert("Failed to delete team on backend: " + (err.message || "Unknown error"));
+    }
   };
 
 
@@ -1245,6 +1145,8 @@ export function useAdminDashboard() {
     handleSaveEditAnswer,
     handleOpenOverrideChallenge,
     handleSaveOverrideChallenge,
+    handleDeleteTeam,
+    refreshLive,
     filteredTeams,
     filteredLogs,
     getLeaderboardData,

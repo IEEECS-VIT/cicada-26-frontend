@@ -110,12 +110,11 @@ export function GameStateProvider({ children }) {
       try {
         const res = await apiSubmit(phase.order_number, answer);
         if (res.success) {
-          addTerminalCommand(`submit ${answer}`, `Correct. ${res.message}`);
           if (res.story_fragment) {
             addTerminalCommand(`fragment`, `${res.story_fragment.title}: ${res.story_fragment.content || ""}`);
           }
           await refresh(true);
-          return "Correct. " + res.message;
+          return "Correct. " + (res.message || "Cipher accepted.");
         }
         return res.message || "Incorrect. Please try again.";
       } catch (err) {

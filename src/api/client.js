@@ -3,12 +3,17 @@ import { supabase } from "../lib/supabase";
 const API_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000`;
 
 export function getAdminKey() {
-  return sessionStorage.getItem("cicada_admin_secret_key");
+  return localStorage.getItem("cicada_admin_secret_key") || sessionStorage.getItem("cicada_admin_secret_key");
 }
 
 function setAdminKey(value) {
-  if (value) sessionStorage.setItem("cicada_admin_secret_key", value);
-  else sessionStorage.removeItem("cicada_admin_secret_key");
+  if (value) {
+    sessionStorage.setItem("cicada_admin_secret_key", value);
+    localStorage.setItem("cicada_admin_secret_key", value);
+  } else {
+    sessionStorage.removeItem("cicada_admin_secret_key");
+    localStorage.removeItem("cicada_admin_secret_key");
+  }
 }
 
 let cachedToken = null;

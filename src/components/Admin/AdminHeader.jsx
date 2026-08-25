@@ -1,4 +1,4 @@
-import { LogOut } from "lucide-react";
+import { LogOut, ShieldCheck, ShieldAlert, RefreshCw } from "lucide-react";
 import { useAdmin } from "./AdminContext";
 import { COMMAND_TABS } from "./constants";
 
@@ -65,16 +65,40 @@ export default function AdminHeader() {
             type="button"
             onClick={handleToggleIpTracking}
             disabled={ipTrackingLoading}
-            className={`border px-4 py-2.5 font-rajdhani text-[11px] tracking-[0.22em] transition ${
-              ipTrackingEnabled ? "border-accretion/50 text-accretion hover:bg-accretion/10" : "border-red-400/50 text-red-300 hover:bg-red-500/10"
-            } disabled:opacity-50`}
+            className={`flex items-center gap-2 border px-4 py-2.5 font-rajdhani text-[11px] tracking-[0.22em] transition ${
+              ipTrackingLoading
+                ? "border-accretion/30 bg-black/40 text-accretion/50 cursor-wait"
+                : ipTrackingEnabled
+                ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)] cursor-pointer"
+                : "border-red-400/60 bg-red-500/10 text-red-300 hover:bg-red-500/20 shadow-[0_0_15px_-3px_rgba(239,68,68,0.3)] cursor-pointer"
+            } disabled:opacity-60`}
             title={
               ipTrackingEnabled
-                ? "IP Tracking: ON (Challenges locked to first access IP)"
-                : "IP Tracking: OFF (Location locks bypassed)"
+                ? "IP Lock / Tracking is ACTIVE: Challenges are bound to the team's initial network IP."
+                : "IP Lock / Tracking is OFF: Operatives can submit answers from any IP address."
             }
           >
-            {ipTrackingLoading ? "UPDATING IP..." : ipTrackingEnabled ? "IP TRACKING ON" : "IP TRACKING OFF"}
+            {ipTrackingLoading ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 animate-spin text-accretion" />
+                <span>UPDATING IP LOCK...</span>
+              </>
+            ) : ipTrackingEnabled ? (
+              <>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                <span>IP LOCK: ACTIVE</span>
+              </>
+            ) : (
+              <>
+                <span className="h-2 w-2 rounded-full bg-red-500/80" />
+                <ShieldAlert className="h-3.5 w-3.5 text-red-400" />
+                <span>IP LOCK: DISABLED</span>
+              </>
+            )}
           </button>
           <button
             type="button"

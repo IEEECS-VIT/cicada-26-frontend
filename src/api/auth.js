@@ -7,7 +7,11 @@ export async function loginWithToken(accessToken) {
 }
 
 export async function fetchMe() {
-  return api("/api/auth/me");
+  const data = await api("/api/auth/me");
+  if (data?.admin_secret_key) {
+    setAdminKey(data.admin_secret_key);
+  }
+  return data;
 }
 
 export async function logout() {
