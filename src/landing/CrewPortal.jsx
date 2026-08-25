@@ -9,6 +9,8 @@ export default function CrewPortal({ onNoTeam }) {
   const navigate = useNavigate();
   const [teamData, setTeamData] = useState(null);
   const [loading, setLoading] = useState(() => !teamName);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
