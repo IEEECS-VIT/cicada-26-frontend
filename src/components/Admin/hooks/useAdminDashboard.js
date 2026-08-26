@@ -229,15 +229,19 @@ export function useAdminDashboard() {
       story_fragment: storyFragmentObj,
     };
 
-    // Only include answer_key if explicitly provided or if it's plaintext
-    // This prevents re-hashing an existing bcrypt hash when updating other fields like time_limit
+    // Only include answer_key if explicitly provided or if it's real plaintext.
+    // This prevents re-hashing an existing bcrypt hash when updating other fields like
+    // time_limit — and must also exclude the "ENCRYPTED (SET)" / "—" display placeholders
+    // used when the real plaintext isn't cached locally, or those get hashed and sent as
+    // the new answer, silently corrupting it.
+    const ANSWER_PLACEHOLDERS = new Set(['ENCRYPTED (SET)', '—']);
     if (overrides.answer_key !== undefined || overrides.answer !== undefined) {
       const explicitAnswer = (overrides.answer_key ?? overrides.answer ?? '').trim();
       if (explicitAnswer) {
         payload.answer_key = explicitAnswer;
         payload.answer = explicitAnswer;
       }
-    } else if (challenge?.answer && !challenge.answer.startsWith('$2b$')) {
+    } else if (challenge?.answer && !challenge.answer.startsWith('$2b$') && !ANSWER_PLACEHOLDERS.has(challenge.answer)) {
       payload.answer_key = challenge.answer.trim();
       payload.answer = challenge.answer.trim();
     } else if (raw.answer_key && !raw.answer_key.startsWith('$2b$')) {
