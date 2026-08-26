@@ -5,8 +5,8 @@ import { supabase } from '../../../lib/supabase';
 import {
   listUsers, getAdminChallenges, getAdminProgress, getLeaderboard,
   approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
-  createChallenge, updateChallenge, addAsset, deleteChallenge, adminOverride,
-  removeTeamMember, deleteTeam,
+  createChallenge, updateChallenge, addAsset, editAsset, deleteAsset, deleteChallenge, adminOverride,
+  removeTeamMember, deleteTeam, adjustScore, updateTeam, toggleHint,
   getIpTrackingStatus, toggleIpTracking,
 } from '../../../api/admin';
 import {
@@ -313,49 +313,6 @@ export function useAdminDashboard() {
     }
   };
 
-  const unmarkTeamAsDeleted = (teamName) => {
-    try {
-      const list = getDeletedTeams();
-      const filtered = list.filter(item => item !== teamName && item !== teamName.trim().toLowerCase());
-      localStorage.setItem('cicada_deleted_teams', JSON.stringify(filtered));
-    } catch (err) {
-      console.warn('Failed to unmark deleted team record:', err);
-    }
-  };
-
-  const getScoreAdjustments = () => {
-    try {
-      return JSON.parse(localStorage.getItem('cicada_admin_score_adjustments') || '{}');
-    } catch {
-      return {};
-    }
-  };
-
-  const saveScoreAdjustment = (teamKey, points) => {
-    if (!teamKey) return;
-    try {
-      const scores = getScoreAdjustments();
-      const val = parseInt(points, 10) || 0;
-      scores[teamKey] = val;
-      scores[teamKey.trim().toLowerCase()] = val;
-      localStorage.setItem('cicada_admin_score_adjustments', JSON.stringify(scores));
-    } catch (err) {
-      console.warn('Failed to save score adjustment:', err);
-    }
-  };
-
-  const clearScoreAdjustment = (teamKey) => {
-    if (!teamKey) return;
-    try {
-      const scores = getScoreAdjustments();
-      delete scores[teamKey];
-      delete scores[teamKey?.trim().toLowerCase()];
-      localStorage.setItem('cicada_admin_score_adjustments', JSON.stringify(scores));
-    } catch (err) {
-      console.warn('Failed to clear score adjustment:', err);
-    }
-  };
-
   const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim());
 
   const refreshLive = async () => {
@@ -369,7 +326,7 @@ export function useAdminDashboard() {
         getAdminProgress().catch((err) => { console.warn('Could not fetch progress:', err); return { data: [] }; }),
         getLeaderboard().catch((err) => { console.warn('Could not fetch leaderboard:', err); return { data: [] }; }),
         getIpTrackingStatus().catch((err) => { console.warn('Could not fetch IP tracking status:', err); return null; }),
-        Promise.resolve(supabase.from('teams').select('id, name')).catch(() => ({ data: [] })),
+        Promise.resolve(supabase.from('teams').select('id, name, points, is_disqualified')).catch(() => ({ data: [] })),
       ]);
 
       const parsedIp = parseIpStatus(ipStatus);
@@ -412,10 +369,11 @@ export function useAdminDashboard() {
             isHashedAnswer: isHashed,
             points: x.points || 0,
             isLocked: x.is_active === false,
-            hintsEnabled: true,
+            hints: x.hints || [],
+            hintsEnabled: (x.hints || []).length > 0 && (x.hints || []).some((h) => h.is_visible),
             solvedCount: solvedCountsByRound[x.order_number] || 0,
             timeLimit: x.time_limit || 0,
-            assets: (x.assets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
+            assets: (x.assets || []).map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' })),
             raw: x,
           };
         }));
@@ -423,15 +381,19 @@ export function useAdminDashboard() {
 
       const lbMap = {};
       (lb?.data || []).forEach((t) => { lbMap[t.team_name] = t.challenges_completed; });
-      
+
       const membersByTeamId = {};
       const membersByTeamName = {};
       const teamIdByName = {};
+      const teamRecordByName = {};
 
       (supabaseTeams?.data || []).forEach((t) => {
         if (t?.name && isUUID(t.id)) {
           teamIdByName[t.name.trim().toLowerCase()] = t.id;
           teamIdByName[t.name.trim()] = t.id;
+        }
+        if (t?.name) {
+          teamRecordByName[t.name.trim().toLowerCase()] = t;
         }
       });
 
@@ -461,8 +423,6 @@ export function useAdminDashboard() {
         );
       };
 
-      const scoreAdjustments = getScoreAdjustments();
-
       const allTeamNames = new Set([
         ...(prog?.data || []).map(t => t.team_name).filter(Boolean),
         ...(supabaseTeams?.data || []).map(t => t.name).filter(Boolean),
@@ -475,10 +435,14 @@ export function useAdminDashboard() {
         const progRecord = (prog?.data || []).find(p => p.team_name === teamName) || {};
         const directId = (isUUID(progRecord.team_id) ? progRecord.team_id : null) || (isUUID(progRecord.id) ? progRecord.id : null);
         const resolvedUuid = directId || teamIdByName[teamName.trim()] || teamIdByName[teamName.trim().toLowerCase()] || null;
+        const teamRecord = teamRecordByName[teamName.trim().toLowerCase()];
 
-        const rawPoints = lbMap[teamName] != null ? lbMap[teamName] : (progRecord.challenges_solved || 0);
-        const adjustedPoints = scoreAdjustments[teamName] ?? scoreAdjustments[teamName.trim().toLowerCase()] ?? (resolvedUuid ? scoreAdjustments[resolvedUuid] : undefined);
-        const finalPoints = adjustedPoints !== undefined ? adjustedPoints : rawPoints;
+        // teams.points (via the admin score-adjustment endpoint) is the source of truth when
+        // available; the public leaderboard's challenges_completed count is only a fallback for
+        // teams the score endpoint hasn't touched yet.
+        const finalPoints = teamRecord && typeof teamRecord.points === 'number'
+          ? teamRecord.points
+          : (lbMap[teamName] != null ? lbMap[teamName] : (progRecord.challenges_solved || 0));
 
         return {
           id: resolvedUuid || teamName,
@@ -487,7 +451,7 @@ export function useAdminDashboard() {
           members: (resolvedUuid ? membersByTeamId[resolvedUuid] : null) || membersByTeamName[teamName] || [],
           round: progRecord.current_challenge_order || 1,
           points: finalPoints,
-          status: 'active',
+          status: teamRecord?.is_disqualified ? 'disqualified' : 'active',
         };
       }));
     } catch (err) {
@@ -597,6 +561,7 @@ export function useAdminDashboard() {
   };
 
   // --- SCORE ADJUSTMENT HANDLER ---
+  // API Endpoint: PATCH /api/admin/teams/:id/score
   const handleAdjustScore = async (e) => {
     e.preventDefault();
     if (!activeTeam) return;
@@ -611,34 +576,31 @@ export function useAdminDashboard() {
       newPoints = value;
     }
 
-    saveScoreAdjustment(activeTeam.name, newPoints);
-    if (activeTeam.id) saveScoreAdjustment(activeTeam.id, newPoints);
-    if (activeTeam.uuid) saveScoreAdjustment(activeTeam.uuid, newPoints);
+    try {
+      await adjustScore(activeTeam.uuid || activeTeam.id || activeTeam.name, { exact: newPoints });
+      await refreshLive();
 
-    setTeams(teams.map(t => {
-      if (t.id === activeTeam.id || t.name === activeTeam.name) {
-        return { ...t, points: newPoints };
-      }
-      return t;
-    }));
+      const newLog = {
+        id: `log-${Date.now()}`,
+        teamId: activeTeam.id,
+        teamName: activeTeam.name,
+        challengeId: 'score_adjust',
+        challengeTitle: 'Score Adjustment',
+        answer: `Adjusted score for ${activeTeam.name}: ${adjustScoreType.toUpperCase()} ${value} pts. (New score: ${newPoints})`,
+        correct: true,
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        attempts: 0
+      };
+      setLogs([newLog, ...logs]);
 
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: activeTeam.id,
-      teamName: activeTeam.name,
-      challengeId: 'score_adjust',
-      challengeTitle: 'Score Adjustment',
-      answer: `Adjusted score for ${activeTeam.name}: ${adjustScoreType.toUpperCase()} ${value} pts. (New score: ${newPoints})`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
-
-    setShowAdjustScoreModal(false);
-    setActiveTeam(null);
-    setAdjustScoreValue(0);
-    alert(`SUCCESS: Score for "${activeTeam.name}" adjusted to ${newPoints} points.`);
+      setShowAdjustScoreModal(false);
+      setActiveTeam(null);
+      setAdjustScoreValue(0);
+      alert(`SUCCESS: Score for "${activeTeam.name}" adjusted to ${newPoints} points.`);
+    } catch (err) {
+      console.error('Failed to adjust score on backend:', err);
+      alert('Failed to adjust score on backend:\n' + (err.message || 'Unknown error'));
+    }
   };
 
   // --- MEMBER REMOVAL HANDLER ---
@@ -824,61 +786,59 @@ export function useAdminDashboard() {
     }
   };
 
-  // API Endpoint: PUT Edit Asset
-  const handleEditAssetSave = (e) => {
+  // API Endpoint: PUT /api/admin/challenges/:id/assets/:assetId
+  const handleEditAssetSave = async (e) => {
     e.preventDefault();
     if (!activeAsset || !activeAssetChallengeId) return;
 
-    setChallenges(challenges.map(c => {
-      if (c.id === activeAssetChallengeId) {
-        return {
-          ...c,
-          assets: (c.assets || []).map(a => {
-            if (a.name === activeAsset.name) {
-              return { name: editAssetName.trim(), url: editAssetUrl.trim() || '#' };
-            }
-            return a;
-          })
-        };
-      }
-      return c;
-    }));
-
     const chal = challenges.find(c => c.id === activeAssetChallengeId);
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: 'system',
-      teamName: 'SYSTEM',
-      challengeId: activeAssetChallengeId,
-      challengeTitle: 'Edit Asset',
-      answer: `Asset "${activeAsset.name}" renamed to "${editAssetName}" in challenge "${chal ? chal.title : activeAssetChallengeId}"`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
+    const targetChallengeId = chal?.raw?.id || activeAssetChallengeId;
+    const assetIdentifier = activeAsset.id || activeAsset.name;
 
-    setShowEditAssetModal(false);
-    setActiveAsset(null);
-    setActiveAssetChallengeId('');
-    setEditAssetName('');
-    setEditAssetUrl('');
+    try {
+      await editAsset(targetChallengeId, assetIdentifier, {
+        name: editAssetName.trim(),
+        url: editAssetUrl.trim() || undefined,
+      });
+      await refreshLive();
+
+      const newLog = {
+        id: `log-${Date.now()}`,
+        teamId: 'system',
+        teamName: 'SYSTEM',
+        challengeId: activeAssetChallengeId,
+        challengeTitle: 'Edit Asset',
+        answer: `Asset "${activeAsset.name}" renamed to "${editAssetName}" in challenge "${chal ? chal.title : activeAssetChallengeId}"`,
+        correct: true,
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        attempts: 0
+      };
+      setLogs([newLog, ...logs]);
+
+      setShowEditAssetModal(false);
+      setActiveAsset(null);
+      setActiveAssetChallengeId('');
+      setEditAssetName('');
+      setEditAssetUrl('');
+    } catch (err) {
+      console.error('Failed to edit asset on backend:', err);
+      alert('Failed to edit asset on backend:\n' + (err.message || 'Unknown error'));
+    }
   };
 
-  // API Endpoint: DEL Delete Asset
-  const handleDeleteAsset = (challengeId, assetName) => {
-    if (window.confirm(`PERMANENTLY DELETE ASSET "${assetName.toUpperCase()}" FROM CHALLENGE?`)) {
-      setChallenges(challenges.map(c => {
-        if (c.id === challengeId) {
-          return {
-            ...c,
-            assets: (c.assets || []).filter(a => a.name !== assetName)
-          };
-        }
-        return c;
-      }));
+  // API Endpoint: DELETE /api/admin/challenges/:id/assets/:assetId
+  const handleDeleteAsset = async (challengeId, assetName) => {
+    if (!window.confirm(`PERMANENTLY DELETE ASSET "${assetName.toUpperCase()}" FROM CHALLENGE?`)) return;
 
-      const chal = challenges.find(c => c.id === challengeId);
+    const chal = challenges.find(c => c.id === challengeId);
+    const targetChallengeId = chal?.raw?.id || challengeId;
+    const asset = (chal?.assets || []).find(a => a.name === assetName);
+    const assetIdentifier = asset?.id || assetName;
+
+    try {
+      await deleteAsset(targetChallengeId, assetIdentifier);
+      await refreshLive();
+
       const newLog = {
         id: `log-${Date.now()}`,
         teamId: challengeId,
@@ -891,34 +851,24 @@ export function useAdminDashboard() {
         attempts: 0
       };
       setLogs([newLog, ...logs]);
+    } catch (err) {
+      console.error('Failed to delete asset on backend:', err);
+      alert('Failed to delete asset on backend:\n' + (err.message || 'Unknown error'));
     }
   };
 
-  // API Endpoint: POST Reset Team Progress (Admin)
+  // API Endpoints: POST /api/admin/challenges/override + PATCH /api/admin/teams/:id/score
   const handleResetTeamProgress = async (teamId, teamName) => {
     if (window.confirm(`RESET ALL PROGRESS FOR "${teamName.toUpperCase()}"? THIS RESETS ROUND TO 1 AND POINTS TO 0.`)) {
-      saveScoreAdjustment(teamName, 0);
-      if (teamId) saveScoreAdjustment(teamId, 0);
-
       try {
         await adminOverride({ team_name: teamName, target_challenge_order: 1 });
+        await adjustScore(teamId || teamName, { exact: 0 });
         await refreshLive();
         alert(`SUCCESS: Progress reset to Round 1 and score reset to 0 for team "${teamName}".`);
       } catch (err) {
         console.error("Failed to reset team progress on backend:", err);
         alert("Failed to reset team progress on backend:\n" + (err.message || "Unknown error"));
       }
-
-      setTeams(teams.map(t => {
-        if (t.id === teamId || t.name === teamName) {
-          return {
-            ...t,
-            round: 1,
-            points: 0
-          };
-        }
-        return t;
-      }));
 
       const newLog = {
         id: `log-${Date.now()}`,
@@ -935,21 +885,20 @@ export function useAdminDashboard() {
     }
   };
 
-  // API Endpoint: POST Reset Leaderboard
+  // API Endpoints: POST /api/admin/challenges/override + PATCH /api/admin/teams/:id/score (per team)
   const handleResetLeaderboard = async () => {
-    teams.forEach(t => {
-      saveScoreAdjustment(t.name, 0);
-      if (t.id) saveScoreAdjustment(t.id, 0);
-      if (t.uuid) saveScoreAdjustment(t.uuid, 0);
-    });
-
     try {
-      const overridePromises = teams.map(t => 
+      const overridePromises = teams.map(t =>
         adminOverride({ team_name: t.name, target_challenge_order: 1 }).catch(err => {
           console.warn(`Could not reset progress for ${t.name}:`, err);
         })
       );
-      await Promise.all(overridePromises);
+      const scorePromises = teams.map(t =>
+        adjustScore(t.uuid || t.id || t.name, { exact: 0 }).catch(err => {
+          console.warn(`Could not reset score for ${t.name}:`, err);
+        })
+      );
+      await Promise.all([...overridePromises, ...scorePromises]);
 
       const lockPromises = challenges
         .filter(c => c.round > 1 && !c.isLocked)
@@ -993,42 +942,14 @@ export function useAdminDashboard() {
   };
 
   // TEAM HANDLERS
+  // NOTE: There is no backend endpoint for admin-driven team creation — teams are
+  // created by a participant self-registering (POST /api/teams/create), which requires
+  // a real authenticated user to become the team leader. An admin form with free-text
+  // member names has no matching backend concept, so this reports that honestly instead
+  // of faking a locally-stored "success".
   const handleCreateTeam = (e) => {
     e.preventDefault();
-    if (!newTeamName.trim()) return;
-
-    unmarkTeamAsDeleted(newTeamName.trim());
-
-    const newTeam = {
-      id: `team-${Date.now()}`,
-      name: newTeamName.trim(),
-      members: newTeamMembers.split(',').map(m => m.trim()).filter(Boolean),
-      round: 1,
-      points: 0,
-      status: 'active'
-    };
-
-    setTeams([...teams, newTeam]);
-    
-    // Add a submission log entry for team creation
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: newTeam.id,
-      teamName: newTeam.name,
-      challengeId: 'system',
-      challengeTitle: 'System Registration',
-      answer: `Registered with password: ${newTeamPassword || 'auto-generated'}`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
-
-    // Reset inputs
-    setNewTeamName('');
-    setNewTeamMembers('');
-    setNewTeamPassword('');
-    setShowCreateTeamModal(false);
+    alert('Admin-side team creation is not supported by the backend: teams are created when a participant registers and becomes team leader. Ask the crew to register themselves, or use "Edit team" / "Reset progress" on an existing team.');
   };
 
   const handleOpenEditTeam = (team) => {
@@ -1040,31 +961,35 @@ export function useAdminDashboard() {
     setShowEditTeamModal(true);
   };
 
-  const handleSaveTeamEdit = (e) => {
+  // API Endpoints: PATCH /api/admin/teams/:id (name, status) + PATCH /api/admin/teams/:id/score (points)
+  const handleSaveTeamEdit = async (e) => {
     e.preventDefault();
     if (!activeTeam) return;
 
+    const teamKey = activeTeam.uuid || activeTeam.id || activeTeam.name;
     const newPoints = parseInt(editTeamPoints) || 0;
-    saveScoreAdjustment(editTeamName, newPoints);
-    if (activeTeam.name) saveScoreAdjustment(activeTeam.name, newPoints);
-    if (activeTeam.id) saveScoreAdjustment(activeTeam.id, newPoints);
-    if (activeTeam.uuid) saveScoreAdjustment(activeTeam.uuid, newPoints);
+    const nameChanged = editTeamName.trim() && editTeamName.trim() !== activeTeam.name;
+    const statusChanged = editTeamStatus !== activeTeam.status;
+    const pointsChanged = newPoints !== (activeTeam.points || 0);
 
-    setTeams(teams.map(t => {
-      if (t.id === activeTeam.id) {
-        return {
-          ...t,
-          name: editTeamName,
-          members: editTeamMembers.split(',').map(m => m.trim()).filter(Boolean),
-          points: newPoints,
-          status: editTeamStatus
-        };
+    try {
+      if (nameChanged || statusChanged) {
+        await updateTeam(teamKey, {
+          ...(nameChanged ? { name: editTeamName.trim() } : {}),
+          ...(statusChanged ? { is_disqualified: editTeamStatus === 'disqualified' } : {}),
+        });
       }
-      return t;
-    }));
+      if (pointsChanged) {
+        await adjustScore(teamKey, { exact: newPoints });
+      }
+      await refreshLive();
 
-    setShowEditTeamModal(false);
-    setActiveTeam(null);
+      setShowEditTeamModal(false);
+      setActiveTeam(null);
+    } catch (err) {
+      console.error('Failed to save team edit on backend:', err);
+      alert('Failed to save team edit on backend:\n' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleOpenDeleteConfirm = (team) => {
@@ -1079,29 +1004,13 @@ export function useAdminDashboard() {
     setShowResetPwdModal(true);
   };
 
+  // NOTE: There is no password-based auth in the backend — participants authenticate
+  // via Supabase (Google OAuth / magic link) per user, not a team passphrase, and no
+  // endpoint exists to "reset" one. This reports that honestly instead of faking success.
   const handleSaveResetPassword = (e) => {
     e.preventDefault();
     if (!activeTeam) return;
-
-    // In a real backend, this updates the authentication DB
-    alert(`PASSWORD RESET INITIATED FOR ${activeTeam.name.toUpperCase()}.\nNEW PASSWORD: ${manuallyResetPassword || 'Auto-generated-secret-pwd'}`);
-    
-    // Log password reset
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: activeTeam.id,
-      teamName: activeTeam.name,
-      challengeId: 'system',
-      challengeTitle: 'Password Reset',
-      answer: `Password updated ${manuallyResetPassword ? 'manually' : 'automatically'}`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
-
-    setShowResetPwdModal(false);
-    setActiveTeam(null);
+    alert(`Teams don't have a resettable password in this system: members sign in individually via Google/Supabase auth, not a shared team passphrase. There is nothing to reset for "${activeTeam.name}".`);
   };
 
   const handleOpenProgressOverride = (team) => {
@@ -1191,13 +1100,34 @@ export function useAdminDashboard() {
     }
   };
 
-  const handleToggleHintChallenge = (challengeId, currentHintStatus) => {
-    setChallenges(challenges.map(c => {
-      if (c.id === challengeId) {
-        return { ...c, hintsEnabled: !currentHintStatus };
-      }
-      return c;
-    }));
+  // API Endpoint: PATCH /api/admin/challenges/:id/hints/:hintId/toggle (applied per-hint)
+  const handleToggleHintChallenge = async (challengeId, currentHintStatus) => {
+    const chal = challenges.find((c) => c.id === challengeId);
+    if (!chal) return;
+    const hintsList = chal.hints || [];
+    if (hintsList.length === 0) {
+      alert('This challenge has no hints yet — add a hint before toggling hint visibility.');
+      return;
+    }
+
+    const targetVisible = !currentHintStatus;
+    const targetChallengeId = chal.raw?.id || challengeId;
+
+    try {
+      await Promise.all(
+        hintsList
+          .filter((h) => Boolean(h.is_visible) !== targetVisible)
+          .map((h) =>
+            toggleHint(targetChallengeId, h.id).catch((err) => {
+              console.warn(`Could not toggle hint ${h.id}:`, err);
+            })
+          )
+      );
+      await refreshLive();
+    } catch (err) {
+      console.error('Failed to toggle hints on backend:', err);
+      alert('Failed to toggle hints on backend:\n' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleOpenEditAnswer = (challenge) => {
