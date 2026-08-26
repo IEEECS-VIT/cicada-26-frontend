@@ -87,12 +87,12 @@ export default function ChallengesTab() {
                     <div className="mb-4 border-t border-accretion/15 pt-4 text-sm">
                       <div className="mb-1 font-rajdhani text-[11px] tracking-[0.22em] text-copper">TIME LIMIT</div>
                       <div className="flex items-center justify-between gap-2 text-starlight">
-                        <span>{challenge.timeLimit ? `${challenge.timeLimit} min` : 'None'}</span>
+                        <span>{challenge.timeLimit && challenge.timeLimit < 99999 ? `${challenge.timeLimit} min` : 'Unlimited'}</span>
                         <button
                           type="button"
                           onClick={() => {
                             setActiveChallenge(challenge);
-                            setEditTimeLimitValue(challenge.timeLimit || 60);
+                            setEditTimeLimitValue(challenge.timeLimit && challenge.timeLimit < 99999 ? challenge.timeLimit : 0);
                             setShowTimeLimitModal(true);
                           }}
                           className="inline-flex shrink-0 items-center gap-1 font-rajdhani text-[11px] tracking-[0.18em] text-copper hover:text-accretion"

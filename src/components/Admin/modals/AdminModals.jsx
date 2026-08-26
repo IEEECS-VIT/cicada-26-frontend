@@ -140,6 +140,7 @@ export default function AdminModals() {
     handleSaveProgressOverride,
     handleSaveEditAnswer,
     handleSaveOverrideChallenge,
+    handleForceSkipChallenge,
     handleDeleteTeam
   } = useAdmin();
 
@@ -671,32 +672,7 @@ export default function AdminModals() {
                 <button
                   type="button"
                   disabled={skipConfirmInput !== 'SKIP'}
-                  onClick={() => {
-                    const targetRound = activeChallenge.round;
-                    setTeams(teams.map(t => {
-                      if (t.round === targetRound) {
-                        return { ...t, round: targetRound + 1 };
-                      }
-                      return t;
-                    }));
-
-                    const newLog = {
-                      id: `log-${Date.now()}`,
-                      teamId: 'all',
-                      teamName: 'ALL TEAMS',
-                      challengeId: activeChallenge.id,
-                      challengeTitle: activeChallenge.title,
-                      answer: 'SKIPPED BY ADMIN ACTION',
-                      correct: true,
-                      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-                      attempts: 0
-                    };
-                    setLogs([newLog, ...logs]);
-
-                    setShowSkipConfirmModal(false);
-                    setActiveChallenge(null);
-                    setSkipConfirmInput('');
-                  }}
+                  onClick={() => handleForceSkipChallenge(activeChallenge)}
                   className="flex-1 cursor-pointer border border-accretion bg-accretion py-2 font-orbitron text-xs uppercase tracking-wider text-black hover:bg-accretion-bright disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   FORCE SKIP ALL

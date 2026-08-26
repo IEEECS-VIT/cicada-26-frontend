@@ -49,8 +49,11 @@ export default function ResourceViewer() {
   const primaryAsset = phaseData.assets?.[0];
   const rawType = (primaryAsset?.type || phaseData.resourceType || 'text').toLowerCase();
   const url = (primaryAsset?.url || phaseData.resourceUrl || '').trim();
-  const content = primaryAsset?.content || phaseData.content || '';
-  const assetName = primaryAsset?.name || phaseData.title;
+  const fragment = phaseData.story_fragment || {};
+  const fragmentTitle = fragment.title || phaseData.title || '';
+  const fragmentContent = fragment.content || phaseData.description || '';
+  const content = primaryAsset?.content || phaseData.content || fragmentContent || '';
+  const assetName = primaryAsset?.name || fragmentTitle;
 
   // Determine normalized resource type
   let resourceType = 'text';
@@ -84,12 +87,22 @@ export default function ResourceViewer() {
         <h3 className="font-orbitron text-sm xs:text-base sm:text-lg font-bold tracking-wide text-accretion">
           {phaseData.title}
         </h3>
-        {phaseData.description && (
-          <p className="text-xs text-foreground/85 mt-1 leading-relaxed whitespace-pre-wrap">
-            {phaseData.description}
-          </p>
-        )}
       </div>
+
+      {/* Intercepted Story Fragment Banner */}
+      {fragmentContent && (
+        <div className="shrink-0 rounded-lg border border-accretion/40 bg-black/60 p-3 shadow-[0_0_12px_rgba(209,155,131,0.12)]">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-accretion animate-pulse" />
+            <span className="font-orbitron text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-accretion">
+              {fragmentTitle ? `TRANSMISSION: ${fragmentTitle.toUpperCase()}` : 'INTERCEPTED STORY FRAGMENT'}
+            </span>
+          </div>
+          <p className="font-mono text-xs sm:text-sm text-starlight/95 leading-relaxed select-all whitespace-pre-wrap">
+            {fragmentContent}
+          </p>
+        </div>
+      )}
 
       {/* Single Playable / Viewable Resource Container */}
       <div className="flex-1 min-h-0 border border-accretion/35 rounded-lg p-2.5 sm:p-3.5 flex flex-col justify-start bg-black/50 relative overflow-y-auto">

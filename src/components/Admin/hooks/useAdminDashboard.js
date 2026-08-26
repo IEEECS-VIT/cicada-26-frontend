@@ -162,33 +162,214 @@ export function useAdminDashboard() {
     return () => document.removeEventListener('mousedown', close);
   }, [openActionMenu]);
 
+  const buildChallengePayload = (challenge, overrides = {}) => {
+    const raw = challenge?.raw || {};
+    const assets = (challenge?.assets || raw.assets || []).map((a) => ({
+      type: a.type || 'file',
+      name: (a.name || 'asset').trim() || 'asset',
+      url: a.url || '#',
+    }));
+
+    const orderNum = parseInt(overrides.order_number ?? challenge?.round ?? raw.order_number ?? 1, 10);
+    
+    // Normalize time limit: backend schema requires a number >= 1
+    const rawLimitInput = overrides.time_limit !== undefined ? overrides.time_limit : (challenge?.timeLimit ?? raw.time_limit);
+    let timeLimitVal = parseInt(rawLimitInput, 10);
+    if (isNaN(timeLimitVal) || timeLimitVal <= 0) {
+      timeLimitVal = 999999;
+    } else if (timeLimitVal > 2147483647) {
+      timeLimitVal = 2147483647;
+    }
+
+    const pointsVal = parseInt(overrides.points ?? challenge?.points ?? raw.points ?? 100, 10);
+
+    const titleVal = (overrides.title ?? overrides.name ?? challenge?.title ?? raw.title ?? raw.name ?? `Archive ${orderNum}`).trim() || `Archive ${orderNum}`;
+    const storyVal = (overrides.story_context ?? overrides.description ?? raw.story_context ?? raw.description ?? "Mission briefing").trim() || "Mission briefing";
+
+    // Backend Zod schema strictly requires story_fragment.title and story_fragment.content to be non-empty strings
+    const rawFragment = (raw.story_fragment && typeof raw.story_fragment === 'object') ? raw.story_fragment : {};
+    const overrideFragment = (overrides.story_fragment && typeof overrides.story_fragment === 'object') ? overrides.story_fragment : {};
+    
+    const fragmentTitle = (
+      overrideFragment.title ||
+      rawFragment.title ||
+      titleVal ||
+      `Archive ${orderNum} Fragment`
+    ).trim() || `Archive ${orderNum} Fragment`;
+
+    const fragmentContent = (
+      overrideFragment.content ||
+      rawFragment.content ||
+      raw.story_context ||
+      raw.description ||
+      storyVal ||
+      "Decrypted classified archive transmission."
+    ).trim() || "Decrypted classified archive transmission.";
+
+    const storyFragmentObj = {
+      title: fragmentTitle,
+      content: fragmentContent,
+    };
+
+    const isActive = overrides.is_active !== undefined ? overrides.is_active : (raw.is_active !== undefined ? raw.is_active : !challenge?.isLocked);
+    const isLocked = overrides.is_locked !== undefined ? overrides.is_locked : (raw.is_locked !== undefined ? raw.is_locked : challenge?.isLocked ?? false);
+
+    const payload = {
+      order_number: isNaN(orderNum) || orderNum < 1 ? 1 : orderNum,
+      name: titleVal,
+      title: titleVal,
+      time_limit: timeLimitVal,
+      points: isNaN(pointsVal) || pointsVal < 1 ? 100 : pointsVal,
+      is_active: isActive,
+      is_locked: isLocked,
+      assets: assets,
+      story_context: storyVal,
+      description: storyVal,
+      hints: Array.isArray(raw.hints) ? raw.hints : [],
+      story_fragment: storyFragmentObj,
+    };
+
+    // Only include answer_key if explicitly provided or if it's plaintext
+    // This prevents re-hashing an existing bcrypt hash when updating other fields like time_limit
+    if (overrides.answer_key !== undefined || overrides.answer !== undefined) {
+      const explicitAnswer = (overrides.answer_key ?? overrides.answer ?? '').trim();
+      if (explicitAnswer) {
+        payload.answer_key = explicitAnswer;
+        payload.answer = explicitAnswer;
+      }
+    } else if (challenge?.answer && !challenge.answer.startsWith('$2b$')) {
+      payload.answer_key = challenge.answer.trim();
+      payload.answer = challenge.answer.trim();
+    } else if (raw.answer_key && !raw.answer_key.startsWith('$2b$')) {
+      payload.answer_key = raw.answer_key.trim();
+      payload.answer = raw.answer_key.trim();
+    }
+
+    return payload;
+  };
+
+  const getKnownAnswers = () => {
+    try {
+      return JSON.parse(localStorage.getItem('cicada_admin_known_answers') || '{}');
+    } catch {
+      return {};
+    }
+  };
+
+  const saveKnownAnswer = (challengeKey, answerText) => {
+    try {
+      const known = getKnownAnswers();
+      known[challengeKey] = answerText;
+      localStorage.setItem('cicada_admin_known_answers', JSON.stringify(known));
+    } catch (err) {
+      console.warn('Failed to save known answer to localStorage:', err);
+    }
+  };
+
   // --- LOAD LIVE BACKEND DATA (when opened through the authenticated admin flow) ---
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState('');
 
   const parseIpStatus = (res) => {
-    if (!res) return null;
+    if (res === null || res === undefined) return null;
+    if (typeof res === 'boolean') return res;
+    if (typeof res.data === 'boolean') return res.data;
+
     const root = res.data || res;
+    if (typeof root === 'boolean') return root;
+    if (typeof root !== 'object') return null;
+
     if (typeof root.ip_tracking_enabled === 'boolean') return root.ip_tracking_enabled;
     if (typeof root.ip_blocking_enabled === 'boolean') return root.ip_blocking_enabled;
     if (typeof root.enabled === 'boolean') return root.enabled;
     if (typeof root.tracking === 'boolean') return root.tracking;
     if (typeof root.is_enabled === 'boolean') return root.is_enabled;
+    
+    for (const key of Object.keys(root)) {
+      if (typeof root[key] === 'boolean') return root[key];
+    }
+    
     if (typeof root.status === 'string') return root.status === 'enabled' || root.status === 'active';
     return null;
   };
+
+  const getDeletedTeams = () => {
+    try {
+      return JSON.parse(localStorage.getItem('cicada_deleted_teams') || '[]');
+    } catch {
+      return [];
+    }
+  };
+
+  const markTeamAsDeleted = (teamName, teamId) => {
+    try {
+      const list = getDeletedTeams();
+      if (teamName && !list.includes(teamName)) list.push(teamName);
+      if (teamName && !list.includes(teamName.trim().toLowerCase())) list.push(teamName.trim().toLowerCase());
+      if (teamId && !list.includes(teamId)) list.push(teamId);
+      localStorage.setItem('cicada_deleted_teams', JSON.stringify(list));
+    } catch (err) {
+      console.warn('Failed to save deleted team record:', err);
+    }
+  };
+
+  const unmarkTeamAsDeleted = (teamName) => {
+    try {
+      const list = getDeletedTeams();
+      const filtered = list.filter(item => item !== teamName && item !== teamName.trim().toLowerCase());
+      localStorage.setItem('cicada_deleted_teams', JSON.stringify(filtered));
+    } catch (err) {
+      console.warn('Failed to unmark deleted team record:', err);
+    }
+  };
+
+  const getScoreAdjustments = () => {
+    try {
+      return JSON.parse(localStorage.getItem('cicada_admin_score_adjustments') || '{}');
+    } catch {
+      return {};
+    }
+  };
+
+  const saveScoreAdjustment = (teamKey, points) => {
+    if (!teamKey) return;
+    try {
+      const scores = getScoreAdjustments();
+      const val = parseInt(points, 10) || 0;
+      scores[teamKey] = val;
+      scores[teamKey.trim().toLowerCase()] = val;
+      localStorage.setItem('cicada_admin_score_adjustments', JSON.stringify(scores));
+    } catch (err) {
+      console.warn('Failed to save score adjustment:', err);
+    }
+  };
+
+  const clearScoreAdjustment = (teamKey) => {
+    if (!teamKey) return;
+    try {
+      const scores = getScoreAdjustments();
+      delete scores[teamKey];
+      delete scores[teamKey?.trim().toLowerCase()];
+      localStorage.setItem('cicada_admin_score_adjustments', JSON.stringify(scores));
+    } catch (err) {
+      console.warn('Failed to clear score adjustment:', err);
+    }
+  };
+
+  const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim());
 
   const refreshLive = async () => {
     if (!isAuthenticated || !isOAuthAdmin) return;
     setLiveLoading(true);
     setLiveError('');
     try {
-      const [u, ch, prog, lb, ipStatus] = await Promise.all([
+      const [u, ch, prog, lb, ipStatus, supabaseTeams] = await Promise.all([
         listUsers().catch((err) => { console.warn('Could not fetch users:', err); return { data: [] }; }),
         getAdminChallenges().catch((err) => { console.warn('Could not fetch challenges:', err); return { data: [] }; }),
         getAdminProgress().catch((err) => { console.warn('Could not fetch progress:', err); return { data: [] }; }),
         getLeaderboard().catch((err) => { console.warn('Could not fetch leaderboard:', err); return { data: [] }; }),
         getIpTrackingStatus().catch((err) => { console.warn('Could not fetch IP tracking status:', err); return null; }),
+        Promise.resolve(supabase.from('teams').select('id, name')).catch(() => ({ data: [] })),
       ]);
 
       const parsedIp = parseIpStatus(ipStatus);
@@ -215,50 +396,100 @@ export function useAdminDashboard() {
       });
 
       if (Array.isArray(ch?.data) && ch.data.length > 0) {
-        setChallenges(ch.data.map((x) => ({
-          id: x.id,
-          title: x.name,
-          round: x.order_number,
-          answer: x.answer_key || '',
-          points: x.points || 0,
-          isLocked: x.is_active === false,
-          hintsEnabled: true,
-          solvedCount: solvedCountsByRound[x.order_number] || 0,
-          timeLimit: x.time_limit || 0,
-          assets: (x.assets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
-        })));
+        const known = getKnownAnswers();
+        setChallenges(ch.data.map((x) => {
+          const rawAns = x.answer_key || x.answer || '';
+          const isHashed = typeof rawAns === 'string' && rawAns.startsWith('$2b$');
+          const savedPlain = known[x.id] || known[x.order_number] || '';
+          const displayAns = isHashed ? (savedPlain || 'ENCRYPTED (SET)') : (rawAns || '—');
+
+          return {
+            id: x.id,
+            title: x.name,
+            round: x.order_number,
+            answer: displayAns,
+            rawAnswer: rawAns,
+            isHashedAnswer: isHashed,
+            points: x.points || 0,
+            isLocked: x.is_active === false,
+            hintsEnabled: true,
+            solvedCount: solvedCountsByRound[x.order_number] || 0,
+            timeLimit: x.time_limit || 0,
+            assets: (x.assets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
+            raw: x,
+          };
+        }));
       }
 
       const lbMap = {};
       (lb?.data || []).forEach((t) => { lbMap[t.team_name] = t.challenges_completed; });
+      
       const membersByTeamId = {};
       const membersByTeamName = {};
       const teamIdByName = {};
+
+      (supabaseTeams?.data || []).forEach((t) => {
+        if (t?.name && isUUID(t.id)) {
+          teamIdByName[t.name.trim().toLowerCase()] = t.id;
+          teamIdByName[t.name.trim()] = t.id;
+        }
+      });
+
       (u?.data || []).forEach((x) => {
         const label = x.display_name || x.email;
-        if (x.team_id) {
-          (membersByTeamId[x.team_id] ||= []).push(label);
+        const teamId = (isUUID(x.team_id) ? x.team_id : null) || (isUUID(x.teams?.id) ? x.teams.id : null);
+        if (teamId) {
+          (membersByTeamId[teamId] ||= []).push(label);
         }
         const joinedName = x.teams?.name || x.team_name;
         if (joinedName) {
           (membersByTeamName[joinedName] ||= []).push(label);
-          teamIdByName[joinedName] = x.teams?.id || x.team_id || joinedName;
+          if (teamId) {
+            teamIdByName[joinedName.trim().toLowerCase()] = teamId;
+            teamIdByName[joinedName.trim()] = teamId;
+          }
         }
       });
 
-      if (Array.isArray(prog?.data) && prog.data.length > 0) {
-        setTeams(prog.data.map((t) => {
-          const teamKey = t.team_id || teamIdByName[t.team_name] || t.team_name;
-          return {
-            id: teamKey,
-            name: t.team_name,
-            members: membersByTeamId[t.team_id] || membersByTeamName[t.team_name] || [],
-            round: t.current_challenge_order || 1,
-            points: lbMap[t.team_name] != null ? lbMap[t.team_name] : (t.challenges_solved || 0),
-            status: 'active',
-          };
-        }));
-      }
+      const deletedTeams = getDeletedTeams();
+      const isTeamDeleted = (name, id) => {
+        if (!name && !id) return false;
+        return (
+          deletedTeams.includes(name) ||
+          deletedTeams.includes(name?.trim().toLowerCase()) ||
+          (id && deletedTeams.includes(id))
+        );
+      };
+
+      const scoreAdjustments = getScoreAdjustments();
+
+      const allTeamNames = new Set([
+        ...(prog?.data || []).map(t => t.team_name).filter(Boolean),
+        ...(supabaseTeams?.data || []).map(t => t.name).filter(Boolean),
+        ...(lb?.data || []).map(t => t.team_name).filter(Boolean),
+      ]);
+
+      const activeTeamNames = Array.from(allTeamNames).filter(name => !isTeamDeleted(name));
+
+      setTeams(activeTeamNames.map((teamName) => {
+        const progRecord = (prog?.data || []).find(p => p.team_name === teamName) || {};
+        const directId = (isUUID(progRecord.team_id) ? progRecord.team_id : null) || (isUUID(progRecord.id) ? progRecord.id : null);
+        const resolvedUuid = directId || teamIdByName[teamName.trim()] || teamIdByName[teamName.trim().toLowerCase()] || null;
+
+        const rawPoints = lbMap[teamName] != null ? lbMap[teamName] : (progRecord.challenges_solved || 0);
+        const adjustedPoints = scoreAdjustments[teamName] ?? scoreAdjustments[teamName.trim().toLowerCase()] ?? (resolvedUuid ? scoreAdjustments[resolvedUuid] : undefined);
+        const finalPoints = adjustedPoints !== undefined ? adjustedPoints : rawPoints;
+
+        return {
+          id: resolvedUuid || teamName,
+          uuid: resolvedUuid,
+          name: teamName,
+          members: (resolvedUuid ? membersByTeamId[resolvedUuid] : null) || membersByTeamName[teamName] || [],
+          round: progRecord.current_challenge_order || 1,
+          points: finalPoints,
+          status: 'active',
+        };
+      }));
     } catch (err) {
       setLiveError(err.message || 'Failed to load live data.');
     } finally {
@@ -366,21 +597,26 @@ export function useAdminDashboard() {
   };
 
   // --- SCORE ADJUSTMENT HANDLER ---
-  const handleAdjustScore = (e) => {
+  const handleAdjustScore = async (e) => {
     e.preventDefault();
     if (!activeTeam) return;
 
     const value = parseInt(adjustScoreValue) || 0;
+    let newPoints = activeTeam.points || 0;
+    if (adjustScoreType === 'add') {
+      newPoints += value;
+    } else if (adjustScoreType === 'subtract') {
+      newPoints = Math.max(0, newPoints - value);
+    } else if (adjustScoreType === 'set') {
+      newPoints = value;
+    }
+
+    saveScoreAdjustment(activeTeam.name, newPoints);
+    if (activeTeam.id) saveScoreAdjustment(activeTeam.id, newPoints);
+    if (activeTeam.uuid) saveScoreAdjustment(activeTeam.uuid, newPoints);
+
     setTeams(teams.map(t => {
-      if (t.id === activeTeam.id) {
-        let newPoints = t.points;
-        if (adjustScoreType === 'add') {
-          newPoints += value;
-        } else if (adjustScoreType === 'subtract') {
-          newPoints = Math.max(0, newPoints - value);
-        } else if (adjustScoreType === 'set') {
-          newPoints = value;
-        }
+      if (t.id === activeTeam.id || t.name === activeTeam.name) {
         return { ...t, points: newPoints };
       }
       return t;
@@ -392,7 +628,7 @@ export function useAdminDashboard() {
       teamName: activeTeam.name,
       challengeId: 'score_adjust',
       challengeTitle: 'Score Adjustment',
-      answer: `Adjusted: ${adjustScoreType.toUpperCase()} ${value} pts.`,
+      answer: `Adjusted score for ${activeTeam.name}: ${adjustScoreType.toUpperCase()} ${value} pts. (New score: ${newPoints})`,
       correct: true,
       timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
       attempts: 0
@@ -402,6 +638,7 @@ export function useAdminDashboard() {
     setShowAdjustScoreModal(false);
     setActiveTeam(null);
     setAdjustScoreValue(0);
+    alert(`SUCCESS: Score for "${activeTeam.name}" adjusted to ${newPoints} points.`);
   };
 
   // --- MEMBER REMOVAL HANDLER ---
@@ -410,15 +647,25 @@ export function useAdminDashboard() {
     if (window.confirm(`REMOVE "${memberName.toUpperCase()}" FROM TEAM?`)) {
       try {
         const foundUser = users.find(u => u.username === memberName || u.email === memberName);
+        let resolvedTeamId = isUUID(teamId) ? teamId : undefined;
+        if (!resolvedTeamId) {
+          const foundTeam = teams.find(t => t.id === teamId || t.name === teamId);
+          if (foundTeam?.uuid && isUUID(foundTeam.uuid)) {
+            resolvedTeamId = foundTeam.uuid;
+          } else if (foundUser?.teamId && isUUID(foundUser.teamId)) {
+            resolvedTeamId = foundUser.teamId;
+          }
+        }
+
         await removeTeamMember({
           target_user_id: foundUser?.id || undefined,
           target_email: foundUser?.email || (!foundUser?.id ? memberName : undefined),
-          team_id: teamId,
+          team_id: resolvedTeamId,
         });
         await refreshLive();
       } catch (err) {
         console.error(err);
-        alert('Failed to remove member: ' + (err.message || 'Unknown error'));
+        alert('Failed to remove member:\n' + (err.message || 'Unknown error'));
       }
     }
   };
@@ -429,15 +676,37 @@ export function useAdminDashboard() {
     e.preventDefault();
     if (!newChallengeTitle.trim()) return;
 
-    const parsedLimit = parseInt(newChallengeTimeLimit) || 0;
+    let parsedLimit = parseInt(newChallengeTimeLimit, 10);
+    if (isNaN(parsedLimit) || parsedLimit <= 0) {
+      parsedLimit = 999999;
+    } else if (parsedLimit > 2147483647) {
+      parsedLimit = 2147483647;
+    }
+
+    const orderNum = parseInt(newChallengeRound, 10) || 1;
+    const titleVal = newChallengeTitle.trim();
+    const answerKeyVal = newChallengeAnswer.trim() || 'decrypted_key';
+    const pointsVal = parseInt(newChallengePoints, 10) || 100;
+
     try {
       await createChallenge({
-        order_number: parseInt(newChallengeRound) || 1,
-        name: newChallengeTitle.trim(),
-        answer_key: newChallengeAnswer.trim() || 'decrypted_key',
+        order_number: orderNum,
+        name: titleVal,
+        title: titleVal,
+        answer_key: answerKeyVal,
+        answer: answerKeyVal,
         time_limit: parsedLimit,
+        points: pointsVal,
         is_active: false,
-        assets: (newChallengeAssets || []).map((a) => ({ type: 'file', url: a.url || '#', name: a.name || 'asset' })),
+        is_locked: true,
+        story_context: 'Mission briefing',
+        description: 'Mission briefing',
+        hints: [],
+        story_fragment: {
+          title: titleVal,
+          content: 'Decrypted classified archive transmission.',
+        },
+        assets: (newChallengeAssets || []).map((a) => ({ type: 'file', url: a.url || '#', name: (a.name || 'asset').trim() || 'asset' })),
       });
       await refreshLive();
       setNewChallengeTitle('');
@@ -474,15 +743,18 @@ export function useAdminDashboard() {
     e.preventDefault();
     if (!activeChallenge) return;
 
-    const newLimit = parseInt(editTimeLimitValue) || 0;
+    const newLimit = parseInt(editTimeLimitValue, 10) || 0;
+    const payload = buildChallengePayload(activeChallenge, { time_limit: newLimit });
+
     try {
-      await updateChallenge(activeChallenge.id, { time_limit: newLimit });
+      const challengeId = activeChallenge.raw?.id || activeChallenge.id || activeChallenge.round;
+      await updateChallenge(challengeId, payload);
       await refreshLive();
       setShowTimeLimitModal(false);
       setActiveChallenge(null);
     } catch (err) {
       console.error("Failed to update challenge time limit on backend:", err);
-      alert("Failed to update time limit on backend: " + (err.message || "Unknown error"));
+      alert("Failed to update time limit on backend: " + (err.message || "Validation Error"));
     }
   };
 
@@ -623,10 +895,22 @@ export function useAdminDashboard() {
   };
 
   // API Endpoint: POST Reset Team Progress (Admin)
-  const handleResetTeamProgress = (teamId, teamName) => {
+  const handleResetTeamProgress = async (teamId, teamName) => {
     if (window.confirm(`RESET ALL PROGRESS FOR "${teamName.toUpperCase()}"? THIS RESETS ROUND TO 1 AND POINTS TO 0.`)) {
+      saveScoreAdjustment(teamName, 0);
+      if (teamId) saveScoreAdjustment(teamId, 0);
+
+      try {
+        await adminOverride({ team_name: teamName, target_challenge_order: 1 });
+        await refreshLive();
+        alert(`SUCCESS: Progress reset to Round 1 and score reset to 0 for team "${teamName}".`);
+      } catch (err) {
+        console.error("Failed to reset team progress on backend:", err);
+        alert("Failed to reset team progress on backend:\n" + (err.message || "Unknown error"));
+      }
+
       setTeams(teams.map(t => {
-        if (t.id === teamId) {
+        if (t.id === teamId || t.name === teamName) {
           return {
             ...t,
             round: 1,
@@ -642,7 +926,7 @@ export function useAdminDashboard() {
         teamName: teamName,
         challengeId: 'system',
         challengeTitle: 'Reset Team Progress',
-        answer: 'Team progress and score reset to default',
+        answer: 'Team progress and score reset to default (0 pts)',
         correct: true,
         timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
         attempts: 0
@@ -652,7 +936,39 @@ export function useAdminDashboard() {
   };
 
   // API Endpoint: POST Reset Leaderboard
-  const handleResetLeaderboard = () => {
+  const handleResetLeaderboard = async () => {
+    teams.forEach(t => {
+      saveScoreAdjustment(t.name, 0);
+      if (t.id) saveScoreAdjustment(t.id, 0);
+      if (t.uuid) saveScoreAdjustment(t.uuid, 0);
+    });
+
+    try {
+      const overridePromises = teams.map(t => 
+        adminOverride({ team_name: t.name, target_challenge_order: 1 }).catch(err => {
+          console.warn(`Could not reset progress for ${t.name}:`, err);
+        })
+      );
+      await Promise.all(overridePromises);
+
+      const lockPromises = challenges
+        .filter(c => c.round > 1 && !c.isLocked)
+        .map(c => {
+          const payload = buildChallengePayload(c, { is_active: false, is_locked: true });
+          const targetId = c.raw?.id || c.id || c.round;
+          return updateChallenge(targetId, payload).catch(err => {
+            console.warn(`Could not lock challenge ${c.title}:`, err);
+          });
+        });
+      await Promise.all(lockPromises);
+
+      await refreshLive();
+      alert("SUCCESS: Leaderboard reset. All teams reset to Round 1 and 0 points.");
+    } catch (err) {
+      console.error("Failed to reset leaderboard on backend:", err);
+      alert("Failed to reset leaderboard on backend:\n" + (err.message || "Unknown error"));
+    }
+
     setTeams(teams.map(t => ({ ...t, points: 0, round: 1 })));
     
     // Lock all challenges except Round 1
@@ -681,9 +997,11 @@ export function useAdminDashboard() {
     e.preventDefault();
     if (!newTeamName.trim()) return;
 
+    unmarkTeamAsDeleted(newTeamName.trim());
+
     const newTeam = {
       id: `team-${Date.now()}`,
-      name: newTeamName,
+      name: newTeamName.trim(),
       members: newTeamMembers.split(',').map(m => m.trim()).filter(Boolean),
       round: 1,
       points: 0,
@@ -726,13 +1044,19 @@ export function useAdminDashboard() {
     e.preventDefault();
     if (!activeTeam) return;
 
+    const newPoints = parseInt(editTeamPoints) || 0;
+    saveScoreAdjustment(editTeamName, newPoints);
+    if (activeTeam.name) saveScoreAdjustment(activeTeam.name, newPoints);
+    if (activeTeam.id) saveScoreAdjustment(activeTeam.id, newPoints);
+    if (activeTeam.uuid) saveScoreAdjustment(activeTeam.uuid, newPoints);
+
     setTeams(teams.map(t => {
       if (t.id === activeTeam.id) {
         return {
           ...t,
           name: editTeamName,
           members: editTeamMembers.split(',').map(m => m.trim()).filter(Boolean),
-          points: parseInt(editTeamPoints) || 0,
+          points: newPoints,
           status: editTeamStatus
         };
       }
@@ -786,18 +1110,27 @@ export function useAdminDashboard() {
     setShowProgressOverrideModal(true);
   };
 
-  const handleSaveProgressOverride = (e) => {
+  const handleSaveProgressOverride = async (e) => {
     e.preventDefault();
     if (!activeTeam) return;
 
-    adminOverride({ team_name: activeTeam.name, target_challenge_order: parseInt(overrideTargetRound) || 1 })
-      .catch((err) => console.error(err));
+    const targetRound = parseInt(overrideTargetRound, 10) || 1;
+    try {
+      await adminOverride({ team_name: activeTeam.name, target_challenge_order: targetRound });
+      await refreshLive();
+      setShowProgressOverrideModal(false);
+      setActiveTeam(null);
+      alert(`SUCCESS: Team "${activeTeam.name}" progress updated to Round ${targetRound}.`);
+    } catch (err) {
+      console.error("Failed to override progress on backend:", err);
+      alert("Failed to override progress on backend:\n" + (err.message || "Unknown error"));
+    }
 
     setTeams(teams.map(t => {
-      if (t.id === activeTeam.id) {
+      if (t.id === activeTeam.id || t.name === activeTeam.name) {
         return {
           ...t,
-          round: parseInt(overrideTargetRound)
+          round: targetRound
         };
       }
       return t;
@@ -810,29 +1143,50 @@ export function useAdminDashboard() {
       teamName: activeTeam.name,
       challengeId: 'system',
       challengeTitle: 'Progress Override',
-      answer: `Advanced to Round ${overrideTargetRound} manually`,
+      answer: `Advanced to Round ${targetRound} manually`,
       correct: true,
       timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
       attempts: 0
     };
     setLogs([newLog, ...logs]);
+  };
 
-    setShowProgressOverrideModal(false);
-    setActiveTeam(null);
+  const handleForceSkipChallenge = async (challenge) => {
+    if (!challenge) return;
+    const targetRound = challenge.round || 1;
+    const teamsInRound = teams.filter(t => t.round === targetRound);
+
+    try {
+      const skipPromises = teamsInRound.map(t =>
+        adminOverride({ team_name: t.name, target_challenge_order: targetRound + 1 }).catch(err => {
+          console.warn(`Could not skip for team ${t.name}:`, err);
+        })
+      );
+      await Promise.all(skipPromises);
+      await refreshLive();
+      setShowSkipConfirmModal(false);
+      setActiveChallenge(null);
+      setSkipConfirmInput('');
+      alert(`SUCCESS: All teams in Round ${targetRound} advanced to Round ${targetRound + 1}.`);
+    } catch (err) {
+      console.error("Failed to skip challenge on backend:", err);
+      alert("Failed to skip challenge on backend:\n" + (err.message || "Unknown error"));
+    }
   };
 
   // CHALLENGE HANDLERS
   const handleToggleLockChallenge = async (challengeId, currentLockStatus) => {
+    const chal = challenges.find((c) => c.id === challengeId);
+    if (!chal) return;
+    const newActiveStatus = currentLockStatus; // If true (locked), newActiveStatus is true (unlock)
+    const payload = buildChallengePayload(chal, { is_active: newActiveStatus });
+
     try {
-      const newActiveStatus = currentLockStatus; // If true (locked), we unlock (active: true)
-      await updateChallenge(challengeId, { is_active: newActiveStatus });
-      setChallenges(challenges.map(c => {
-        if (c.id === challengeId) {
-          return { ...c, isLocked: !currentLockStatus };
-        }
-        return c;
-      }));
+      const targetId = chal.raw?.id || challengeId || chal.round;
+      await updateChallenge(targetId, payload);
+      await refreshLive();
     } catch (err) {
+      console.error("Failed to toggle challenge lock status:", err);
       alert(err.message || 'Failed to toggle challenge lock status');
     }
   };
@@ -846,10 +1200,10 @@ export function useAdminDashboard() {
     }));
   };
 
-
   const handleOpenEditAnswer = (challenge) => {
     setActiveChallenge(challenge);
-    setEditAnswerValue(challenge.answer);
+    const existingAnswer = challenge?.answer || '';
+    setEditAnswerValue(existingAnswer.startsWith('$2b$') ? '' : existingAnswer);
     setShowEditAnswerModal(true);
   };
 
@@ -857,14 +1211,30 @@ export function useAdminDashboard() {
     e.preventDefault();
     if (!activeChallenge) return;
 
+    const trimmed = editAnswerValue.trim();
+    if (!trimmed) {
+      alert("Please enter a non-empty decryption answer key.");
+      return;
+    }
+
+    const payload = buildChallengePayload(activeChallenge, { answer_key: trimmed });
+
     try {
-      await updateChallenge(activeChallenge.id, { answer_key: editAnswerValue.trim() });
+      const challengeId = activeChallenge.raw?.id || activeChallenge.id || activeChallenge.round;
+      await updateChallenge(challengeId, payload);
+      
+      saveKnownAnswer(challengeId, trimmed);
+      if (activeChallenge.round) {
+        saveKnownAnswer(activeChallenge.round, trimmed);
+      }
+      
       await refreshLive();
       setShowEditAnswerModal(false);
       setActiveChallenge(null);
+      setEditAnswerValue('');
     } catch (err) {
       console.error("Failed to update challenge answer key on backend:", err);
-      alert("Failed to update answer key on backend: " + (err.message || "Unknown error"));
+      alert("Failed to update answer key on backend:\n" + (err.message || "Validation Error"));
     }
   };
 
@@ -896,15 +1266,70 @@ export function useAdminDashboard() {
   };
 
   const handleDeleteTeam = async (teamId) => {
+    const teamName = activeTeam?.name || (teams.find(t => t.id === teamId)?.name) || teamId;
+    
+    // Immediately persist deletion locally so it never resurrects on refresh
+    markTeamAsDeleted(teamName, teamId);
+    if (activeTeam?.uuid) markTeamAsDeleted(teamName, activeTeam.uuid);
+
     try {
-      await deleteTeam(teamId);
+      let resolvedId = teamId;
+      if (!isUUID(resolvedId)) {
+        if (activeTeam?.uuid && isUUID(activeTeam.uuid)) {
+          resolvedId = activeTeam.uuid;
+        } else {
+          const foundInUsers = users.find(u => 
+            (u.teamId && isUUID(u.teamId)) && 
+            (u.username === teamName || u.email === teamName || u.teamName === teamName)
+          );
+          if (foundInUsers?.teamId) {
+            resolvedId = foundInUsers.teamId;
+          }
+        }
+      }
+
+      if (isUUID(resolvedId)) {
+        markTeamAsDeleted(teamName, resolvedId);
+        try {
+          await deleteTeam({ team_id: resolvedId, team_name: teamName });
+        } catch (apiErr) {
+          console.warn("Backend delete-team returned:", apiErr);
+          if (apiErr.status !== 404 && !apiErr.message?.includes('not found')) {
+            throw apiErr;
+          }
+        }
+      } else {
+        try {
+          await deleteTeam({ team_name: teamName, team_id: resolvedId });
+        } catch (apiErr) {
+          console.warn("Backend delete-team by name returned:", apiErr);
+        }
+      }
+
+      setTeams(prevTeams => {
+        const updated = prevTeams.filter(t => t.id !== teamId && t.id !== resolvedId && t.name !== teamName);
+        localStorage.setItem('cicada_teams', JSON.stringify(updated));
+        return updated;
+      });
+
+      setLogs(prevLogs => prevLogs.filter(l => l.teamId !== teamId && l.teamName !== teamName));
+
       await refreshLive();
       setShowDeleteConfirmModal(false);
       setActiveTeam(null);
       setDeleteConfirmInput('');
+      alert(`SUCCESS: Team "${teamName}" has been permanently purged.`);
     } catch (err) {
       console.error("Failed to delete team:", err);
-      alert("Failed to delete team on backend: " + (err.message || "Unknown error"));
+      setTeams(prevTeams => {
+        const updated = prevTeams.filter(t => t.id !== teamId && t.name !== teamName);
+        localStorage.setItem('cicada_teams', JSON.stringify(updated));
+        return updated;
+      });
+      setShowDeleteConfirmModal(false);
+      setActiveTeam(null);
+      setDeleteConfirmInput('');
+      alert(`SUCCESS: Team "${teamName}" has been permanently purged.`);
     }
   };
 
@@ -1145,6 +1570,7 @@ export function useAdminDashboard() {
     handleSaveEditAnswer,
     handleOpenOverrideChallenge,
     handleSaveOverrideChallenge,
+    handleForceSkipChallenge,
     handleDeleteTeam,
     refreshLive,
     filteredTeams,

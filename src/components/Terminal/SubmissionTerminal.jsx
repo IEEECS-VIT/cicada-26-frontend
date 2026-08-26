@@ -12,7 +12,17 @@ const QUICK_COMMANDS = [
 ];
 
 export default function SubmissionTerminal() {
-  const { setIsTerminalOpen, terminalHistory, addTerminalCommand, clearTerminal, submitAnswer } = useGameState();
+  const { 
+    setIsTerminalOpen, 
+    terminalHistory, 
+    addTerminalCommand, 
+    clearTerminal, 
+    submitAnswer,
+    challengeData,
+    currentRound,
+    currentPhase,
+    unlockedPhases
+  } = useGameState();
   const [input, setInput] = useState('');
   const endRef = useRef(null);
   const inputRef = useRef(null);
@@ -38,6 +48,8 @@ export default function SubmissionTerminal() {
       case 'help':
         response = `Available commands:
   submit <answer>  - Submit an alphanumeric code for decryption
+  fragment         - View intercepted story fragment for active phase
+  status           - View current mission and phase status
   guidelines       - View mission rules and submission protocol
   faq              - View frequently asked questions
   clear            - Clear terminal output
@@ -45,6 +57,30 @@ export default function SubmissionTerminal() {
   help             - Show this message`;
         addTerminalCommand(cmd, response);
         break;
+
+      case 'fragment':
+      case 'fragments':
+      case 'story': {
+        const activePhase = unlockedPhases[currentRound] || currentPhase || 1;
+        const phase = challengeData?.[currentRound]?.phases?.[activePhase];
+        if (phase?.story_fragment?.content || phase?.story_fragment?.title) {
+          response = `${phase.story_fragment.title || `Archive 0${activePhase}`}: ${phase.story_fragment.content || ''}`;
+        } else if (phase?.description || phase?.title) {
+          response = `Archive ${String(activePhase).padStart(2, '0')}: ${phase.title}: ${phase.description}`;
+        } else {
+          response = `Archive ${String(activePhase).padStart(2, '0')}: No transmission intercepted yet.`;
+        }
+        addTerminalCommand(cmd, response);
+        break;
+      }
+
+      case 'status': {
+        const activePhase = unlockedPhases[currentRound] || currentPhase || 1;
+        const total = challengeData?.[currentRound]?.totalPhases || 1;
+        response = `MISSION STATUS: ACTIVE\nROUND: ${currentRound}\nACTIVE PHASE: ${activePhase} / ${total}\nSECURITY ENCRYPTION: AES-256`;
+        addTerminalCommand(cmd, response);
+        break;
+      }
 
       case 'guidelines':
       case 'rules':

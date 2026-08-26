@@ -48,16 +48,23 @@ export async function deleteChallenge(id) {
   return api(`/api/admin/challenges/${id}`, { method: "DELETE", admin: true });
 }
 
-export async function adminOverride({ team_name, target_challenge_order }) {
-  return api("/api/admin/challenges/override", { method: "POST", admin: true, body: { team_name, target_challenge_order } });
+export async function adminOverride({ team_name, target_challenge_order, completed_challenges, reset_completed }) {
+  const body = {
+    team_name,
+    target_challenge_order,
+    completed_challenges: completed_challenges !== undefined ? completed_challenges : (target_challenge_order === 1 ? [] : undefined),
+    reset_completed: reset_completed !== undefined ? reset_completed : (target_challenge_order === 1),
+  };
+  return api("/api/admin/challenges/override", { method: "POST", admin: true, body });
 }
 
 export async function removeTeamMember({ target_user_id, team_id }) {
   return api("/api/admin/teams/remove-member", { method: "POST", admin: true, body: { target_user_id, team_id } });
 }
 
-export async function deleteTeam(team_id) {
-  return api("/api/admin/teams/delete-team", { method: "POST", admin: true, body: { team_id } });
+export async function deleteTeam(teamIdOrPayload) {
+  const body = typeof teamIdOrPayload === "object" ? teamIdOrPayload : { team_id: teamIdOrPayload };
+  return api("/api/admin/teams/delete-team", { method: "POST", admin: true, body });
 }
 
 export async function getIpTrackingStatus() {
