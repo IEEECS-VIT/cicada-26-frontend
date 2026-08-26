@@ -4,6 +4,10 @@ export async function listUsers() {
   return api("/api/admin/auth/users", { admin: true });
 }
 
+export async function getAdminActivityLogs(limit = 200) {
+  return api(`/api/admin/auth/logs?limit=${limit}`, { admin: true });
+}
+
 export async function toggleRole({ target_user_id, target_email, role }) {
   return api("/api/admin/auth/toggle-role", { method: "POST", admin: true, body: { target_user_id, target_email, role } });
 }

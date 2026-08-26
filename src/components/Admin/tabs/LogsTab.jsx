@@ -50,6 +50,7 @@ export default function LogsTab() {
                     <th className="py-3 pr-4 font-normal">Crew</th>
                     <th className="py-3 pr-4 font-normal">Lock</th>
                     <th className="py-3 pr-4 font-normal">Answer</th>
+                    <th className="py-3 pr-4 font-normal">By</th>
                     <th className="py-3 pr-4 font-normal">Result</th>
                     <th className="py-3 font-normal">Try</th>
                   </tr>
@@ -62,6 +63,7 @@ export default function LogsTab() {
                         <td className="py-4 pr-4 font-orbitron text-sm tracking-[0.06em]">{log.teamName}</td>
                         <td className="py-4 pr-4 text-sm text-copper">{log.challengeTitle}</td>
                         <td className="py-4 pr-4 break-all text-sm text-accretion">{log.answer}</td>
+                        <td className="py-4 pr-4 text-sm text-copper">{log.adminName || '—'}</td>
                         <td className={`py-4 pr-4 text-sm tracking-[0.12em] ${log.correct ? 'text-accretion' : 'text-red-300'}`}>
                           {log.correct ? 'HIT' : 'MISS'}
                         </td>
@@ -70,7 +72,7 @@ export default function LogsTab() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="6" className="py-16 text-center text-sm tracking-[0.18em] text-copper/60">
+                      <td colSpan="7" className="py-16 text-center text-sm tracking-[0.18em] text-copper/60">
                         No intercepts match this search.
                       </td>
                     </tr>

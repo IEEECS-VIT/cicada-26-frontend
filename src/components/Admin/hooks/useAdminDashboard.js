@@ -7,7 +7,7 @@ import {
   approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
   createChallenge, updateChallenge, addAsset, editAsset, deleteAsset, deleteChallenge, adminOverride,
   removeTeamMember, deleteTeam, adjustScore, updateTeam, toggleHint,
-  getIpTrackingStatus, toggleIpTracking,
+  getIpTrackingStatus, toggleIpTracking, getAdminActivityLogs,
 } from '../../../api/admin';
 import {
   INITIAL_TEAMS,
@@ -43,6 +43,25 @@ export function useAdminDashboard() {
     const saved = localStorage.getItem('cicada_logs');
     return saved ? JSON.parse(saved) : INITIAL_LOGS;
   });
+
+  // Instant local log entry for an admin action, attributed to the real signed-in admin.
+  // Real backend admin_logs (fetched in refreshLive) supersede these once available; until
+  // then this is what keeps the Logs tab moving instead of sitting frozen on stale entries.
+  const pushLocalLog = ({ teamName, challengeTitle, answer, correct = true }) => {
+    const adminLabel = authUser?.display_name || authUser?.email || 'Admin';
+    setLogs((prev) => [{
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      teamId: 'admin',
+      teamName,
+      adminName: adminLabel,
+      challengeId: 'admin_action',
+      challengeTitle,
+      answer,
+      correct,
+      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+      attempts: 0,
+    }, ...prev]);
+  };
 
   // --- NAVIGATION TAB STATE ---
   const [activeTab, setActiveTab] = useState('teams'); // teams, challenges, logs, export
@@ -324,14 +343,37 @@ export function useAdminDashboard() {
     setLiveLoading(true);
     setLiveError('');
     try {
-      const [u, ch, prog, lb, ipStatus, supabaseTeams] = await Promise.all([
+      const [u, ch, prog, lb, ipStatus, supabaseTeams, adminLogs] = await Promise.all([
         listUsers().catch((err) => { console.warn('Could not fetch users:', err); return { data: [] }; }),
         getAdminChallenges().catch((err) => { console.warn('Could not fetch challenges:', err); return { data: [] }; }),
         getAdminProgress().catch((err) => { console.warn('Could not fetch progress:', err); return { data: [] }; }),
         getLeaderboard().catch((err) => { console.warn('Could not fetch leaderboard:', err); return { data: [] }; }),
         getIpTrackingStatus().catch((err) => { console.warn('Could not fetch IP tracking status:', err); return null; }),
         Promise.resolve(supabase.from('teams').select('id, name, points, is_disqualified')).catch(() => ({ data: [] })),
+        getAdminActivityLogs().catch((err) => { console.warn('Could not fetch admin activity logs:', err); return { data: [] }; }),
       ]);
+
+      // Real, attributed admin action history from the backend (who actually did what).
+      // Merged ahead of any locally-fabricated log entries, which had no real attribution.
+      if (Array.isArray(adminLogs?.data)) {
+        const humanizeAction = (action) => (action || 'ACTION').replace(/_/g, ' ').replace(/\w\S*/g, (w) => w[0] + w.slice(1).toLowerCase());
+        const realAdminLogs = adminLogs.data.map((log) => ({
+          id: `adminlog-${log.id}`,
+          teamId: 'admin',
+          teamName: log.admin_username || log.admin_email || 'Unknown admin',
+          adminName: log.admin_username || log.admin_email || 'Unknown admin',
+          challengeId: 'admin_action',
+          challengeTitle: humanizeAction(log.action),
+          answer: log.details && typeof log.details === 'object' ? Object.entries(log.details).map(([k, v]) => `${k}: ${v}`).join(', ') : String(log.details || ''),
+          correct: true,
+          timestamp: log.created_at ? new Date(log.created_at).toISOString().replace('T', ' ').slice(0, 19) : '',
+          attempts: 0,
+        }));
+        setLogs((prevLogs) => {
+          const localOnly = prevLogs.filter((l) => !String(l.id).startsWith('adminlog-'));
+          return [...realAdminLogs, ...localOnly];
+        });
+      }
 
       const parsedIp = parseIpStatus(ipStatus);
       if (parsedIp !== null) {
@@ -596,19 +638,11 @@ export function useAdminDashboard() {
       await adjustScore(activeTeam.uuid || activeTeam.id || activeTeam.name, { exact: newPoints });
 
       setTeams(teams.map((t) => (t.id === activeTeam.id || t.name === activeTeam.name ? { ...t, points: newPoints } : t)));
-
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: activeTeam.id,
+      pushLocalLog({
         teamName: activeTeam.name,
-        challengeId: 'score_adjust',
         challengeTitle: 'Score Adjustment',
-        answer: `Adjusted score for ${activeTeam.name}: ${adjustScoreType.toUpperCase()} ${value} pts. (New score: ${newPoints})`,
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
+        answer: `Adjusted: ${adjustScoreType.toUpperCase()} ${value} pts. New score: ${newPoints}.`,
+      });
 
       setShowAdjustScoreModal(false);
       setActiveTeam(null);
@@ -775,6 +809,7 @@ export function useAdminDashboard() {
 
       await addAsset(challengeId, newAsset);
 
+      const targetChallenge = challenges.find(c => c.id === challengeId);
       setChallenges(challenges.map(c => {
         if (c.id === challengeId) {
           const existingAssets = c.assets || [];
@@ -788,20 +823,13 @@ export function useAdminDashboard() {
         }
         return c;
       }));
-
-      const chal = challenges.find(c => c.id === challengeId);
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: 'system',
+      pushLocalLog({
         teamName: 'SYSTEM',
-        challengeId: challengeId,
         challengeTitle: 'Add Asset',
-        answer: `Asset "${newAsset.name}" added to challenge "${chal ? chal.title : challengeId}"`,
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
+        answer: `Asset "${newAsset.name}" added to challenge "${targetChallenge?.title || challengeId}"`,
+      });
+
+      refreshLiveInBackground();
     } catch (err) {
       alert(err.message || 'Failed to add asset');
     }
@@ -826,19 +854,11 @@ export function useAdminDashboard() {
         const updatedAssets = res.data.map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' }));
         setChallenges(challenges.map((c) => (c.id === activeAssetChallengeId ? { ...c, assets: updatedAssets } : c)));
       }
-
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: 'system',
+      pushLocalLog({
         teamName: 'SYSTEM',
-        challengeId: activeAssetChallengeId,
         challengeTitle: 'Edit Asset',
-        answer: `Asset "${activeAsset.name}" renamed to "${editAssetName}" in challenge "${chal ? chal.title : activeAssetChallengeId}"`,
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
+        answer: `Asset "${activeAsset.name}" updated on challenge "${chal?.title || activeAssetChallengeId}"`,
+      });
 
       setShowEditAssetModal(false);
       setActiveAsset(null);
@@ -868,19 +888,12 @@ export function useAdminDashboard() {
         const updatedAssets = res.data.map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' }));
         setChallenges(challenges.map((c) => (c.id === challengeId ? { ...c, assets: updatedAssets } : c)));
       }
-
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: challengeId,
+      pushLocalLog({
         teamName: 'SYSTEM',
-        challengeId: challengeId,
         challengeTitle: 'Delete Asset',
-        answer: `Asset "${assetName}" deleted from challenge "${chal ? chal.title : challengeId}"`,
-        correct: false,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
+        answer: `Asset "${assetName}" removed from challenge "${chal?.title || challengeId}"`,
+      });
+
       refreshLiveInBackground();
     } catch (err) {
       console.error('Failed to delete asset on backend:', err);
@@ -907,6 +920,13 @@ export function useAdminDashboard() {
         }
 
         setTeams(teams.map((t) => (t.id === teamId || t.name === teamName ? { ...t, round: 1, points: scoreReset ? 0 : t.points } : t)));
+        pushLocalLog({
+          teamName,
+          challengeTitle: 'Reset Team Progress',
+          answer: scoreReset
+            ? 'Team progress and score reset to default (0 pts)'
+            : 'Team progress reset to default (score unchanged - no linked team record)',
+        });
 
         alert(scoreReset
           ? `SUCCESS: Progress reset to Round 1 and score reset to 0 for team "${teamName}".`
@@ -917,18 +937,6 @@ export function useAdminDashboard() {
         alert("Failed to reset team progress on backend:\n" + (err.message || "Unknown error"));
       }
 
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: teamId,
-        teamName: teamName,
-        challengeId: 'system',
-        challengeTitle: 'Reset Team Progress',
-        answer: 'Team progress and score reset to default (0 pts)',
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
     }
   };
 
@@ -966,19 +974,11 @@ export function useAdminDashboard() {
         isLocked: c.round > 1,
         solvedCount: 0
       })));
-
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: 'system',
+      pushLocalLog({
         teamName: 'SYSTEM',
-        challengeId: 'reset_leaderboard',
         challengeTitle: 'Reset Leaderboard',
-        answer: 'Leaderboard score reset: All scores set to 0. Challenges locked.',
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog]);
+        answer: `All ${teams.length} teams reset to Round 1 and 0 points.`,
+      });
 
       alert("SUCCESS: Leaderboard reset. All teams reset to Round 1 and 0 points.");
       refreshLiveInBackground();
@@ -1091,18 +1091,11 @@ export function useAdminDashboard() {
         return t;
       }));
 
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: activeTeam.id,
+      pushLocalLog({
         teamName: activeTeam.name,
-        challengeId: 'system',
         challengeTitle: 'Progress Override',
-        answer: `Advanced to Round ${targetRound} manually`,
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
+        answer: `Progress force-set to Round ${targetRound}.`,
+      });
 
       setShowProgressOverrideModal(false);
       setActiveTeam(null);
@@ -1311,6 +1304,11 @@ export function useAdminDashboard() {
       });
 
       setLogs(prevLogs => prevLogs.filter(l => l.teamId !== teamId && l.teamName !== teamName));
+      pushLocalLog({
+        teamName: 'SYSTEM',
+        challengeTitle: 'Delete Team',
+        answer: `Team "${teamName}" permanently purged.`,
+      });
 
       setShowDeleteConfirmModal(false);
       setActiveTeam(null);
