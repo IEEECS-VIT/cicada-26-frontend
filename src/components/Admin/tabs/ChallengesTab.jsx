@@ -14,6 +14,7 @@ export default function ChallengesTab() {
     challenges,
     setActiveChallenge,
     setShowCreateChallengeModal,
+    setNewChallengeRound,
     setShowTimeLimitModal,
     setEditTimeLimitValue,
     setShowEditAssetModal,
@@ -45,7 +46,13 @@ export default function ChallengesTab() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowCreateChallengeModal(true)}
+                onClick={() => {
+                  const usedRounds = new Set(challenges.map((c) => c.round));
+                  let nextRound = 1;
+                  while (usedRounds.has(nextRound)) nextRound += 1;
+                  setNewChallengeRound(nextRound);
+                  setShowCreateChallengeModal(true);
+                }}
                 className="inline-flex items-center gap-2 border border-accretion bg-accretion px-4 py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright"
               >
                 <Plus className="h-4 w-4" />

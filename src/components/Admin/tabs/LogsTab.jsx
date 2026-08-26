@@ -42,9 +42,9 @@ export default function LogsTab() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="max-h-[65vh] overflow-y-auto overflow-x-auto">
               <table className="w-full text-left">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-black">
                   <tr className="border-b border-accretion/20 font-rajdhani text-[11px] tracking-[0.24em] text-copper">
                     <th className="py-3 pr-4 font-normal">Time</th>
                     <th className="py-3 pr-4 font-normal">Crew</th>

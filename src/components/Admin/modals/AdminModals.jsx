@@ -968,15 +968,14 @@ export default function AdminModals() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Round Level</label>
-                  <select
+                  <input
+                    type="number"
+                    min="1"
+                    required
                     className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                     value={newChallengeRound}
                     onChange={(e) => setNewChallengeRound(e.target.value)}
-                  >
-                    <option value="1">Round 1</option>
-                    <option value="2">Round 2</option>
-                    <option value="3">Round 3</option>
-                  </select>
+                  />
                 </div>
                 <div>
                   <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Point Value</label>
