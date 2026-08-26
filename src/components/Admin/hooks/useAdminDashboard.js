@@ -893,11 +893,24 @@ export function useAdminDashboard() {
     if (window.confirm(`RESET ALL PROGRESS FOR "${teamName.toUpperCase()}"? THIS RESETS ROUND TO 1 AND POINTS TO 0.`)) {
       try {
         await adminOverride({ team_name: teamName, target_challenge_order: 1 });
-        await adjustScore(teamId || teamName, { exact: 0 });
 
-        setTeams(teams.map((t) => (t.id === teamId || t.name === teamName ? { ...t, round: 1, points: 0 } : t)));
+        // Best-effort: some teams only exist in progress/leaderboard records with no
+        // matching row in the teams table (leftover from stress-testing), so the score
+        // endpoint 404s for them. Don't let that abort the round reset, which already
+        // succeeded and is what participants actually experience.
+        let scoreReset = true;
+        try {
+          await adjustScore(teamId || teamName, { exact: 0 });
+        } catch (scoreErr) {
+          scoreReset = false;
+          console.warn(`Could not reset score for team "${teamName}" (likely has no linked teams row):`, scoreErr);
+        }
 
-        alert(`SUCCESS: Progress reset to Round 1 and score reset to 0 for team "${teamName}".`);
+        setTeams(teams.map((t) => (t.id === teamId || t.name === teamName ? { ...t, round: 1, points: scoreReset ? 0 : t.points } : t)));
+
+        alert(scoreReset
+          ? `SUCCESS: Progress reset to Round 1 and score reset to 0 for team "${teamName}".`
+          : `Progress reset to Round 1 for team "${teamName}". Score could not be reset — this team has no linked record in the teams table.`);
         refreshLiveInBackground();
       } catch (err) {
         console.error("Failed to reset team progress on backend:", err);
