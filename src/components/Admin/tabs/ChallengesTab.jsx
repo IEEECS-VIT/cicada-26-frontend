@@ -14,6 +14,7 @@ export default function ChallengesTab() {
     challenges,
     setActiveChallenge,
     setShowCreateChallengeModal,
+    setNewChallengeRound,
     setShowTimeLimitModal,
     setEditTimeLimitValue,
     setShowEditAssetModal,
@@ -45,7 +46,13 @@ export default function ChallengesTab() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowCreateChallengeModal(true)}
+                onClick={() => {
+                  const usedRounds = new Set(challenges.map((c) => c.round));
+                  let nextRound = 1;
+                  while (usedRounds.has(nextRound)) nextRound += 1;
+                  setNewChallengeRound(nextRound);
+                  setShowCreateChallengeModal(true);
+                }}
                 className="inline-flex items-center gap-2 border border-accretion bg-accretion px-4 py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright"
               >
                 <Plus className="h-4 w-4" />
@@ -87,12 +94,12 @@ export default function ChallengesTab() {
                     <div className="mb-4 border-t border-accretion/15 pt-4 text-sm">
                       <div className="mb-1 font-rajdhani text-[11px] tracking-[0.22em] text-copper">TIME LIMIT</div>
                       <div className="flex items-center justify-between gap-2 text-starlight">
-                        <span>{challenge.timeLimit ? `${challenge.timeLimit} min` : 'None'}</span>
+                        <span>{challenge.timeLimit && challenge.timeLimit < 99999 ? `${challenge.timeLimit} min` : 'Unlimited'}</span>
                         <button
                           type="button"
                           onClick={() => {
                             setActiveChallenge(challenge);
-                            setEditTimeLimitValue(challenge.timeLimit || 60);
+                            setEditTimeLimitValue(challenge.timeLimit && challenge.timeLimit < 99999 ? challenge.timeLimit : 0);
                             setShowTimeLimitModal(true);
                           }}
                           className="inline-flex shrink-0 items-center gap-1 font-rajdhani text-[11px] tracking-[0.18em] text-copper hover:text-accretion"

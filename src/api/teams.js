@@ -1,7 +1,7 @@
 import { api } from "./client";
 
 export async function fetchMyTeam() {
-  return api("/api/teams/me/members");
+  return api("/api/teams/me");
 }
 
 export async function createTeam(team_name) {

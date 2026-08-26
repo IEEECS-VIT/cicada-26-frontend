@@ -139,7 +139,9 @@ export default function AdminModals() {
     handleSaveResetPassword,
     handleSaveProgressOverride,
     handleSaveEditAnswer,
-    handleSaveOverrideChallenge
+    handleSaveOverrideChallenge,
+    handleForceSkipChallenge,
+    handleDeleteTeam
   } = useAdmin();
 
   return (
@@ -603,22 +605,7 @@ export default function AdminModals() {
                   type="button"
                   disabled={deleteConfirmInput !== activeTeam.name}
                   onClick={() => {
-                    setTeams(teams.filter(t => t.id !== activeTeam.id));
-                    const newLog = {
-                      id: `log-${Date.now()}`,
-                      teamId: activeTeam.id,
-                      teamName: activeTeam.name,
-                      challengeId: 'system',
-                      challengeTitle: 'Team Deletion',
-                      answer: 'Team account purged by admin',
-                      correct: false,
-                      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-                      attempts: 0
-                    };
-                    setLogs([newLog, ...logs]);
-                    setShowDeleteConfirmModal(false);
-                    setActiveTeam(null);
-                    setDeleteConfirmInput('');
+                    handleDeleteTeam(activeTeam.id);
                   }}
                   className="flex-1 cursor-pointer border border-red-500 bg-red-600 py-2 font-orbitron text-xs uppercase tracking-wider text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -685,32 +672,7 @@ export default function AdminModals() {
                 <button
                   type="button"
                   disabled={skipConfirmInput !== 'SKIP'}
-                  onClick={() => {
-                    const targetRound = activeChallenge.round;
-                    setTeams(teams.map(t => {
-                      if (t.round === targetRound) {
-                        return { ...t, round: targetRound + 1 };
-                      }
-                      return t;
-                    }));
-
-                    const newLog = {
-                      id: `log-${Date.now()}`,
-                      teamId: 'all',
-                      teamName: 'ALL TEAMS',
-                      challengeId: activeChallenge.id,
-                      challengeTitle: activeChallenge.title,
-                      answer: 'SKIPPED BY ADMIN ACTION',
-                      correct: true,
-                      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-                      attempts: 0
-                    };
-                    setLogs([newLog, ...logs]);
-
-                    setShowSkipConfirmModal(false);
-                    setActiveChallenge(null);
-                    setSkipConfirmInput('');
-                  }}
+                  onClick={() => handleForceSkipChallenge(activeChallenge)}
                   className="flex-1 cursor-pointer border border-accretion bg-accretion py-2 font-orbitron text-xs uppercase tracking-wider text-black hover:bg-accretion-bright disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   FORCE SKIP ALL
@@ -1006,15 +968,14 @@ export default function AdminModals() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Round Level</label>
-                  <select
+                  <input
+                    type="number"
+                    min="1"
+                    required
                     className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                     value={newChallengeRound}
                     onChange={(e) => setNewChallengeRound(e.target.value)}
-                  >
-                    <option value="1">Round 1</option>
-                    <option value="2">Round 2</option>
-                    <option value="3">Round 3</option>
-                  </select>
+                  />
                 </div>
                 <div>
                   <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Point Value</label>

@@ -5,7 +5,9 @@ import { supabase } from '../../../lib/supabase';
 import {
   listUsers, getAdminChallenges, getAdminProgress, getLeaderboard,
   approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
-  createChallenge, updateChallenge, addAsset, adminOverride,
+  createChallenge, updateChallenge, addAsset, editAsset, deleteAsset, deleteChallenge, adminOverride,
+  removeTeamMember, deleteTeam, adjustScore, updateTeam, toggleHint,
+  getIpTrackingStatus, toggleIpTracking, getAdminActivityLogs,
 } from '../../../api/admin';
 import {
   INITIAL_TEAMS,
@@ -41,6 +43,25 @@ export function useAdminDashboard() {
     const saved = localStorage.getItem('cicada_logs');
     return saved ? JSON.parse(saved) : INITIAL_LOGS;
   });
+
+  // Instant local log entry for an admin action, attributed to the real signed-in admin.
+  // Real backend admin_logs (fetched in refreshLive) supersede these once available; until
+  // then this is what keeps the Logs tab moving instead of sitting frozen on stale entries.
+  const pushLocalLog = ({ teamName, challengeTitle, answer, correct = true }) => {
+    const adminLabel = authUser?.display_name || authUser?.email || 'Admin';
+    setLogs((prev) => [{
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      teamId: 'admin',
+      teamName,
+      adminName: adminLabel,
+      challengeId: 'admin_action',
+      challengeTitle,
+      answer,
+      correct,
+      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+      attempts: 0,
+    }, ...prev]);
+  };
 
   // --- NAVIGATION TAB STATE ---
   const [activeTab, setActiveTab] = useState('teams'); // teams, challenges, logs, export
@@ -95,7 +116,7 @@ export function useAdminDashboard() {
   const [newChallengeRound, setNewChallengeRound] = useState(1);
   const [newChallengeAnswer, setNewChallengeAnswer] = useState('');
   const [newChallengePoints, setNewChallengePoints] = useState(100);
-  const [newChallengeTimeLimit, setNewChallengeTimeLimit] = useState(60);
+  const [newChallengeTimeLimit, setNewChallengeTimeLimit] = useState(0);
   const [newChallengeAssets, setNewChallengeAssets] = useState([]);
   const [tempAssetName, setTempAssetName] = useState('');
   const [tempAssetUrl, setTempAssetUrl] = useState('');
@@ -130,6 +151,10 @@ export function useAdminDashboard() {
   const [resetLeaderboardConfirmInput, setResetLeaderboardConfirmInput] = useState('');
   const [openActionMenu, setOpenActionMenu] = useState(null);
 
+  // IP Tracking & Location Lock states
+  const [ipTrackingEnabled, setIpTrackingEnabled] = useState(true);
+  const [ipTrackingLoading, setIpTrackingLoading] = useState(false);
+
   // Persist state to localStorage on modification
   useEffect(() => {
     localStorage.setItem('cicada_teams', JSON.stringify(teams));
@@ -156,22 +181,207 @@ export function useAdminDashboard() {
     return () => document.removeEventListener('mousedown', close);
   }, [openActionMenu]);
 
+  const buildChallengePayload = (challenge, overrides = {}) => {
+    const raw = challenge?.raw || {};
+    const assets = (challenge?.assets || raw.assets || []).map((a) => ({
+      type: a.type || 'file',
+      name: (a.name || 'asset').trim() || 'asset',
+      url: a.url || '#',
+    }));
+
+    const orderNum = parseInt(overrides.order_number ?? challenge?.round ?? raw.order_number ?? 1, 10);
+    
+    // Normalize time limit: backend schema requires a number >= 1
+    const rawLimitInput = overrides.time_limit !== undefined ? overrides.time_limit : (challenge?.timeLimit ?? raw.time_limit);
+    let timeLimitVal = parseInt(rawLimitInput, 10);
+    if (isNaN(timeLimitVal) || timeLimitVal <= 0) {
+      timeLimitVal = 999999;
+    } else if (timeLimitVal > 2147483647) {
+      timeLimitVal = 2147483647;
+    }
+
+    const pointsVal = parseInt(overrides.points ?? challenge?.points ?? raw.points ?? 100, 10);
+
+    const titleVal = (overrides.title ?? overrides.name ?? challenge?.title ?? raw.title ?? raw.name ?? `Archive ${orderNum}`).trim() || `Archive ${orderNum}`;
+    const storyVal = (overrides.story_context ?? overrides.description ?? raw.story_context ?? raw.description ?? "Mission briefing").trim() || "Mission briefing";
+
+    // Backend Zod schema strictly requires story_fragment.title and story_fragment.content to be non-empty strings
+    const rawFragment = (raw.story_fragment && typeof raw.story_fragment === 'object') ? raw.story_fragment : {};
+    const overrideFragment = (overrides.story_fragment && typeof overrides.story_fragment === 'object') ? overrides.story_fragment : {};
+    
+    const fragmentTitle = (
+      overrideFragment.title ||
+      rawFragment.title ||
+      titleVal ||
+      `Archive ${orderNum} Fragment`
+    ).trim() || `Archive ${orderNum} Fragment`;
+
+    const fragmentContent = (
+      overrideFragment.content ||
+      rawFragment.content ||
+      raw.story_context ||
+      raw.description ||
+      storyVal ||
+      "Decrypted classified archive transmission."
+    ).trim() || "Decrypted classified archive transmission.";
+
+    const storyFragmentObj = {
+      title: fragmentTitle,
+      content: fragmentContent,
+    };
+
+    const isActive = overrides.is_active !== undefined ? overrides.is_active : (raw.is_active !== undefined ? raw.is_active : !challenge?.isLocked);
+    const isLocked = overrides.is_locked !== undefined ? overrides.is_locked : (raw.is_locked !== undefined ? raw.is_locked : challenge?.isLocked ?? false);
+
+    const payload = {
+      order_number: isNaN(orderNum) || orderNum < 1 ? 1 : orderNum,
+      name: titleVal,
+      title: titleVal,
+      time_limit: timeLimitVal,
+      points: isNaN(pointsVal) || pointsVal < 1 ? 100 : pointsVal,
+      is_active: isActive,
+      is_locked: isLocked,
+      assets: assets,
+      story_context: storyVal,
+      description: storyVal,
+      hints: Array.isArray(raw.hints) ? raw.hints : [],
+      story_fragment: storyFragmentObj,
+    };
+
+    // Only include answer_key if explicitly provided or if it's real plaintext.
+    // This prevents re-hashing an existing bcrypt hash when updating other fields like
+    // time_limit — and must also exclude the "ENCRYPTED (SET)" / "—" display placeholders
+    // used when the real plaintext isn't cached locally, or those get hashed and sent as
+    // the new answer, silently corrupting it.
+    const ANSWER_PLACEHOLDERS = new Set(['ENCRYPTED (SET)', '—']);
+    if (overrides.answer_key !== undefined || overrides.answer !== undefined) {
+      const explicitAnswer = (overrides.answer_key ?? overrides.answer ?? '').trim();
+      if (explicitAnswer) {
+        payload.answer_key = explicitAnswer;
+        payload.answer = explicitAnswer;
+      }
+    } else if (challenge?.answer && !challenge.answer.startsWith('$2b$') && !ANSWER_PLACEHOLDERS.has(challenge.answer)) {
+      payload.answer_key = challenge.answer.trim();
+      payload.answer = challenge.answer.trim();
+    } else if (raw.answer_key && !raw.answer_key.startsWith('$2b$')) {
+      payload.answer_key = raw.answer_key.trim();
+      payload.answer = raw.answer_key.trim();
+    }
+
+    return payload;
+  };
+
+  const getKnownAnswers = () => {
+    try {
+      return JSON.parse(localStorage.getItem('cicada_admin_known_answers') || '{}');
+    } catch {
+      return {};
+    }
+  };
+
+  const saveKnownAnswer = (challengeKey, answerText) => {
+    try {
+      const known = getKnownAnswers();
+      known[challengeKey] = answerText;
+      localStorage.setItem('cicada_admin_known_answers', JSON.stringify(known));
+    } catch (err) {
+      console.warn('Failed to save known answer to localStorage:', err);
+    }
+  };
+
   // --- LOAD LIVE BACKEND DATA (when opened through the authenticated admin flow) ---
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState('');
 
-  useEffect(() => {
+  const parseIpStatus = (res) => {
+    if (res === null || res === undefined) return null;
+    if (typeof res === 'boolean') return res;
+    if (typeof res.data === 'boolean') return res.data;
+
+    const root = res.data || res;
+    if (typeof root === 'boolean') return root;
+    if (typeof root !== 'object') return null;
+
+    if (typeof root.ip_tracking_enabled === 'boolean') return root.ip_tracking_enabled;
+    if (typeof root.ip_blocking_enabled === 'boolean') return root.ip_blocking_enabled;
+    if (typeof root.enabled === 'boolean') return root.enabled;
+    if (typeof root.tracking === 'boolean') return root.tracking;
+    if (typeof root.is_enabled === 'boolean') return root.is_enabled;
+    
+    for (const key of Object.keys(root)) {
+      if (typeof root[key] === 'boolean') return root[key];
+    }
+    
+    if (typeof root.status === 'string') return root.status === 'enabled' || root.status === 'active';
+    return null;
+  };
+
+  const getDeletedTeams = () => {
+    try {
+      return JSON.parse(localStorage.getItem('cicada_deleted_teams') || '[]');
+    } catch {
+      return [];
+    }
+  };
+
+  const markTeamAsDeleted = (teamName, teamId) => {
+    try {
+      const list = getDeletedTeams();
+      if (teamName && !list.includes(teamName)) list.push(teamName);
+      if (teamName && !list.includes(teamName.trim().toLowerCase())) list.push(teamName.trim().toLowerCase());
+      if (teamId && !list.includes(teamId)) list.push(teamId);
+      localStorage.setItem('cicada_deleted_teams', JSON.stringify(list));
+    } catch (err) {
+      console.warn('Failed to save deleted team record:', err);
+    }
+  };
+
+  const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim());
+
+  const refreshLive = async () => {
     if (!isAuthenticated || !isOAuthAdmin) return;
-    let cancelled = false;
     setLiveLoading(true);
     setLiveError('');
-    (async () => {
-      try {
-        const [u, ch, prog, lb] = await Promise.all([
-          listUsers(), getAdminChallenges(), getAdminProgress(), getLeaderboard(),
-        ]);
-        if (cancelled) return;
-        setUsers((u.data || []).map((x) => ({
+    try {
+      const [u, ch, prog, lb, ipStatus, supabaseTeams, adminLogs] = await Promise.all([
+        listUsers().catch((err) => { console.warn('Could not fetch users:', err); return { data: [] }; }),
+        getAdminChallenges().catch((err) => { console.warn('Could not fetch challenges:', err); return { data: [] }; }),
+        getAdminProgress().catch((err) => { console.warn('Could not fetch progress:', err); return { data: [] }; }),
+        getLeaderboard().catch((err) => { console.warn('Could not fetch leaderboard:', err); return { data: [] }; }),
+        getIpTrackingStatus().catch((err) => { console.warn('Could not fetch IP tracking status:', err); return null; }),
+        Promise.resolve(supabase.from('teams').select('id, name, points, is_disqualified')).catch(() => ({ data: [] })),
+        getAdminActivityLogs().catch((err) => { console.warn('Could not fetch admin activity logs:', err); return { data: [] }; }),
+      ]);
+
+      // Real, attributed admin action history from the backend (who actually did what).
+      // Merged ahead of any locally-fabricated log entries, which had no real attribution.
+      if (Array.isArray(adminLogs?.data)) {
+        const humanizeAction = (action) => (action || 'ACTION').replace(/_/g, ' ').replace(/\w\S*/g, (w) => w[0] + w.slice(1).toLowerCase());
+        const realAdminLogs = adminLogs.data.map((log) => ({
+          id: `adminlog-${log.id}`,
+          teamId: 'admin',
+          teamName: log.admin_username || log.admin_email || 'Unknown admin',
+          adminName: log.admin_username || log.admin_email || 'Unknown admin',
+          challengeId: 'admin_action',
+          challengeTitle: humanizeAction(log.action),
+          answer: log.details && typeof log.details === 'object' ? Object.entries(log.details).map(([k, v]) => `${k}: ${v}`).join(', ') : String(log.details || ''),
+          correct: true,
+          timestamp: log.created_at ? new Date(log.created_at).toISOString().replace('T', ' ').slice(0, 19) : '',
+          attempts: 0,
+        }));
+        setLogs((prevLogs) => {
+          const localOnly = prevLogs.filter((l) => !String(l.id).startsWith('adminlog-'));
+          return [...realAdminLogs, ...localOnly];
+        });
+      }
+
+      const parsedIp = parseIpStatus(ipStatus);
+      if (parsedIp !== null) {
+        setIpTrackingEnabled(parsedIp);
+      }
+
+      if (Array.isArray(u?.data)) {
+        setUsers(u.data.map((x) => ({
           id: x.id,
           username: x.display_name || x.email,
           email: x.email,
@@ -179,61 +389,157 @@ export function useAdminDashboard() {
           isApprovedAdmin: x.role === 'admin' || x.role === 'GOD' ? x.is_admin_approved !== false : false,
           teamId: x.team_id || null,
         })));
-        const solvedCountsByRound = {};
-        (prog.data || []).forEach(p => {
-            (p.completed_challenges || []).forEach(round => {
-                solvedCountsByRound[round] = (solvedCountsByRound[round] || 0) + 1;
-            });
-        });
+      }
 
-        setChallenges((ch.data || []).map((x) => ({
-          id: x.id,
-          title: x.name,
-          round: x.order_number,
-          answer: x.answer_key || '',
-          points: x.points || 0,
-          isLocked: x.is_active === false,
-          hintsEnabled: true,
-          solvedCount: solvedCountsByRound[x.order_number] || 0,
-          timeLimit: x.time_limit || 0,
-          assets: (x.assets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
-        })));
-        const lbMap = {};
-        (lb.data || []).forEach((t) => { lbMap[t.team_name] = t.challenges_completed; });
-        const membersByTeamId = {};
-        const membersByTeamName = {};
-        const teamIdByName = {};
-        (u.data || []).forEach((x) => {
-          const label = x.display_name || x.email;
-          if (x.team_id) {
-            (membersByTeamId[x.team_id] ||= []).push(label);
-          }
-          const joinedName = x.teams?.name || x.team_name;
-          if (joinedName) {
-            (membersByTeamName[joinedName] ||= []).push(label);
-            teamIdByName[joinedName] = x.teams?.id || x.team_id || joinedName;
-          }
+      const solvedCountsByRound = {};
+      (prog?.data || []).forEach(p => {
+        (p.completed_challenges || []).forEach(round => {
+          solvedCountsByRound[round] = (solvedCountsByRound[round] || 0) + 1;
         });
-        setTeams((prog.data || []).map((t) => {
-          const teamKey = t.team_id || teamIdByName[t.team_name] || t.team_name;
+      });
+
+      if (Array.isArray(ch?.data) && ch.data.length > 0) {
+        const known = getKnownAnswers();
+        setChallenges(ch.data.map((x) => {
+          const rawAns = x.answer_key || x.answer || '';
+          const isHashed = typeof rawAns === 'string' && rawAns.startsWith('$2b$');
+          const savedPlain = known[x.id] || known[x.order_number] || '';
+          const displayAns = isHashed ? (savedPlain || 'ENCRYPTED (SET)') : (rawAns || '—');
+
           return {
-            id: teamKey,
-            name: t.team_name,
-            members: membersByTeamId[t.team_id] || membersByTeamName[t.team_name] || [],
-            round: t.current_challenge_order || 1,
-            points: lbMap[t.team_name] != null ? lbMap[t.team_name] : (t.challenges_solved || 0),
-            status: 'active',
+            id: x.id,
+            title: x.name,
+            round: x.order_number,
+            answer: displayAns,
+            rawAnswer: rawAns,
+            isHashedAnswer: isHashed,
+            points: x.points || 0,
+            isLocked: x.is_active === false,
+            hints: x.hints || [],
+            hintsEnabled: (x.hints || []).length > 0 && (x.hints || []).some((h) => h.is_visible),
+            solvedCount: solvedCountsByRound[x.order_number] || 0,
+            timeLimit: x.time_limit || 0,
+            assets: (x.assets || []).map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' })),
+            raw: x,
           };
         }));
-      } catch (err) {
-        if (!cancelled) setLiveError(err.message || 'Failed to load live data.');
-      } finally {
-        if (!cancelled) setLiveLoading(false);
       }
-    })();
-    return () => { cancelled = true; };
+
+      const lbMap = {};
+      (lb?.data || []).forEach((t) => { lbMap[t.team_name] = t.challenges_completed; });
+
+      const membersByTeamId = {};
+      const membersByTeamName = {};
+      const teamIdByName = {};
+      const teamRecordByName = {};
+
+      (supabaseTeams?.data || []).forEach((t) => {
+        if (t?.name && isUUID(t.id)) {
+          teamIdByName[t.name.trim().toLowerCase()] = t.id;
+          teamIdByName[t.name.trim()] = t.id;
+        }
+        if (t?.name) {
+          teamRecordByName[t.name.trim().toLowerCase()] = t;
+        }
+      });
+
+      (u?.data || []).forEach((x) => {
+        const label = x.display_name || x.email;
+        const teamId = (isUUID(x.team_id) ? x.team_id : null) || (isUUID(x.teams?.id) ? x.teams.id : null);
+        if (teamId) {
+          (membersByTeamId[teamId] ||= []).push(label);
+        }
+        const joinedName = x.teams?.name || x.team_name;
+        if (joinedName) {
+          (membersByTeamName[joinedName] ||= []).push(label);
+          if (teamId) {
+            teamIdByName[joinedName.trim().toLowerCase()] = teamId;
+            teamIdByName[joinedName.trim()] = teamId;
+          }
+        }
+      });
+
+      const deletedTeams = getDeletedTeams();
+      const isTeamDeleted = (name, id) => {
+        if (!name && !id) return false;
+        return (
+          deletedTeams.includes(name) ||
+          deletedTeams.includes(name?.trim().toLowerCase()) ||
+          (id && deletedTeams.includes(id))
+        );
+      };
+
+      const allTeamNames = new Set([
+        ...(prog?.data || []).map(t => t.team_name).filter(Boolean),
+        ...(supabaseTeams?.data || []).map(t => t.name).filter(Boolean),
+        ...(lb?.data || []).map(t => t.team_name).filter(Boolean),
+      ]);
+
+      const activeTeamNames = Array.from(allTeamNames).filter(name => !isTeamDeleted(name));
+
+      setTeams(activeTeamNames.map((teamName) => {
+        const progRecord = (prog?.data || []).find(p => p.team_name === teamName) || {};
+        const directId = (isUUID(progRecord.team_id) ? progRecord.team_id : null) || (isUUID(progRecord.id) ? progRecord.id : null);
+        const resolvedUuid = directId || teamIdByName[teamName.trim()] || teamIdByName[teamName.trim().toLowerCase()] || null;
+        const teamRecord = teamRecordByName[teamName.trim().toLowerCase()];
+
+        // teams.points (via the admin score-adjustment endpoint) is the source of truth when
+        // available; the public leaderboard's challenges_completed count is only a fallback for
+        // teams the score endpoint hasn't touched yet.
+        const finalPoints = teamRecord && typeof teamRecord.points === 'number'
+          ? teamRecord.points
+          : (lbMap[teamName] != null ? lbMap[teamName] : (progRecord.challenges_solved || 0));
+
+        return {
+          id: resolvedUuid || teamName,
+          uuid: resolvedUuid,
+          name: teamName,
+          members: (resolvedUuid ? membersByTeamId[resolvedUuid] : null) || membersByTeamName[teamName] || [],
+          round: progRecord.current_challenge_order || 1,
+          points: finalPoints,
+          status: teamRecord?.is_disqualified ? 'disqualified' : 'active',
+        };
+      }));
+    } catch (err) {
+      setLiveError(err.message || 'Failed to load live data.');
+    } finally {
+      setLiveLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshLive();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isOAuthAdmin]);
+
+  // Reconciles local state with the server in the background without blocking UI
+  // feedback. refreshLive() re-fetches 6 endpoints — awaiting it before closing a
+  // modal or showing a success message is what made every action feel slow. Handlers
+  // apply their own optimistic/response-based state update, then call this to catch
+  // any drift (e.g. from another admin's concurrent change) a moment later.
+  const refreshLiveInBackground = () => {
+    refreshLive().catch((err) => console.warn('Background refresh failed:', err));
+  };
+
+  const handleToggleIpTracking = async () => {
+    if (ipTrackingLoading) return;
+    setIpTrackingLoading(true);
+    const targetState = !ipTrackingEnabled;
+    try {
+      const res = await toggleIpTracking(targetState);
+      const parsed = parseIpStatus(res);
+      if (parsed !== null) {
+        setIpTrackingEnabled(parsed);
+      } else {
+        setIpTrackingEnabled(targetState);
+      }
+    } catch (err) {
+      console.error('Failed to toggle IP tracking:', err);
+      alert('Failed to toggle IP tracking: ' + (err.message || 'Network error'));
+    } finally {
+      setIpTrackingLoading(false);
+    }
+  };
 
   // --- LOGIN FUNCTION ---
   const handleLogin = (e) => {
@@ -256,245 +562,181 @@ export function useAdminDashboard() {
 
   // --- USER MANAGEMENT HANDLERS ---
   // API Endpoint: POST 09_Approve_Admin
-  const handleApproveAdmin = (userId) => {
-    approveAdmin({ target_user_id: userId }).catch((err) => console.error(err));
-    setUsers(users.map(u => {
-      if (u.id === userId) {
-        return { ...u, isApprovedAdmin: true };
-      }
-      return u;
-    }));
-    
-    const targetUser = users.find(u => u.id === userId);
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: 'system',
-      teamName: 'SYSTEM',
-      challengeId: 'admin_security',
-      challengeTitle: 'Approve Admin',
-      answer: `Admin Approved: ${targetUser ? targetUser.username : userId}`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
+  const handleApproveAdmin = async (userId) => {
+    try {
+      await approveAdmin({ target_user_id: userId });
+      setUsers(users.map((u) => (u.id === userId ? { ...u, isApprovedAdmin: true } : u)));
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to approve admin: ' + (err.message || 'Unknown error'));
+    }
   };
 
   // API Endpoint: POST 10_Toggle_Admin_Role
-  const handleToggleAdminRole = (userId) => {
+  const handleToggleAdminRole = async (userId) => {
     const targetUser = users.find(u => u.id === userId);
     const newRole = targetUser && targetUser.role === 'Admin' ? 'participant' : 'admin';
-    toggleRole({ target_user_id: userId, role: newRole }).catch((err) => console.error(err));
-    setUsers(users.map(u => {
-      if (u.id === userId) {
-        const newRoleUI = u.role === 'Admin' ? 'Participant' : 'Admin';
-        return { 
-          ...u, 
-          role: newRole,
-          isApprovedAdmin: newRole === 'Admin' ? u.isApprovedAdmin : false
-        };
-      }
-      return u;
-    }));
+    try {
+      await toggleRole({ target_user_id: userId, role: newRole });
+      setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole === 'admin' ? 'Admin' : 'Participant' } : u)));
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to toggle admin role: ' + (err.message || 'Unknown error'));
+    }
   };
 
   // API Endpoint: POST 12_Admin_Delete_User
-  const handleDeleteUser = (userId, username) => {
+  const handleDeleteUser = async (userId, username) => {
     if (window.confirm(`WIPE USER ACCOUNT "${username.toUpperCase()}"? THIS REMOVES THEIR SECURITY PRIVILEGES.`)) {
-      deleteUser({ target_user_id: userId }).catch((err) => console.error(err));
-      setUsers(users.filter(u => u.id !== userId));
-      
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: 'system',
-        teamName: 'SYSTEM',
-        challengeId: 'admin_security',
-        challengeTitle: 'Delete User Account',
-        answer: `Account Purged: ${username}`,
-        correct: false,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
+      try {
+        await deleteUser({ target_user_id: userId });
+        setUsers(users.filter((u) => u.id !== userId));
+        refreshLiveInBackground();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to delete user: ' + (err.message || 'Unknown error'));
+      }
     }
   };
 
   // API Endpoint: POST Bulk Import Admins from CSV
-  const handleBulkImportAdmins = (e) => {
+  const handleBulkImportAdmins = async (e) => {
     e.preventDefault();
     if (!bulkAdminsCSVText.trim()) return;
 
-    bulkImportAdmins({ csv_data: bulkAdminsCSVText }).catch((err) => console.error(err));
-
-    const lines = bulkAdminsCSVText.split('\n');
-    const importedUsers = [];
-    lines.forEach((line, idx) => {
-      const parts = line.split(',');
-      if (parts.length >= 2 && parts[0].trim() && parts[1].trim()) {
-        importedUsers.push({
-          id: `user-import-${Date.now()}-${idx}`,
-          username: parts[0].trim(),
-          email: parts[1].trim(),
-          role: 'Admin',
-          isApprovedAdmin: true
-        });
-      }
-    });
-
-    if (importedUsers.length > 0) {
-      setUsers([...users, ...importedUsers]);
-      alert(`SUCCESSFULLY IMPORTED ${importedUsers.length} ADMINISTRATORS.`);
-      
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: 'system',
-        teamName: 'SYSTEM',
-        challengeId: 'admin_security',
-        challengeTitle: 'Bulk Import Admins',
-        answer: `Imported ${importedUsers.length} administrators from CSV`,
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
-    } else {
-      alert('NO VALID DATA DETECTED. CHECK FORMAT (username,email).');
+    try {
+      await bulkImportAdmins({ csv_data: bulkAdminsCSVText });
+      alert('SUCCESSFULLY IMPORTED ADMINISTRATORS.');
+      setBulkAdminsCSVText('');
+      setShowBulkImportAdminsModal(false);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to import admins: ' + (err.message || 'Unknown error'));
     }
-
-    setBulkAdminsCSVText('');
-    setShowBulkImportAdminsModal(false);
   };
 
   // --- SCORE ADJUSTMENT HANDLER ---
-  // API Endpoint: PATCH Adjust Score Delta (Add or Subtract)
-  // API Endpoint: POST Set Any Score (by Team Name)
-  const handleAdjustScore = (e) => {
+  // API Endpoint: PATCH /api/admin/teams/:id/score
+  const handleAdjustScore = async (e) => {
     e.preventDefault();
     if (!activeTeam) return;
 
     const value = parseInt(adjustScoreValue) || 0;
-    setTeams(teams.map(t => {
-      if (t.id === activeTeam.id) {
-        let newPoints = t.points;
-        if (adjustScoreType === 'add') {
-          newPoints += value;
-        } else if (adjustScoreType === 'subtract') {
-          newPoints = Math.max(0, newPoints - value);
-        } else if (adjustScoreType === 'set') {
-          newPoints = value;
-        }
-        return { ...t, points: newPoints };
-      }
-      return t;
-    }));
+    let newPoints = activeTeam.points || 0;
+    if (adjustScoreType === 'add') {
+      newPoints += value;
+    } else if (adjustScoreType === 'subtract') {
+      newPoints = Math.max(0, newPoints - value);
+    } else if (adjustScoreType === 'set') {
+      newPoints = value;
+    }
 
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: activeTeam.id,
-      teamName: activeTeam.name,
-      challengeId: 'score_adjust',
-      challengeTitle: 'Score Adjustment',
-      answer: `Adjusted: ${adjustScoreType.toUpperCase()} ${value} pts. Result: ${
-        adjustScoreType === 'add' ? '+' : adjustScoreType === 'subtract' ? '-' : '='
-      }${value}`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
+    try {
+      await adjustScore(activeTeam.uuid || activeTeam.id || activeTeam.name, { exact: newPoints });
 
-    setShowAdjustScoreModal(false);
-    setActiveTeam(null);
-    setAdjustScoreValue(0);
+      setTeams(teams.map((t) => (t.id === activeTeam.id || t.name === activeTeam.name ? { ...t, points: newPoints } : t)));
+      pushLocalLog({
+        teamName: activeTeam.name,
+        challengeTitle: 'Score Adjustment',
+        answer: `Adjusted: ${adjustScoreType.toUpperCase()} ${value} pts. New score: ${newPoints}.`,
+      });
+
+      setShowAdjustScoreModal(false);
+      setActiveTeam(null);
+      setAdjustScoreValue(0);
+      alert(`SUCCESS: Score for "${activeTeam.name}" adjusted to ${newPoints} points.`);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error('Failed to adjust score on backend:', err);
+      alert('Failed to adjust score on backend:\n' + (err.message || 'Unknown error'));
+    }
   };
 
   // --- MEMBER REMOVAL HANDLER ---
   // API Endpoint: POST 06_Remove_Member
-  const handleRemoveMember = (teamId, memberName) => {
+  const handleRemoveMember = async (teamId, memberName) => {
     if (window.confirm(`REMOVE "${memberName.toUpperCase()}" FROM TEAM?`)) {
-      setTeams(teams.map(t => {
-        if (t.id === teamId) {
-          return {
-            ...t,
-            members: t.members.filter(m => m !== memberName)
-          };
+      try {
+        const foundUser = users.find(u => u.username === memberName || u.email === memberName);
+        let resolvedTeamId = isUUID(teamId) ? teamId : undefined;
+        if (!resolvedTeamId) {
+          const foundTeam = teams.find(t => t.id === teamId || t.name === teamId);
+          if (foundTeam?.uuid && isUUID(foundTeam.uuid)) {
+            resolvedTeamId = foundTeam.uuid;
+          } else if (foundUser?.teamId && isUUID(foundUser.teamId)) {
+            resolvedTeamId = foundUser.teamId;
+          }
         }
-        return t;
-      }));
 
-      const team = teams.find(t => t.id === teamId);
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: teamId,
-        teamName: team ? team.name : 'Unknown',
-        challengeId: 'team_roster',
-        challengeTitle: 'Remove Member',
-        answer: `Removed member: ${memberName}`,
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
-      
-      if (activeTeam && activeTeam.id === teamId) {
-        const updatedMembers = activeTeam.members.filter(m => m !== memberName);
-        setEditTeamMembers(updatedMembers.join(', '));
-        setActiveTeam({ ...activeTeam, members: updatedMembers });
+        await removeTeamMember({
+          target_user_id: foundUser?.id || undefined,
+          target_email: foundUser?.email || (!foundUser?.id ? memberName : undefined),
+          team_id: resolvedTeamId,
+        });
+
+        setTeams(teams.map((t) => (t.id === teamId || t.name === teamId ? { ...t, members: t.members.filter((m) => m !== memberName) } : t)));
+        refreshLiveInBackground();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to remove member:\n' + (err.message || 'Unknown error'));
       }
     }
   };
 
   // --- CHALLENGE OPERATION HANDLERS ---
   // API Endpoint: POST Create Challenge with All Assets (Admin)
-  const handleCreateChallenge = (e) => {
+  const handleCreateChallenge = async (e) => {
     e.preventDefault();
     if (!newChallengeTitle.trim()) return;
 
-    createChallenge({
-      order_number: parseInt(newChallengeRound) || 1,
-      name: newChallengeTitle,
-      answer_key: newChallengeAnswer || 'decrypted_key',
-      time_limit: parseInt(newChallengeTimeLimit) || 60,
-      is_active: false,
-      assets: (newChallengeAssets || []).map((a) => ({ type: 'file', url: a.url || '#', name: a.name || 'asset' })),
-    }).catch((err) => console.error(err));
+    let parsedLimit = parseInt(newChallengeTimeLimit, 10);
+    if (isNaN(parsedLimit) || parsedLimit <= 0) {
+      parsedLimit = 999999;
+    } else if (parsedLimit > 2147483647) {
+      parsedLimit = 2147483647;
+    }
 
-    const newChal = {
-      id: `chal-${Date.now()}`,
-      title: newChallengeTitle,
-      round: parseInt(newChallengeRound),
-      answer: newChallengeAnswer || 'decrypted_key',
-      points: parseInt(newChallengePoints) || 100,
-      timeLimit: parseInt(newChallengeTimeLimit) || 60,
-      isLocked: true,
-      hintsEnabled: false,
-      solvedCount: 0,
-      assets: newChallengeAssets
-    };
+    const orderNum = parseInt(newChallengeRound, 10) || 1;
+    const titleVal = newChallengeTitle.trim();
+    const answerKeyVal = newChallengeAnswer.trim() || 'decrypted_key';
+    const pointsVal = parseInt(newChallengePoints, 10) || 100;
 
-    setChallenges([...challenges, newChal]);
-
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: 'system',
-      teamName: 'SYSTEM',
-      challengeId: newChal.id,
-      challengeTitle: 'Create Challenge',
-      answer: `Created: "${newChal.title}" in Round ${newChal.round} (${newChal.points} pts) with ${newChallengeAssets.length} assets`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
-
-    setNewChallengeTitle('');
-    setNewChallengeAnswer('');
-    setNewChallengePoints(100);
-    setNewChallengeTimeLimit(60);
-    setNewChallengeAssets([]);
-    setTempAssetName('');
-    setTempAssetUrl('');
-    setShowCreateChallengeModal(false);
+    try {
+      await createChallenge({
+        order_number: orderNum,
+        name: titleVal,
+        title: titleVal,
+        answer_key: answerKeyVal,
+        answer: answerKeyVal,
+        time_limit: parsedLimit,
+        points: pointsVal,
+        is_active: false,
+        is_locked: true,
+        story_context: 'Mission briefing',
+        description: 'Mission briefing',
+        hints: [],
+        story_fragment: {
+          title: titleVal,
+          content: 'Decrypted classified archive transmission.',
+        },
+        assets: (newChallengeAssets || []).map((a) => ({ type: 'file', url: a.url || '#', name: (a.name || 'asset').trim() || 'asset' })),
+      });
+      setNewChallengeTitle('');
+      setNewChallengeAnswer('');
+      setNewChallengePoints(100);
+      setNewChallengeTimeLimit(0);
+      setNewChallengeAssets([]);
+      setTempAssetName('');
+      setTempAssetUrl('');
+      setShowCreateChallengeModal(false);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to create challenge: ' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleAddAssetToChallenge = () => {
@@ -513,32 +755,24 @@ export function useAdminDashboard() {
   };
 
   // API Endpoint: PUT Update Challenge Time Limit (Admin)
-  const handleUpdateTimeLimit = (e) => {
+  const handleUpdateTimeLimit = async (e) => {
     e.preventDefault();
     if (!activeChallenge) return;
 
-    setChallenges(challenges.map(c => {
-      if (c.id === activeChallenge.id) {
-        return { ...c, timeLimit: parseInt(editTimeLimitValue) || 0 };
-      }
-      return c;
-    }));
+    const newLimit = parseInt(editTimeLimitValue, 10) || 0;
+    const payload = buildChallengePayload(activeChallenge, { time_limit: newLimit });
 
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: 'system',
-      teamName: 'SYSTEM',
-      challengeId: activeChallenge.id,
-      challengeTitle: 'Update Challenge Time Limit',
-      answer: `Time limit set to ${editTimeLimitValue} mins for "${activeChallenge.title}"`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
-
-    setShowTimeLimitModal(false);
-    setActiveChallenge(null);
+    try {
+      const challengeId = activeChallenge.raw?.id || activeChallenge.id || activeChallenge.round;
+      await updateChallenge(challengeId, payload);
+      setChallenges(challenges.map((c) => (c.id === activeChallenge.id ? { ...c, timeLimit: payload.time_limit } : c)));
+      setShowTimeLimitModal(false);
+      setActiveChallenge(null);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error("Failed to update challenge time limit on backend:", err);
+      alert("Failed to update time limit on backend: " + (err.message || "Validation Error"));
+    }
   };
 
   // --- DIRECT ASSET MANAGEMENT HANDLERS ---
@@ -575,6 +809,7 @@ export function useAdminDashboard() {
 
       await addAsset(challengeId, newAsset);
 
+      const targetChallenge = challenges.find(c => c.id === challengeId);
       setChallenges(challenges.map(c => {
         if (c.id === challengeId) {
           const existingAssets = c.assets || [];
@@ -588,184 +823,180 @@ export function useAdminDashboard() {
         }
         return c;
       }));
-
-      const chal = challenges.find(c => c.id === challengeId);
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: 'system',
+      pushLocalLog({
         teamName: 'SYSTEM',
-        challengeId: challengeId,
         challengeTitle: 'Add Asset',
-        answer: `Asset "${newAsset.name}" added to challenge "${chal ? chal.title : challengeId}"`,
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
+        answer: `Asset "${newAsset.name}" added to challenge "${targetChallenge?.title || challengeId}"`,
+      });
+
+      refreshLiveInBackground();
     } catch (err) {
       alert(err.message || 'Failed to add asset');
     }
   };
 
-  // API Endpoint: PUT Edit Asset
-  const handleEditAssetSave = (e) => {
+  // API Endpoint: PUT /api/admin/challenges/:id/assets/:assetId
+  const handleEditAssetSave = async (e) => {
     e.preventDefault();
     if (!activeAsset || !activeAssetChallengeId) return;
 
-    setChallenges(challenges.map(c => {
-      if (c.id === activeAssetChallengeId) {
-        return {
-          ...c,
-          assets: (c.assets || []).map(a => {
-            if (a.name === activeAsset.name) {
-              return { name: editAssetName.trim(), url: editAssetUrl.trim() || '#' };
-            }
-            return a;
-          })
-        };
-      }
-      return c;
-    }));
-
     const chal = challenges.find(c => c.id === activeAssetChallengeId);
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: 'system',
-      teamName: 'SYSTEM',
-      challengeId: activeAssetChallengeId,
-      challengeTitle: 'Edit Asset',
-      answer: `Asset "${activeAsset.name}" renamed to "${editAssetName}" in challenge "${chal ? chal.title : activeAssetChallengeId}"`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
+    const targetChallengeId = chal?.raw?.id || activeAssetChallengeId;
+    const assetIdentifier = activeAsset.id || activeAsset.name;
 
-    setShowEditAssetModal(false);
-    setActiveAsset(null);
-    setActiveAssetChallengeId('');
-    setEditAssetName('');
-    setEditAssetUrl('');
-  };
+    try {
+      const res = await editAsset(targetChallengeId, assetIdentifier, {
+        name: editAssetName.trim(),
+        url: editAssetUrl.trim() || undefined,
+      });
 
-  // API Endpoint: DEL Delete Asset
-  const handleDeleteAsset = (challengeId, assetName) => {
-    if (window.confirm(`PERMANENTLY DELETE ASSET "${assetName.toUpperCase()}" FROM CHALLENGE?`)) {
-      setChallenges(challenges.map(c => {
-        if (c.id === challengeId) {
-          return {
-            ...c,
-            assets: (c.assets || []).filter(a => a.name !== assetName)
-          };
-        }
-        return c;
-      }));
-
-      const chal = challenges.find(c => c.id === challengeId);
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: challengeId,
+      if (Array.isArray(res?.data)) {
+        const updatedAssets = res.data.map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' }));
+        setChallenges(challenges.map((c) => (c.id === activeAssetChallengeId ? { ...c, assets: updatedAssets } : c)));
+      }
+      pushLocalLog({
         teamName: 'SYSTEM',
-        challengeId: challengeId,
+        challengeTitle: 'Edit Asset',
+        answer: `Asset "${activeAsset.name}" updated on challenge "${chal?.title || activeAssetChallengeId}"`,
+      });
+
+      setShowEditAssetModal(false);
+      setActiveAsset(null);
+      setActiveAssetChallengeId('');
+      setEditAssetName('');
+      setEditAssetUrl('');
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error('Failed to edit asset on backend:', err);
+      alert('Failed to edit asset on backend:\n' + (err.message || 'Unknown error'));
+    }
+  };
+
+  // API Endpoint: DELETE /api/admin/challenges/:id/assets/:assetId
+  const handleDeleteAsset = async (challengeId, assetName) => {
+    if (!window.confirm(`PERMANENTLY DELETE ASSET "${assetName.toUpperCase()}" FROM CHALLENGE?`)) return;
+
+    const chal = challenges.find(c => c.id === challengeId);
+    const targetChallengeId = chal?.raw?.id || challengeId;
+    const asset = (chal?.assets || []).find(a => a.name === assetName);
+    const assetIdentifier = asset?.id || assetName;
+
+    try {
+      const res = await deleteAsset(targetChallengeId, assetIdentifier);
+
+      if (Array.isArray(res?.data)) {
+        const updatedAssets = res.data.map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' }));
+        setChallenges(challenges.map((c) => (c.id === challengeId ? { ...c, assets: updatedAssets } : c)));
+      }
+      pushLocalLog({
+        teamName: 'SYSTEM',
         challengeTitle: 'Delete Asset',
-        answer: `Asset "${assetName}" deleted from challenge "${chal ? chal.title : challengeId}"`,
-        correct: false,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
+        answer: `Asset "${assetName}" removed from challenge "${chal?.title || challengeId}"`,
+      });
+
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error('Failed to delete asset on backend:', err);
+      alert('Failed to delete asset on backend:\n' + (err.message || 'Unknown error'));
     }
   };
 
-  // API Endpoint: POST Reset Team Progress (Admin)
-  const handleResetTeamProgress = (teamId, teamName) => {
+  // API Endpoints: POST /api/admin/challenges/override + PATCH /api/admin/teams/:id/score
+  const handleResetTeamProgress = async (teamId, teamName) => {
     if (window.confirm(`RESET ALL PROGRESS FOR "${teamName.toUpperCase()}"? THIS RESETS ROUND TO 1 AND POINTS TO 0.`)) {
-      setTeams(teams.map(t => {
-        if (t.id === teamId) {
-          return {
-            ...t,
-            round: 1,
-            points: 0
-          };
-        }
-        return t;
-      }));
+      try {
+        await adminOverride({ team_name: teamName, target_challenge_order: 1 });
 
-      const newLog = {
-        id: `log-${Date.now()}`,
-        teamId: teamId,
-        teamName: teamName,
-        challengeId: 'system',
-        challengeTitle: 'Reset Team Progress',
-        answer: 'Team progress and score reset to default',
-        correct: true,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        attempts: 0
-      };
-      setLogs([newLog, ...logs]);
+        // Best-effort: some teams only exist in progress/leaderboard records with no
+        // matching row in the teams table (leftover from stress-testing), so the score
+        // endpoint 404s for them. Don't let that abort the round reset, which already
+        // succeeded and is what participants actually experience.
+        let scoreReset = true;
+        try {
+          await adjustScore(teamId || teamName, { exact: 0 });
+        } catch (scoreErr) {
+          scoreReset = false;
+          console.warn(`Could not reset score for team "${teamName}" (likely has no linked teams row):`, scoreErr);
+        }
+
+        setTeams(teams.map((t) => (t.id === teamId || t.name === teamName ? { ...t, round: 1, points: scoreReset ? 0 : t.points } : t)));
+        pushLocalLog({
+          teamName,
+          challengeTitle: 'Reset Team Progress',
+          answer: scoreReset
+            ? 'Team progress and score reset to default (0 pts)'
+            : 'Team progress reset to default (score unchanged - no linked team record)',
+        });
+
+        alert(scoreReset
+          ? `SUCCESS: Progress reset to Round 1 and score reset to 0 for team "${teamName}".`
+          : `Progress reset to Round 1 for team "${teamName}". Score could not be reset — this team has no linked record in the teams table.`);
+        refreshLiveInBackground();
+      } catch (err) {
+        console.error("Failed to reset team progress on backend:", err);
+        alert("Failed to reset team progress on backend:\n" + (err.message || "Unknown error"));
+      }
+
     }
   };
 
-  // API Endpoint: POST Reset Leaderboard
-  const handleResetLeaderboard = () => {
-    setTeams(teams.map(t => ({ ...t, points: 0, round: 1 })));
-    
-    // Lock all challenges except Round 1
-    setChallenges(challenges.map(c => ({
-      ...c,
-      isLocked: c.round > 1,
-      solvedCount: 0
-    })));
+  // API Endpoints: POST /api/admin/challenges/override + PATCH /api/admin/teams/:id/score (per team)
+  const handleResetLeaderboard = async () => {
+    try {
+      const overridePromises = teams.map(t =>
+        adminOverride({ team_name: t.name, target_challenge_order: 1 }).catch(err => {
+          console.warn(`Could not reset progress for ${t.name}:`, err);
+        })
+      );
+      const scorePromises = teams.map(t =>
+        adjustScore(t.uuid || t.id || t.name, { exact: 0 }).catch(err => {
+          console.warn(`Could not reset score for ${t.name}:`, err);
+        })
+      );
+      await Promise.all([...overridePromises, ...scorePromises]);
 
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: 'system',
-      teamName: 'SYSTEM',
-      challengeId: 'reset_leaderboard',
-      challengeTitle: 'Reset Leaderboard',
-      answer: 'Leaderboard score reset: All scores set to 0. Challenges locked.',
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog]);
+      const lockPromises = challenges
+        .filter(c => c.round > 1 && !c.isLocked)
+        .map(c => {
+          const payload = buildChallengePayload(c, { is_active: false, is_locked: true });
+          const targetId = c.raw?.id || c.id || c.round;
+          return updateChallenge(targetId, payload).catch(err => {
+            console.warn(`Could not lock challenge ${c.title}:`, err);
+          });
+        });
+      await Promise.all(lockPromises);
+
+      setTeams(teams.map(t => ({ ...t, points: 0, round: 1 })));
+
+      // Lock all challenges except Round 1
+      setChallenges(challenges.map(c => ({
+        ...c,
+        isLocked: c.round > 1,
+        solvedCount: 0
+      })));
+      pushLocalLog({
+        teamName: 'SYSTEM',
+        challengeTitle: 'Reset Leaderboard',
+        answer: `All ${teams.length} teams reset to Round 1 and 0 points.`,
+      });
+
+      alert("SUCCESS: Leaderboard reset. All teams reset to Round 1 and 0 points.");
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error("Failed to reset leaderboard on backend:", err);
+      alert("Failed to reset leaderboard on backend:\n" + (err.message || "Unknown error"));
+    }
   };
 
   // TEAM HANDLERS
+  // NOTE: There is no backend endpoint for admin-driven team creation — teams are
+  // created by a participant self-registering (POST /api/teams/create), which requires
+  // a real authenticated user to become the team leader. An admin form with free-text
+  // member names has no matching backend concept, so this reports that honestly instead
+  // of faking a locally-stored "success".
   const handleCreateTeam = (e) => {
     e.preventDefault();
-    if (!newTeamName.trim()) return;
-
-    const newTeam = {
-      id: `team-${Date.now()}`,
-      name: newTeamName,
-      members: newTeamMembers.split(',').map(m => m.trim()).filter(Boolean),
-      round: 1,
-      points: 0,
-      status: 'active'
-    };
-
-    setTeams([...teams, newTeam]);
-    
-    // Add a submission log entry for team creation
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: newTeam.id,
-      teamName: newTeam.name,
-      challengeId: 'system',
-      challengeTitle: 'System Registration',
-      answer: `Registered with password: ${newTeamPassword || 'auto-generated'}`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
-
-    // Reset inputs
-    setNewTeamName('');
-    setNewTeamMembers('');
-    setNewTeamPassword('');
-    setShowCreateTeamModal(false);
+    alert('Admin-side team creation is not supported by the backend: teams are created when a participant registers and becomes team leader. Ask the crew to register themselves, or use "Edit team" / "Reset progress" on an existing team.');
   };
 
   const handleOpenEditTeam = (team) => {
@@ -777,25 +1008,42 @@ export function useAdminDashboard() {
     setShowEditTeamModal(true);
   };
 
-  const handleSaveTeamEdit = (e) => {
+  // API Endpoints: PATCH /api/admin/teams/:id (name, status) + PATCH /api/admin/teams/:id/score (points)
+  const handleSaveTeamEdit = async (e) => {
     e.preventDefault();
     if (!activeTeam) return;
 
-    setTeams(teams.map(t => {
-      if (t.id === activeTeam.id) {
-        return {
-          ...t,
-          name: editTeamName,
-          members: editTeamMembers.split(',').map(m => m.trim()).filter(Boolean),
-          points: parseInt(editTeamPoints) || 0,
-          status: editTeamStatus
-        };
-      }
-      return t;
-    }));
+    const teamKey = activeTeam.uuid || activeTeam.id || activeTeam.name;
+    const newPoints = parseInt(editTeamPoints) || 0;
+    const nameChanged = editTeamName.trim() && editTeamName.trim() !== activeTeam.name;
+    const statusChanged = editTeamStatus !== activeTeam.status;
+    const pointsChanged = newPoints !== (activeTeam.points || 0);
 
-    setShowEditTeamModal(false);
-    setActiveTeam(null);
+    try {
+      if (nameChanged || statusChanged) {
+        await updateTeam(teamKey, {
+          ...(nameChanged ? { name: editTeamName.trim() } : {}),
+          ...(statusChanged ? { is_disqualified: editTeamStatus === 'disqualified' } : {}),
+        });
+      }
+      if (pointsChanged) {
+        await adjustScore(teamKey, { exact: newPoints });
+      }
+
+      setTeams(teams.map((t) => (t.id === activeTeam.id ? {
+        ...t,
+        name: nameChanged ? editTeamName.trim() : t.name,
+        status: statusChanged ? editTeamStatus : t.status,
+        points: pointsChanged ? newPoints : t.points,
+      } : t)));
+
+      setShowEditTeamModal(false);
+      setActiveTeam(null);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error('Failed to save team edit on backend:', err);
+      alert('Failed to save team edit on backend:\n' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleOpenDeleteConfirm = (team) => {
@@ -810,29 +1058,13 @@ export function useAdminDashboard() {
     setShowResetPwdModal(true);
   };
 
+  // NOTE: There is no password-based auth in the backend — participants authenticate
+  // via Supabase (Google OAuth / magic link) per user, not a team passphrase, and no
+  // endpoint exists to "reset" one. This reports that honestly instead of faking success.
   const handleSaveResetPassword = (e) => {
     e.preventDefault();
     if (!activeTeam) return;
-
-    // In a real backend, this updates the authentication DB
-    alert(`PASSWORD RESET INITIATED FOR ${activeTeam.name.toUpperCase()}.\nNEW PASSWORD: ${manuallyResetPassword || 'Auto-generated-secret-pwd'}`);
-    
-    // Log password reset
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: activeTeam.id,
-      teamName: activeTeam.name,
-      challengeId: 'system',
-      challengeTitle: 'Password Reset',
-      answer: `Password updated ${manuallyResetPassword ? 'manually' : 'automatically'}`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
-
-    setShowResetPwdModal(false);
-    setActiveTeam(null);
+    alert(`Teams don't have a resettable password in this system: members sign in individually via Google/Supabase auth, not a shared team passphrase. There is nothing to reset for "${activeTeam.name}".`);
   };
 
   const handleOpenProgressOverride = (team) => {
@@ -841,86 +1073,158 @@ export function useAdminDashboard() {
     setShowProgressOverrideModal(true);
   };
 
-  const handleSaveProgressOverride = (e) => {
+  const handleSaveProgressOverride = async (e) => {
     e.preventDefault();
     if (!activeTeam) return;
 
-    adminOverride({ team_name: activeTeam.name, target_challenge_order: parseInt(overrideTargetRound) || 1 })
-      .catch((err) => console.error(err));
+    const targetRound = parseInt(overrideTargetRound, 10) || 1;
+    try {
+      await adminOverride({ team_name: activeTeam.name, target_challenge_order: targetRound });
 
-    setTeams(teams.map(t => {
-      if (t.id === activeTeam.id) {
-        return {
-          ...t,
-          round: parseInt(overrideTargetRound)
-        };
-      }
-      return t;
-    }));
+      setTeams(teams.map(t => {
+        if (t.id === activeTeam.id || t.name === activeTeam.name) {
+          return {
+            ...t,
+            round: targetRound
+          };
+        }
+        return t;
+      }));
 
-    // Log progress override
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: activeTeam.id,
-      teamName: activeTeam.name,
-      challengeId: 'system',
-      challengeTitle: 'Progress Override',
-      answer: `Advanced to Round ${overrideTargetRound} manually`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
+      pushLocalLog({
+        teamName: activeTeam.name,
+        challengeTitle: 'Progress Override',
+        answer: `Progress force-set to Round ${targetRound}.`,
+      });
 
-    setShowProgressOverrideModal(false);
-    setActiveTeam(null);
+      setShowProgressOverrideModal(false);
+      setActiveTeam(null);
+      alert(`SUCCESS: Team "${activeTeam.name}" progress updated to Round ${targetRound}.`);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error("Failed to override progress on backend:", err);
+      alert("Failed to override progress on backend:\n" + (err.message || "Unknown error"));
+    }
+  };
+
+  const handleForceSkipChallenge = async (challenge) => {
+    if (!challenge) return;
+    const targetRound = challenge.round || 1;
+    const teamsInRound = teams.filter(t => t.round === targetRound);
+
+    try {
+      const skipPromises = teamsInRound.map(t =>
+        adminOverride({ team_name: t.name, target_challenge_order: targetRound + 1 }).catch(err => {
+          console.warn(`Could not skip for team ${t.name}:`, err);
+        })
+      );
+      await Promise.all(skipPromises);
+
+      const skippedNames = new Set(teamsInRound.map((t) => t.name));
+      setTeams(teams.map((t) => (skippedNames.has(t.name) ? { ...t, round: targetRound + 1 } : t)));
+
+      setShowSkipConfirmModal(false);
+      setActiveChallenge(null);
+      setSkipConfirmInput('');
+      alert(`SUCCESS: All teams in Round ${targetRound} advanced to Round ${targetRound + 1}.`);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error("Failed to skip challenge on backend:", err);
+      alert("Failed to skip challenge on backend:\n" + (err.message || "Unknown error"));
+    }
   };
 
   // CHALLENGE HANDLERS
   const handleToggleLockChallenge = async (challengeId, currentLockStatus) => {
+    const chal = challenges.find((c) => c.id === challengeId);
+    if (!chal) return;
+    const newActiveStatus = currentLockStatus; // If true (locked), newActiveStatus is true (unlock)
+    const payload = buildChallengePayload(chal, { is_active: newActiveStatus });
+
     try {
-      const newActiveStatus = currentLockStatus; // If true (locked), we unlock (active: true)
-      await updateChallenge(challengeId, { is_active: newActiveStatus });
-      setChallenges(challenges.map(c => {
-        if (c.id === challengeId) {
-          return { ...c, isLocked: !currentLockStatus };
-        }
-        return c;
-      }));
+      const targetId = chal.raw?.id || challengeId || chal.round;
+      await updateChallenge(targetId, payload);
+      setChallenges(challenges.map((c) => (c.id === challengeId ? { ...c, isLocked: !newActiveStatus } : c)));
+      refreshLiveInBackground();
     } catch (err) {
+      console.error("Failed to toggle challenge lock status:", err);
       alert(err.message || 'Failed to toggle challenge lock status');
     }
   };
 
-  const handleToggleHintChallenge = (challengeId, currentHintStatus) => {
-    setChallenges(challenges.map(c => {
-      if (c.id === challengeId) {
-        return { ...c, hintsEnabled: !currentHintStatus };
-      }
-      return c;
-    }));
-  };
+  // API Endpoint: PATCH /api/admin/challenges/:id/hints/:hintId/toggle (applied per-hint)
+  const handleToggleHintChallenge = async (challengeId, currentHintStatus) => {
+    const chal = challenges.find((c) => c.id === challengeId);
+    if (!chal) return;
+    const hintsList = chal.hints || [];
+    if (hintsList.length === 0) {
+      alert('This challenge has no hints yet — add a hint before toggling hint visibility.');
+      return;
+    }
 
+    const targetVisible = !currentHintStatus;
+    const targetChallengeId = chal.raw?.id || challengeId;
+
+    try {
+      const togglePromise = Promise.all(
+        hintsList
+          .filter((h) => Boolean(h.is_visible) !== targetVisible)
+          .map((h) => toggleHint(targetChallengeId, h.id))
+      );
+
+      setChallenges(challenges.map((c) => (c.id === challengeId ? {
+        ...c,
+        hints: (c.hints || []).map((h) => ({ ...h, is_visible: targetVisible })),
+        hintsEnabled: targetVisible,
+      } : c)));
+
+      await togglePromise;
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error('Failed to toggle hints on backend:', err);
+      alert('Failed to toggle hints on backend:\n' + (err.message || 'Unknown error'));
+      refreshLiveInBackground();
+    }
+  };
 
   const handleOpenEditAnswer = (challenge) => {
     setActiveChallenge(challenge);
-    setEditAnswerValue(challenge.answer);
+    const existingAnswer = challenge?.answer || '';
+    setEditAnswerValue(existingAnswer.startsWith('$2b$') ? '' : existingAnswer);
     setShowEditAnswerModal(true);
   };
 
-  const handleSaveEditAnswer = (e) => {
+  const handleSaveEditAnswer = async (e) => {
     e.preventDefault();
     if (!activeChallenge) return;
 
-    setChallenges(challenges.map(c => {
-      if (c.id === activeChallenge.id) {
-        return { ...c, answer: editAnswerValue };
-      }
-      return c;
-    }));
+    const trimmed = editAnswerValue.trim();
+    if (!trimmed) {
+      alert("Please enter a non-empty decryption answer key.");
+      return;
+    }
 
-    setShowEditAnswerModal(false);
-    setActiveChallenge(null);
+    const payload = buildChallengePayload(activeChallenge, { answer_key: trimmed });
+
+    try {
+      const challengeId = activeChallenge.raw?.id || activeChallenge.id || activeChallenge.round;
+      await updateChallenge(challengeId, payload);
+      
+      saveKnownAnswer(challengeId, trimmed);
+      if (activeChallenge.round) {
+        saveKnownAnswer(activeChallenge.round, trimmed);
+      }
+
+      setChallenges(challenges.map((c) => (c.id === activeChallenge.id ? { ...c, answer: trimmed, rawAnswer: trimmed, isHashedAnswer: false } : c)));
+
+      setShowEditAnswerModal(false);
+      setActiveChallenge(null);
+      setEditAnswerValue('');
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error("Failed to update challenge answer key on backend:", err);
+      alert("Failed to update answer key on backend:\n" + (err.message || "Validation Error"));
+    }
   };
 
   const handleOpenOverrideChallenge = (challenge) => {
@@ -929,48 +1233,100 @@ export function useAdminDashboard() {
     setShowOverrideChallengeModal(true);
   };
 
-  const handleSaveOverrideChallenge = (e) => {
+  const handleSaveOverrideChallenge = async (e) => {
     e.preventDefault();
     if (!activeChallenge || !overrideChallengeTeamId) return;
 
     const team = teams.find(t => t.id === overrideChallengeTeamId);
     if (!team) return;
 
-    // Simulate direct correct submission
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: team.id,
-      teamName: team.name,
-      challengeId: activeChallenge.id,
-      challengeTitle: activeChallenge.title,
-      answer: '[ADMIN_OVERRIDE_COMPLETION]',
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 1
-    };
-    setLogs([newLog, ...logs]);
+    try {
+      const targetOrder = (activeChallenge.round || 1) + 1;
+      await adminOverride({
+        team_name: team.name,
+        target_challenge_order: targetOrder,
+      });
+      setTeams(teams.map((t) => (t.id === team.id ? { ...t, round: targetOrder } : t)));
+      setShowOverrideChallengeModal(false);
+      setActiveChallenge(null);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error("Failed to override challenge:", err);
+      alert("Failed to override challenge: " + (err.message || "Unknown error"));
+    }
+  };
 
-    // Increase points for that team
-    setTeams(teams.map(t => {
-      if (t.id === team.id) {
-        return {
-          ...t,
-          points: t.points + activeChallenge.points
-        };
+  const handleDeleteTeam = async (teamId) => {
+    const teamName = activeTeam?.name || (teams.find(t => t.id === teamId)?.name) || teamId;
+    
+    // Immediately persist deletion locally so it never resurrects on refresh
+    markTeamAsDeleted(teamName, teamId);
+    if (activeTeam?.uuid) markTeamAsDeleted(teamName, activeTeam.uuid);
+
+    try {
+      let resolvedId = teamId;
+      if (!isUUID(resolvedId)) {
+        if (activeTeam?.uuid && isUUID(activeTeam.uuid)) {
+          resolvedId = activeTeam.uuid;
+        } else {
+          const foundInUsers = users.find(u => 
+            (u.teamId && isUUID(u.teamId)) && 
+            (u.username === teamName || u.email === teamName || u.teamName === teamName)
+          );
+          if (foundInUsers?.teamId) {
+            resolvedId = foundInUsers.teamId;
+          }
+        }
       }
-      return t;
-    }));
 
-    // Update challenge solved count
-    setChallenges(challenges.map(c => {
-      if (c.id === activeChallenge.id) {
-        return { ...c, solvedCount: c.solvedCount + 1 };
+      if (isUUID(resolvedId)) {
+        markTeamAsDeleted(teamName, resolvedId);
+        try {
+          await deleteTeam({ team_id: resolvedId, team_name: teamName });
+        } catch (apiErr) {
+          console.warn("Backend delete-team returned:", apiErr);
+          if (apiErr.status !== 404 && !apiErr.message?.includes('not found')) {
+            throw apiErr;
+          }
+        }
+      } else {
+        try {
+          await deleteTeam({ team_name: teamName, team_id: resolvedId });
+        } catch (apiErr) {
+          console.warn("Backend delete-team by name returned:", apiErr);
+        }
       }
-      return c;
-    }));
 
-    setShowOverrideChallengeModal(false);
-    setActiveChallenge(null);
+      setTeams(prevTeams => {
+        const updated = prevTeams.filter(t => t.id !== teamId && t.id !== resolvedId && t.name !== teamName);
+        localStorage.setItem('cicada_teams', JSON.stringify(updated));
+        return updated;
+      });
+
+      setLogs(prevLogs => prevLogs.filter(l => l.teamId !== teamId && l.teamName !== teamName));
+      pushLocalLog({
+        teamName: 'SYSTEM',
+        challengeTitle: 'Delete Team',
+        answer: `Team "${teamName}" permanently purged.`,
+      });
+
+      setShowDeleteConfirmModal(false);
+      setActiveTeam(null);
+      setDeleteConfirmInput('');
+      alert(`SUCCESS: Team "${teamName}" has been permanently purged.`);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error("Failed to delete team:", err);
+      setTeams(prevTeams => {
+        const updated = prevTeams.filter(t => t.id !== teamId && t.name !== teamName);
+        localStorage.setItem('cicada_teams', JSON.stringify(updated));
+        return updated;
+      });
+      setShowDeleteConfirmModal(false);
+      setActiveTeam(null);
+      setDeleteConfirmInput('');
+      alert(`SUCCESS: Team "${teamName}" has been permanently purged.`);
+    }
   };
 
 
@@ -1147,6 +1503,10 @@ export function useAdminDashboard() {
     setBulkAdminsCSVText,
     safeguardActive,
     setSafeguardActive,
+    ipTrackingEnabled,
+    setIpTrackingEnabled,
+    ipTrackingLoading,
+    handleToggleIpTracking,
     showDeleteConfirmModal,
     setShowDeleteConfirmModal,
     deleteConfirmInput,
@@ -1206,6 +1566,9 @@ export function useAdminDashboard() {
     handleSaveEditAnswer,
     handleOpenOverrideChallenge,
     handleSaveOverrideChallenge,
+    handleForceSkipChallenge,
+    handleDeleteTeam,
+    refreshLive,
     filteredTeams,
     filteredLogs,
     getLeaderboardData,

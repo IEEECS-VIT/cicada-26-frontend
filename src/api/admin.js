@@ -4,6 +4,10 @@ export async function listUsers() {
   return api("/api/admin/auth/users", { admin: true });
 }
 
+export async function getAdminActivityLogs(limit = 200) {
+  return api(`/api/admin/auth/logs?limit=${limit}`, { admin: true });
+}
+
 export async function toggleRole({ target_user_id, target_email, role }) {
   return api("/api/admin/auth/toggle-role", { method: "POST", admin: true, body: { target_user_id, target_email, role } });
 }
@@ -48,14 +52,53 @@ export async function deleteChallenge(id) {
   return api(`/api/admin/challenges/${id}`, { method: "DELETE", admin: true });
 }
 
-export async function adminOverride({ team_name, target_challenge_order }) {
-  return api("/api/admin/challenges/override", { method: "POST", admin: true, body: { team_name, target_challenge_order } });
+export async function editAsset(challengeId, assetIdentifier, payload) {
+  return api(`/api/admin/challenges/${challengeId}/assets/${encodeURIComponent(assetIdentifier)}`, { method: "PUT", admin: true, body: payload });
+}
+
+export async function deleteAsset(challengeId, assetIdentifier) {
+  return api(`/api/admin/challenges/${challengeId}/assets/${encodeURIComponent(assetIdentifier)}`, { method: "DELETE", admin: true });
+}
+
+export async function toggleHint(challengeId, hintId) {
+  return api(`/api/admin/challenges/${challengeId}/hints/${encodeURIComponent(hintId)}/toggle`, { method: "PATCH", admin: true });
+}
+
+export async function adminOverride({ team_name, target_challenge_order, completed_challenges, reset_completed }) {
+  const body = {
+    team_name,
+    target_challenge_order,
+    completed_challenges: completed_challenges !== undefined ? completed_challenges : (target_challenge_order === 1 ? [] : undefined),
+    reset_completed: reset_completed !== undefined ? reset_completed : (target_challenge_order === 1),
+  };
+  return api("/api/admin/challenges/override", { method: "POST", admin: true, body });
 }
 
 export async function removeTeamMember({ target_user_id, team_id }) {
   return api("/api/admin/teams/remove-member", { method: "POST", admin: true, body: { target_user_id, team_id } });
 }
 
-export async function deleteTeam(team_id) {
-  return api("/api/admin/teams/delete-team", { method: "POST", admin: true, body: { team_id } });
+export async function adjustScore(teamIdOrName, payload) {
+  return api(`/api/admin/teams/${encodeURIComponent(teamIdOrName)}/score`, { method: "PATCH", admin: true, body: payload });
+}
+
+export async function updateTeam(teamIdOrName, payload) {
+  return api(`/api/admin/teams/${encodeURIComponent(teamIdOrName)}`, { method: "PATCH", admin: true, body: payload });
+}
+
+export async function deleteTeam(teamIdOrPayload) {
+  const body = typeof teamIdOrPayload === "object" ? teamIdOrPayload : { team_id: teamIdOrPayload };
+  return api("/api/admin/teams/delete-team", { method: "POST", admin: true, body });
+}
+
+export async function getIpTrackingStatus() {
+  return api("/api/admin/challenges/ip-tracking", { admin: true });
+}
+
+export async function toggleIpTracking(enabled) {
+  return api("/api/admin/challenges/ip-tracking/toggle", {
+    method: "POST",
+    admin: true,
+    body: enabled !== undefined ? { enabled } : undefined,
+  });
 }
