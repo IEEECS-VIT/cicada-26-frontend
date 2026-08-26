@@ -470,6 +470,15 @@ export function useAdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isOAuthAdmin]);
 
+  // Reconciles local state with the server in the background without blocking UI
+  // feedback. refreshLive() re-fetches 6 endpoints — awaiting it before closing a
+  // modal or showing a success message is what made every action feel slow. Handlers
+  // apply their own optimistic/response-based state update, then call this to catch
+  // any drift (e.g. from another admin's concurrent change) a moment later.
+  const refreshLiveInBackground = () => {
+    refreshLive().catch((err) => console.warn('Background refresh failed:', err));
+  };
+
   const handleToggleIpTracking = async () => {
     if (ipTrackingLoading) return;
     setIpTrackingLoading(true);
@@ -514,7 +523,8 @@ export function useAdminDashboard() {
   const handleApproveAdmin = async (userId) => {
     try {
       await approveAdmin({ target_user_id: userId });
-      await refreshLive();
+      setUsers(users.map((u) => (u.id === userId ? { ...u, isApprovedAdmin: true } : u)));
+      refreshLiveInBackground();
     } catch (err) {
       console.error(err);
       alert('Failed to approve admin: ' + (err.message || 'Unknown error'));
@@ -527,7 +537,8 @@ export function useAdminDashboard() {
     const newRole = targetUser && targetUser.role === 'Admin' ? 'participant' : 'admin';
     try {
       await toggleRole({ target_user_id: userId, role: newRole });
-      await refreshLive();
+      setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole === 'admin' ? 'Admin' : 'Participant' } : u)));
+      refreshLiveInBackground();
     } catch (err) {
       console.error(err);
       alert('Failed to toggle admin role: ' + (err.message || 'Unknown error'));
@@ -539,7 +550,8 @@ export function useAdminDashboard() {
     if (window.confirm(`WIPE USER ACCOUNT "${username.toUpperCase()}"? THIS REMOVES THEIR SECURITY PRIVILEGES.`)) {
       try {
         await deleteUser({ target_user_id: userId });
-        await refreshLive();
+        setUsers(users.filter((u) => u.id !== userId));
+        refreshLiveInBackground();
       } catch (err) {
         console.error(err);
         alert('Failed to delete user: ' + (err.message || 'Unknown error'));
@@ -554,10 +566,10 @@ export function useAdminDashboard() {
 
     try {
       await bulkImportAdmins({ csv_data: bulkAdminsCSVText });
-      await refreshLive();
       alert('SUCCESSFULLY IMPORTED ADMINISTRATORS.');
       setBulkAdminsCSVText('');
       setShowBulkImportAdminsModal(false);
+      refreshLiveInBackground();
     } catch (err) {
       console.error(err);
       alert('Failed to import admins: ' + (err.message || 'Unknown error'));
@@ -582,7 +594,8 @@ export function useAdminDashboard() {
 
     try {
       await adjustScore(activeTeam.uuid || activeTeam.id || activeTeam.name, { exact: newPoints });
-      await refreshLive();
+
+      setTeams(teams.map((t) => (t.id === activeTeam.id || t.name === activeTeam.name ? { ...t, points: newPoints } : t)));
 
       const newLog = {
         id: `log-${Date.now()}`,
@@ -601,6 +614,7 @@ export function useAdminDashboard() {
       setActiveTeam(null);
       setAdjustScoreValue(0);
       alert(`SUCCESS: Score for "${activeTeam.name}" adjusted to ${newPoints} points.`);
+      refreshLiveInBackground();
     } catch (err) {
       console.error('Failed to adjust score on backend:', err);
       alert('Failed to adjust score on backend:\n' + (err.message || 'Unknown error'));
@@ -628,7 +642,9 @@ export function useAdminDashboard() {
           target_email: foundUser?.email || (!foundUser?.id ? memberName : undefined),
           team_id: resolvedTeamId,
         });
-        await refreshLive();
+
+        setTeams(teams.map((t) => (t.id === teamId || t.name === teamId ? { ...t, members: t.members.filter((m) => m !== memberName) } : t)));
+        refreshLiveInBackground();
       } catch (err) {
         console.error(err);
         alert('Failed to remove member:\n' + (err.message || 'Unknown error'));
@@ -674,7 +690,6 @@ export function useAdminDashboard() {
         },
         assets: (newChallengeAssets || []).map((a) => ({ type: 'file', url: a.url || '#', name: (a.name || 'asset').trim() || 'asset' })),
       });
-      await refreshLive();
       setNewChallengeTitle('');
       setNewChallengeAnswer('');
       setNewChallengePoints(100);
@@ -683,6 +698,7 @@ export function useAdminDashboard() {
       setTempAssetName('');
       setTempAssetUrl('');
       setShowCreateChallengeModal(false);
+      refreshLiveInBackground();
     } catch (err) {
       console.error(err);
       alert('Failed to create challenge: ' + (err.message || 'Unknown error'));
@@ -715,9 +731,10 @@ export function useAdminDashboard() {
     try {
       const challengeId = activeChallenge.raw?.id || activeChallenge.id || activeChallenge.round;
       await updateChallenge(challengeId, payload);
-      await refreshLive();
+      setChallenges(challenges.map((c) => (c.id === activeChallenge.id ? { ...c, timeLimit: payload.time_limit } : c)));
       setShowTimeLimitModal(false);
       setActiveChallenge(null);
+      refreshLiveInBackground();
     } catch (err) {
       console.error("Failed to update challenge time limit on backend:", err);
       alert("Failed to update time limit on backend: " + (err.message || "Validation Error"));
@@ -800,11 +817,15 @@ export function useAdminDashboard() {
     const assetIdentifier = activeAsset.id || activeAsset.name;
 
     try {
-      await editAsset(targetChallengeId, assetIdentifier, {
+      const res = await editAsset(targetChallengeId, assetIdentifier, {
         name: editAssetName.trim(),
         url: editAssetUrl.trim() || undefined,
       });
-      await refreshLive();
+
+      if (Array.isArray(res?.data)) {
+        const updatedAssets = res.data.map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' }));
+        setChallenges(challenges.map((c) => (c.id === activeAssetChallengeId ? { ...c, assets: updatedAssets } : c)));
+      }
 
       const newLog = {
         id: `log-${Date.now()}`,
@@ -824,6 +845,7 @@ export function useAdminDashboard() {
       setActiveAssetChallengeId('');
       setEditAssetName('');
       setEditAssetUrl('');
+      refreshLiveInBackground();
     } catch (err) {
       console.error('Failed to edit asset on backend:', err);
       alert('Failed to edit asset on backend:\n' + (err.message || 'Unknown error'));
@@ -840,8 +862,12 @@ export function useAdminDashboard() {
     const assetIdentifier = asset?.id || assetName;
 
     try {
-      await deleteAsset(targetChallengeId, assetIdentifier);
-      await refreshLive();
+      const res = await deleteAsset(targetChallengeId, assetIdentifier);
+
+      if (Array.isArray(res?.data)) {
+        const updatedAssets = res.data.map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' }));
+        setChallenges(challenges.map((c) => (c.id === challengeId ? { ...c, assets: updatedAssets } : c)));
+      }
 
       const newLog = {
         id: `log-${Date.now()}`,
@@ -855,6 +881,7 @@ export function useAdminDashboard() {
         attempts: 0
       };
       setLogs([newLog, ...logs]);
+      refreshLiveInBackground();
     } catch (err) {
       console.error('Failed to delete asset on backend:', err);
       alert('Failed to delete asset on backend:\n' + (err.message || 'Unknown error'));
@@ -867,8 +894,11 @@ export function useAdminDashboard() {
       try {
         await adminOverride({ team_name: teamName, target_challenge_order: 1 });
         await adjustScore(teamId || teamName, { exact: 0 });
-        await refreshLive();
+
+        setTeams(teams.map((t) => (t.id === teamId || t.name === teamName ? { ...t, round: 1, points: 0 } : t)));
+
         alert(`SUCCESS: Progress reset to Round 1 and score reset to 0 for team "${teamName}".`);
+        refreshLiveInBackground();
       } catch (err) {
         console.error("Failed to reset team progress on backend:", err);
         alert("Failed to reset team progress on backend:\n" + (err.message || "Unknown error"));
@@ -915,34 +945,34 @@ export function useAdminDashboard() {
         });
       await Promise.all(lockPromises);
 
-      await refreshLive();
+      setTeams(teams.map(t => ({ ...t, points: 0, round: 1 })));
+
+      // Lock all challenges except Round 1
+      setChallenges(challenges.map(c => ({
+        ...c,
+        isLocked: c.round > 1,
+        solvedCount: 0
+      })));
+
+      const newLog = {
+        id: `log-${Date.now()}`,
+        teamId: 'system',
+        teamName: 'SYSTEM',
+        challengeId: 'reset_leaderboard',
+        challengeTitle: 'Reset Leaderboard',
+        answer: 'Leaderboard score reset: All scores set to 0. Challenges locked.',
+        correct: true,
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        attempts: 0
+      };
+      setLogs([newLog]);
+
       alert("SUCCESS: Leaderboard reset. All teams reset to Round 1 and 0 points.");
+      refreshLiveInBackground();
     } catch (err) {
       console.error("Failed to reset leaderboard on backend:", err);
       alert("Failed to reset leaderboard on backend:\n" + (err.message || "Unknown error"));
     }
-
-    setTeams(teams.map(t => ({ ...t, points: 0, round: 1 })));
-    
-    // Lock all challenges except Round 1
-    setChallenges(challenges.map(c => ({
-      ...c,
-      isLocked: c.round > 1,
-      solvedCount: 0
-    })));
-
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: 'system',
-      teamName: 'SYSTEM',
-      challengeId: 'reset_leaderboard',
-      challengeTitle: 'Reset Leaderboard',
-      answer: 'Leaderboard score reset: All scores set to 0. Challenges locked.',
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog]);
   };
 
   // TEAM HANDLERS
@@ -986,10 +1016,17 @@ export function useAdminDashboard() {
       if (pointsChanged) {
         await adjustScore(teamKey, { exact: newPoints });
       }
-      await refreshLive();
+
+      setTeams(teams.map((t) => (t.id === activeTeam.id ? {
+        ...t,
+        name: nameChanged ? editTeamName.trim() : t.name,
+        status: statusChanged ? editTeamStatus : t.status,
+        points: pointsChanged ? newPoints : t.points,
+      } : t)));
 
       setShowEditTeamModal(false);
       setActiveTeam(null);
+      refreshLiveInBackground();
     } catch (err) {
       console.error('Failed to save team edit on backend:', err);
       alert('Failed to save team edit on backend:\n' + (err.message || 'Unknown error'));
@@ -1030,38 +1067,38 @@ export function useAdminDashboard() {
     const targetRound = parseInt(overrideTargetRound, 10) || 1;
     try {
       await adminOverride({ team_name: activeTeam.name, target_challenge_order: targetRound });
-      await refreshLive();
+
+      setTeams(teams.map(t => {
+        if (t.id === activeTeam.id || t.name === activeTeam.name) {
+          return {
+            ...t,
+            round: targetRound
+          };
+        }
+        return t;
+      }));
+
+      const newLog = {
+        id: `log-${Date.now()}`,
+        teamId: activeTeam.id,
+        teamName: activeTeam.name,
+        challengeId: 'system',
+        challengeTitle: 'Progress Override',
+        answer: `Advanced to Round ${targetRound} manually`,
+        correct: true,
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        attempts: 0
+      };
+      setLogs([newLog, ...logs]);
+
       setShowProgressOverrideModal(false);
       setActiveTeam(null);
       alert(`SUCCESS: Team "${activeTeam.name}" progress updated to Round ${targetRound}.`);
+      refreshLiveInBackground();
     } catch (err) {
       console.error("Failed to override progress on backend:", err);
       alert("Failed to override progress on backend:\n" + (err.message || "Unknown error"));
     }
-
-    setTeams(teams.map(t => {
-      if (t.id === activeTeam.id || t.name === activeTeam.name) {
-        return {
-          ...t,
-          round: targetRound
-        };
-      }
-      return t;
-    }));
-
-    // Log progress override
-    const newLog = {
-      id: `log-${Date.now()}`,
-      teamId: activeTeam.id,
-      teamName: activeTeam.name,
-      challengeId: 'system',
-      challengeTitle: 'Progress Override',
-      answer: `Advanced to Round ${targetRound} manually`,
-      correct: true,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      attempts: 0
-    };
-    setLogs([newLog, ...logs]);
   };
 
   const handleForceSkipChallenge = async (challenge) => {
@@ -1076,11 +1113,15 @@ export function useAdminDashboard() {
         })
       );
       await Promise.all(skipPromises);
-      await refreshLive();
+
+      const skippedNames = new Set(teamsInRound.map((t) => t.name));
+      setTeams(teams.map((t) => (skippedNames.has(t.name) ? { ...t, round: targetRound + 1 } : t)));
+
       setShowSkipConfirmModal(false);
       setActiveChallenge(null);
       setSkipConfirmInput('');
       alert(`SUCCESS: All teams in Round ${targetRound} advanced to Round ${targetRound + 1}.`);
+      refreshLiveInBackground();
     } catch (err) {
       console.error("Failed to skip challenge on backend:", err);
       alert("Failed to skip challenge on backend:\n" + (err.message || "Unknown error"));
@@ -1097,7 +1138,8 @@ export function useAdminDashboard() {
     try {
       const targetId = chal.raw?.id || challengeId || chal.round;
       await updateChallenge(targetId, payload);
-      await refreshLive();
+      setChallenges(challenges.map((c) => (c.id === challengeId ? { ...c, isLocked: !newActiveStatus } : c)));
+      refreshLiveInBackground();
     } catch (err) {
       console.error("Failed to toggle challenge lock status:", err);
       alert(err.message || 'Failed to toggle challenge lock status');
@@ -1118,19 +1160,24 @@ export function useAdminDashboard() {
     const targetChallengeId = chal.raw?.id || challengeId;
 
     try {
-      await Promise.all(
+      const togglePromise = Promise.all(
         hintsList
           .filter((h) => Boolean(h.is_visible) !== targetVisible)
-          .map((h) =>
-            toggleHint(targetChallengeId, h.id).catch((err) => {
-              console.warn(`Could not toggle hint ${h.id}:`, err);
-            })
-          )
+          .map((h) => toggleHint(targetChallengeId, h.id))
       );
-      await refreshLive();
+
+      setChallenges(challenges.map((c) => (c.id === challengeId ? {
+        ...c,
+        hints: (c.hints || []).map((h) => ({ ...h, is_visible: targetVisible })),
+        hintsEnabled: targetVisible,
+      } : c)));
+
+      await togglePromise;
+      refreshLiveInBackground();
     } catch (err) {
       console.error('Failed to toggle hints on backend:', err);
       alert('Failed to toggle hints on backend:\n' + (err.message || 'Unknown error'));
+      refreshLiveInBackground();
     }
   };
 
@@ -1161,11 +1208,13 @@ export function useAdminDashboard() {
       if (activeChallenge.round) {
         saveKnownAnswer(activeChallenge.round, trimmed);
       }
-      
-      await refreshLive();
+
+      setChallenges(challenges.map((c) => (c.id === activeChallenge.id ? { ...c, answer: trimmed, rawAnswer: trimmed, isHashedAnswer: false } : c)));
+
       setShowEditAnswerModal(false);
       setActiveChallenge(null);
       setEditAnswerValue('');
+      refreshLiveInBackground();
     } catch (err) {
       console.error("Failed to update challenge answer key on backend:", err);
       alert("Failed to update answer key on backend:\n" + (err.message || "Validation Error"));
@@ -1186,13 +1235,15 @@ export function useAdminDashboard() {
     if (!team) return;
 
     try {
+      const targetOrder = (activeChallenge.round || 1) + 1;
       await adminOverride({
         team_name: team.name,
-        target_challenge_order: (activeChallenge.round || 1) + 1,
+        target_challenge_order: targetOrder,
       });
-      await refreshLive();
+      setTeams(teams.map((t) => (t.id === team.id ? { ...t, round: targetOrder } : t)));
       setShowOverrideChallengeModal(false);
       setActiveChallenge(null);
+      refreshLiveInBackground();
     } catch (err) {
       console.error("Failed to override challenge:", err);
       alert("Failed to override challenge: " + (err.message || "Unknown error"));
@@ -1248,11 +1299,11 @@ export function useAdminDashboard() {
 
       setLogs(prevLogs => prevLogs.filter(l => l.teamId !== teamId && l.teamName !== teamName));
 
-      await refreshLive();
       setShowDeleteConfirmModal(false);
       setActiveTeam(null);
       setDeleteConfirmInput('');
       alert(`SUCCESS: Team "${teamName}" has been permanently purged.`);
+      refreshLiveInBackground();
     } catch (err) {
       console.error("Failed to delete team:", err);
       setTeams(prevTeams => {
