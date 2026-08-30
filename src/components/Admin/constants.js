@@ -30,6 +30,12 @@ export const INITIAL_LOGS = [
   { id: 'log-5', teamId: 'team-3', teamName: 'Cyber Shells', challengeId: 'chal-201', challengeTitle: 'Quantum Key Distribution', answer: 'wrong_key', correct: false, timestamp: '2026-07-24 15:40:02', attempts: 3 }
 ];
 
+export const INITIAL_ROUNDS = [
+  { id: 'round-1', name: 'Round 1', order_number: 1, story_fragment: { title: 'Signal Acquisition', header: 'FIRST CONTACT', content: 'A faint carrier wave was detected at 2067 Hz. Decrypt the initial transmission to establish the link.' }, is_active: true },
+  { id: 'round-2', name: 'Round 2', order_number: 2, story_fragment: { title: 'Deep Resonance', header: 'SIGNAL STRENGTH INCREASING', content: 'The signal resolves into structured data. Follow the resonance deeper into the archive.' }, is_active: true },
+  { id: 'round-3', name: 'Round 3', order_number: 3, story_fragment: { title: 'The Final Transmission', header: 'FINAL STAGE', content: 'The end of the transmission is near. Assemble every fragment to reveal the full message.' }, is_active: true }
+];
+
 export const DEFAULT_CREDENTIALS = {
   username: 'admin',
   password: 'admin'
@@ -38,6 +44,7 @@ export const DEFAULT_CREDENTIALS = {
 export const COMMAND_TABS = [
   { id: 'teams', label: 'Teams' },
   { id: 'challenges', label: 'Challenges' },
+  { id: 'rounds', label: 'Rounds' },
   { id: 'logs', label: 'Logs' },
   { id: 'export', label: 'Leaderboard' },
   { id: 'users', label: 'Users' },

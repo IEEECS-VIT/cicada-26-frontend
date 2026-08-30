@@ -17,41 +17,37 @@ const ASSET_TYPE_LABEL = {
   text: "TEXT",
 };
 
-// Map the backend's flat challenge sequence into the rounds->phases shape the
-// terminal UI expects (a single "Round 1" with one phase per challenge).
-function buildChallengeData(challenges, progress) {
-  const sorted = [...(challenges || [])].sort((a, b) => a.order_number - b.order_number);
-  const phases = {};
-  sorted.forEach((ch, i) => {
-    const firstAsset = ch.assets?.[0];
-    const fragment = (ch.story_fragment && typeof ch.story_fragment === 'object') ? ch.story_fragment : {};
-    const fragmentTitle = fragment.title || ch.name || `Archive 0${ch.order_number}`;
-    const fragmentContent = fragment.content || ch.story_context || ch.description || "";
-    const primaryContent = fragmentContent || ch.content || "";
-
-    phases[i + 1] = {
+// Map the backend's challenges (each tagged with its round) into the rounds->phases
+// shape the terminal UI expects. Story fragments now belong to rounds, so every
+// phase in a round shares the round's fragment.
+function buildChallengeData(challenges) {
+  const rounds = {};
+  (challenges || []).forEach((ch) => {
+    const roundKey = ch.round_order || 1;
+    if (!rounds[roundKey]) {
+      rounds[roundKey] = {
+        title: ch.round_name || `Round ${roundKey}`,
+        totalPhases: 0,
+        phases: {},
+      };
+    }
+    rounds[roundKey].phases[rounds[roundKey].totalPhases + 1] = {
       id: `C${ch.order_number}`,
       title: ch.name || `Archive 0${ch.order_number}`,
-      description: fragmentContent || ch.story_context || ch.description || "",
-      content: primaryContent,
-      resourceType: firstAsset ? ASSET_TYPE_LABEL[firstAsset.type] || "FILE" : "TEXT",
-      resourceUrl: firstAsset?.url || "#",
+      description: ch.story_context || ch.description || "",
+      content: ch.story_context || ch.description || ch.content || "",
+      resourceType: ch.assets?.[0] ? ASSET_TYPE_LABEL[ch.assets[0].type] || "FILE" : "TEXT",
+      resourceUrl: ch.assets?.[0]?.url || "#",
       assets: ch.assets || [],
       order_number: ch.order_number,
       is_locked: ch.is_locked,
-      story_fragment: {
-        title: fragmentTitle,
-        content: fragmentContent,
-      },
+      story_fragment: (ch.story_fragment && typeof ch.story_fragment === 'object')
+        ? { title: ch.story_fragment.title || ch.name, content: ch.story_fragment.content || ch.story_context || "" }
+        : { title: ch.name || `Round ${roundKey}`, content: ch.story_context || "" },
     };
+    rounds[roundKey].totalPhases += 1;
   });
-  return {
-    1: {
-      title: "Round 1",
-      totalPhases: sorted.length,
-      phases,
-    },
-  };
+  return rounds;
 }
 
 export function GameStateProvider({ children }) {
@@ -69,8 +65,25 @@ export function GameStateProvider({ children }) {
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [terminalHistory, setTerminalHistory] = useState([]);
   const [hints, setHints] = useState([]);
+  const [roundTransition, setRoundTransition] = useState(null);
 
-  const unlockedRounds = [1];
+  const unlockedRounds = useMemo(() => {
+    const currentRoundOrder = Math.max(1, progress?.current_round_order || 1);
+    return Array.from({ length: currentRoundOrder }, (_, i) => i + 1);
+  }, [progress]);
+
+  // Highest unlocked phase (local index) for each entered round, derived from
+  // the team's current challenge order.
+  const computeUnlockedPhases = useCallback((data, prog) => {
+    const unlocked = {};
+    const currentOrder = Math.max(1, prog?.current_challenge_order || 1);
+    Object.entries(data || {}).forEach(([roundKey, round]) => {
+      const sorted = Object.values(round.phases).sort((a, b) => a.order_number - b.order_number);
+      const unlockedCount = sorted.filter((p) => p.order_number <= currentOrder).length;
+      unlocked[roundKey] = Math.max(1, Math.min(unlockedCount, round.totalPhases || 1));
+    });
+    return unlocked;
+  }, []);
 
   const refresh = useCallback(async (silent = false) => {
     if (!teamName) return;
@@ -78,17 +91,23 @@ export function GameStateProvider({ children }) {
     setError("");
     try {
       const [chals, prog] = await Promise.all([getChallenges(), getProgress()]);
-      const data = buildChallengeData(chals.data, prog.data);
+      const data = buildChallengeData(chals.data);
       setChallengeData(data);
-      const target = Math.max(1, prog?.data?.current_challenge_order || 1);
-      
-      setCurrentPhase(target);
-      setUnlockedPhases({ 1: target });
+      setProgress(prog.data);
+      const unlocked = computeUnlockedPhases(data, prog.data);
+      setUnlockedPhases(unlocked);
+
+      const targetRound = Math.max(1, prog?.data?.current_round_order || 1);
+      if (!silent) {
+        setCurrentRound(targetRound);
+        setCurrentPhase(unlocked[targetRound] || 1);
+      }
+
       const collected = [];
       (chals.data || []).forEach((ch) => {
         (ch.hints || []).forEach((h) => {
           if (h.is_visible !== false) {
-            collected.push({ id: h.id, round: 1, text: h.text, timestamp: Date.now() });
+            collected.push({ id: h.id, round: ch.round_order || 1, text: h.text, timestamp: Date.now() });
           }
         });
       });
@@ -99,7 +118,7 @@ export function GameStateProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [teamName]);
+  }, [teamName, computeUnlockedPhases]);
 
   useEffect(() => {
     refresh();
@@ -110,6 +129,19 @@ export function GameStateProvider({ children }) {
   }, []);
 
   const clearTerminal = useCallback(() => setTerminalHistory([]), []);
+
+  const dismissRoundTransition = useCallback(() => setRoundTransition(null), []);
+
+  // Locate a phase by its GLOBAL challenge order_number across all rounds.
+  // The backend advances by order_number, not by local round phase index.
+  const findPhaseData = useCallback((orderNum, data) => {
+    if (!data) return null;
+    for (const [roundKey, round] of Object.entries(data)) {
+      const phase = Object.values(round.phases || {}).find((p) => p.order_number === orderNum);
+      if (phase) return { roundKey: Number(roundKey), round, phase };
+    }
+    return null;
+  }, []);
 
   const submitAnswer = useCallback(
     async (answer) => {
@@ -126,27 +158,65 @@ export function GameStateProvider({ children }) {
             addTerminalCommand(`fragment`, `${completedFragment.title || `Archive 0${activePhase}`}: ${completedFragment.content || ''}`);
           }
 
-          // Advance phase to next checkpoint
-          const totalPhases = challengeData?.[currentRound]?.totalPhases || 99;
-          const nextPhase = Math.min(activePhase + 1, totalPhases);
-          const nextPhaseData = challengeData?.[currentRound]?.phases?.[nextPhase];
+          const nextOrder = res.unlocked_next_challenge ?? phase.order_number;
+          const next = findPhaseData(nextOrder, challengeData);
+          const advanced = !!next && next.phase.order_number !== phase.order_number;
 
-          if (nextPhaseData && nextPhase > activePhase) {
-            const nextFrag = nextPhaseData.story_fragment;
-            const nextTitle = nextFrag?.title || nextPhaseData.title || `Archive 0${nextPhase}`;
-            const nextContent = nextFrag?.content || nextPhaseData.description || `Decryption channel open for Phase ${nextPhase}.`;
-            addTerminalCommand(`telemetry`, `[UNLOCKED] ${nextTitle}:\n${nextContent}`);
+          let resultText = res.message || "Correct. Cipher accepted.";
+
+          if (res.already_solved) {
+            // Re-submitting a solved challenge: report the true backend message,
+            // never a fake "advanced to Stage X".
+            resultText = res.message || "You have already completed this challenge.";
+          } else if (advanced) {
+            const localIndex = Object.keys(next.round.phases).find(
+              (k) => next.round.phases[k].order_number === next.phase.order_number
+            );
+            const nextIdx = Math.max(1, Number(localIndex) || 1);
+            const crossedRound = next.roundKey !== currentRound;
+
+            setCurrentRound(next.roundKey);
+            setCurrentPhase(nextIdx);
+            setUnlockedPhases((prev) => ({ ...prev, [next.roundKey]: Math.max(prev[next.roundKey] || 1, nextIdx) }));
+
+            if (crossedRound) {
+              // Round boundary crossed: close the terminal and present the
+              // next round's entry fragment via the full-screen transition
+              // overlay (res.story_fragment is that round's fragment).
+              setRoundTransition({
+                type: "round",
+                nextRoundKey: next.roundKey,
+                nextRoundTitle: next.round.title,
+                fragment: {
+                  title: res.story_fragment?.title || next.phase.story_fragment?.title || next.round.title,
+                  content: res.story_fragment?.content || next.phase.story_fragment?.content || next.phase.description || "",
+                },
+              });
+              setActiveTab("overview");
+              setIsTerminalOpen(false);
+            } else {
+              const nextFrag = next.phase.story_fragment;
+              if (nextFrag?.title || nextFrag?.content) {
+                addTerminalCommand(
+                  `telemetry`,
+                  `[UNLOCKED] ${nextFrag.title || next.phase.title}:\n${nextFrag.content || next.phase.description || 'Decryption channel open.'}`
+                );
+              }
+            }
+
+            resultText = `Correct. Cipher accepted.\nTelemetry advanced to Stage ${nextIdx}: "${next.phase.title}".`;
+          } else if (!next) {
+            // No challenge exists beyond this one: mission complete.
+            setRoundTransition({ type: "mission" });
+            setActiveTab("overview");
+            setIsTerminalOpen(false);
+            resultText = "Correct. Cipher accepted.\n[UPLINK SECURED] All archives decrypted. Mission sequence complete.";
           }
 
-          setUnlockedPhases((prev) => ({ ...prev, [currentRound]: Math.max(prev[currentRound] || 1, nextPhase) }));
-          setCurrentPhase(nextPhase);
-
+          // Silent refresh: server truth re-syncs unlockedPhases/hints/progress
+          // (round/phase stay where we just moved them).
           await refresh(true);
-
-          setUnlockedPhases((prev) => ({ ...prev, [currentRound]: Math.max(prev[currentRound] || 1, nextPhase) }));
-          setCurrentPhase(nextPhase);
-
-          return `Correct. Cipher accepted.\nTelemetry advanced to Stage ${nextPhase}: "${nextPhaseData?.title || `Archive 0${nextPhase}`}".`;
+          return resultText;
         }
 
         return res.message || "Incorrect decryption key. Please try again.";
@@ -154,7 +224,7 @@ export function GameStateProvider({ children }) {
         return err.message || "Transmission error. Please try again.";
       }
     },
-    [challengeData, unlockedPhases, currentPhase, currentRound, addTerminalCommand, refresh]
+    [challengeData, unlockedPhases, currentPhase, currentRound, addTerminalCommand, refresh, findPhaseData]
   );
 
   const changeRound = useCallback((roundNum) => {
@@ -188,8 +258,10 @@ export function GameStateProvider({ children }) {
       submitAnswer,
       hints,
       refresh,
+      roundTransition,
+      dismissRoundTransition,
     }),
-    [teamName, challengeData, progress, loading, error, unlockedRounds, unlockedPhases, currentRound, changeRound, currentPhase, activeTab, isTerminalOpen, terminalHistory, addTerminalCommand, clearTerminal, submitAnswer, hints, refresh]
+    [teamName, challengeData, progress, loading, error, unlockedRounds, unlockedPhases, currentRound, changeRound, currentPhase, activeTab, isTerminalOpen, terminalHistory, addTerminalCommand, clearTerminal, submitAnswer, hints, refresh, roundTransition, dismissRoundTransition]
   );
 
   return <GameStateContext.Provider value={value}>{children}</GameStateContext.Provider>;

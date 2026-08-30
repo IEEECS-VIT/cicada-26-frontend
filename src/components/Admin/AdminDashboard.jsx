@@ -5,6 +5,7 @@ import AdminHeader from "./AdminHeader";
 import AdminModals from "./modals/AdminModals";
 import TeamsTab from "./tabs/TeamsTab";
 import ChallengesTab from "./tabs/ChallengesTab";
+import RoundsTab from "./tabs/RoundsTab";
 import LogsTab from "./tabs/LogsTab";
 import LeaderboardTab from "./tabs/LeaderboardTab";
 import UsersTab from "./tabs/UsersTab";
@@ -45,6 +46,7 @@ export default function AdminDashboard() {
             <main className="w-full pt-10">
               {admin.activeTab === "teams" && <TeamsTab />}
               {admin.activeTab === "challenges" && <ChallengesTab />}
+              {admin.activeTab === "rounds" && <RoundsTab />}
               {admin.activeTab === "logs" && <LogsTab />}
               {admin.activeTab === "export" && <LeaderboardTab />}
               {admin.activeTab === "users" && <UsersTab />}

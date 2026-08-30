@@ -16,6 +16,10 @@ export async function getStoryFragments() {
   return api("/api/challenges/story-fragments");
 }
 
+export async function getRounds() {
+  return api("/api/challenges/rounds");
+}
+
 export async function submitAnswer(challenge_identifier, answer) {
   return api("/api/challenges/submit", {
     method: "POST",

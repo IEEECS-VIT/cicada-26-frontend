@@ -12,9 +12,10 @@ import {
 export default function ChallengesTab() {
   const {
     challenges,
+    rounds,
     setActiveChallenge,
     setShowCreateChallengeModal,
-    setNewChallengeRound,
+    setNewChallengeRoundId,
     setShowTimeLimitModal,
     setEditTimeLimitValue,
     setShowEditAssetModal,
@@ -47,10 +48,8 @@ export default function ChallengesTab() {
               <button
                 type="button"
                 onClick={() => {
-                  const usedRounds = new Set(challenges.map((c) => c.round));
-                  let nextRound = 1;
-                  while (usedRounds.has(nextRound)) nextRound += 1;
-                  setNewChallengeRound(nextRound);
+                  const sortedRounds = [...rounds].sort((a, b) => (a.order_number || 0) - (b.order_number || 0));
+                  setNewChallengeRoundId(sortedRounds[0]?.id || '');
                   setShowCreateChallengeModal(true);
                 }}
                 className="inline-flex items-center gap-2 border border-accretion bg-accretion px-4 py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright"
@@ -66,7 +65,7 @@ export default function ChallengesTab() {
                   <div>
                     <div className="mb-4 flex items-start justify-between gap-3">
                       <p className="font-rajdhani text-[11px] tracking-[0.28em] text-accretion">
-                        ROUND {challenge.round}
+                        ROUND {challenge.raw?.round_name ? challenge.raw.round_name : `Round ${challenge.round}`}
                       </p>
                       <span className={`font-rajdhani text-[11px] tracking-[0.22em] ${
                         challenge.isLocked ? 'text-red-300' : 'text-accretion'

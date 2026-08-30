@@ -28,6 +28,26 @@ export async function getAdminChallenges() {
   return api("/api/admin/challenges/all", { admin: true });
 }
 
+export async function getAdminRounds() {
+  return api("/api/admin/challenges/rounds", { admin: true });
+}
+
+export async function createRound(payload) {
+  return api("/api/admin/challenges/rounds", { method: "POST", admin: true, body: payload });
+}
+
+export async function updateRound(id, payload) {
+  return api(`/api/admin/challenges/rounds/${id}`, { method: "PUT", admin: true, body: payload });
+}
+
+export async function deleteRound(id) {
+  return api(`/api/admin/challenges/rounds/${id}`, { method: "DELETE", admin: true });
+}
+
+export async function reorderRounds(ordered_ids) {
+  return api("/api/admin/challenges/rounds/reorder", { method: "POST", admin: true, body: { ordered_ids } });
+}
+
 export async function getAdminProgress() {
   return api("/api/admin/challenges/progress", { admin: true });
 }
