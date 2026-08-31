@@ -205,6 +205,8 @@ export function useAdminDashboard() {
   const [activeAssetChallengeId, setActiveAssetChallengeId] = useState('');
   const [editAssetName, setEditAssetName] = useState('');
   const [editAssetUrl, setEditAssetUrl] = useState('');
+  const [editAssetSet, setEditAssetSet] = useState('');
+  const [editTeamAssetSet, setEditTeamAssetSet] = useState('');
   const [dragOverChallengeId, setDragOverChallengeId] = useState(null);
 
   // Bulk Import State
@@ -804,6 +806,7 @@ export function useAdminDashboard() {
     setNewChallengeAssets(existingAssets);
     setTempAssetName('');
     setTempAssetUrl('');
+    setTempAssetSet('');
     setShowCreateChallengeModal(true);
   };
 
@@ -912,6 +915,7 @@ export function useAdminDashboard() {
         setNewChallengeFragmentContent('');
         setTempAssetName('');
         setTempAssetUrl('');
+    setTempAssetSet('');
         setEditingChallenge(null);
         setShowCreateChallengeModal(false);
         refreshLiveInBackground();
@@ -991,6 +995,7 @@ export function useAdminDashboard() {
       setNewChallengeFragmentContent('');
       setTempAssetName('');
       setTempAssetUrl('');
+    setTempAssetSet('');
       setShowCreateChallengeModal(false);
       refreshLiveInBackground();
     } catch (err) {
@@ -1008,6 +1013,7 @@ export function useAdminDashboard() {
     setNewChallengeAssets([...newChallengeAssets, newAsset]);
     setTempAssetName('');
     setTempAssetUrl('');
+    setTempAssetSet('');
   };
 
   const handleRemoveAssetFromChallenge = (idxToRemove) => {
@@ -1991,6 +1997,10 @@ export function useAdminDashboard() {
     setEditAssetName,
     editAssetUrl,
     setEditAssetUrl,
+    editAssetSet,
+    setEditAssetSet,
+    editTeamAssetSet,
+    setEditTeamAssetSet,
     dragOverChallengeId,
     setDragOverChallengeId,
     showBulkImportAdminsModal,
