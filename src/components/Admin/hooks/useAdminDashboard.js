@@ -843,7 +843,11 @@ export function useAdminDashboard() {
       const targetId = editingChallenge.raw?.id || editingChallenge.id;
       const orderNum = editingChallenge.order_number || editingChallenge.raw?.order_number || archiveNum;
 
+      const targetRound = rounds.find(r => r.order_number === roundNum);
+      const roundIdToUse = targetRound?.id || undefined;
+
       const payloadOverrides = {
+        round_id: roundIdToUse,
         order_number: orderNum,
         round: roundNum,
         round_number: roundNum,
@@ -930,8 +934,13 @@ export function useAdminDashboard() {
     const maxOrder = challenges.reduce((max, c) => Math.max(max, c.order_number || c.raw?.order_number || 0), 0);
     const orderNum = maxOrder + 1;
 
+    // Find the correct round_id from rounds array
+    const targetRound = rounds.find(r => r.order_number === roundNum);
+    const roundIdToUse = targetRound?.id || rounds[0]?.id || undefined;
+
     try {
       await createChallenge({
+        round_id: roundIdToUse,
         order_number: orderNum,
         round: roundNum,
         round_number: roundNum,
