@@ -167,8 +167,9 @@ export function useAdminDashboard() {
   const [adjustScoreType, setAdjustScoreType] = useState('add'); // add, subtract, set
   const [adjustScoreValue, setAdjustScoreValue] = useState(0);
 
-  // Challenge Creation State
+  // Challenge Creation / Edit State
   const [showCreateChallengeModal, setShowCreateChallengeModal] = useState(false);
+  const [editingChallenge, setEditingChallenge] = useState(null);
   const [newChallengeTitle, setNewChallengeTitle] = useState('');
   const [newChallengeRound, setNewChallengeRound] = useState(1);
   const [newChallengeArchive, setNewChallengeArchive] = useState(1);
@@ -176,6 +177,9 @@ export function useAdminDashboard() {
   const [newChallengePoints, setNewChallengePoints] = useState(100);
   const [newChallengeTimeLimit, setNewChallengeTimeLimit] = useState(0);
   const [newChallengeAssets, setNewChallengeAssets] = useState([]);
+  const [newChallengeFragmentTitle, setNewChallengeFragmentTitle] = useState('');
+  const [newChallengeFragmentHeader, setNewChallengeFragmentHeader] = useState('');
+  const [newChallengeFragmentContent, setNewChallengeFragmentContent] = useState('');
   const [tempAssetName, setTempAssetName] = useState('');
   const [tempAssetUrl, setTempAssetUrl] = useState('');
 
@@ -301,6 +305,10 @@ export function useAdminDashboard() {
       description: storyVal,
       hints: Array.isArray(raw.hints) ? raw.hints : [],
     };
+
+    if (overrides.story_fragment) {
+      payload.story_fragment = overrides.story_fragment;
+    }
 
     // Story fragments now live on rounds, not challenges — the backend drops a
     // per-challenge story_fragment silently. Preserve the challenge's round link
@@ -763,8 +771,44 @@ export function useAdminDashboard() {
     }
   };
 
+  // Open Edit Challenge Modal pre-filled with challenge details
+  const handleOpenEditChallenge = (challenge) => {
+    if (!challenge) return;
+    setEditingChallenge(challenge);
+    setNewChallengeTitle(challenge.title || challenge.name || '');
+    setNewChallengeRound(challenge.round || challenge.raw?.round || 1);
+    setNewChallengeArchive(challenge.archiveNumber || challenge.raw?.archive_number || challenge.raw?.phase || 1);
+    setNewChallengePoints(challenge.points || 100);
+    setNewChallengeTimeLimit(challenge.timeLimit && challenge.timeLimit < 99999 ? challenge.timeLimit : 0);
+
+    const known = getKnownAnswers();
+    const knownAns = challenge.round ? known[challenge.round] : '';
+    const answerVal = (challenge.answer && !challenge.answer.startsWith('$2b$') && challenge.answer !== '—' && challenge.answer !== 'ENCRYPTED (SET)')
+      ? challenge.answer
+      : (challenge.rawAnswer && !challenge.rawAnswer.startsWith('$2b$')
+        ? challenge.rawAnswer
+        : (knownAns && !knownAns.startsWith('$2b$')
+          ? knownAns
+          : (challenge.raw?.answer_key && !challenge.raw.answer_key.startsWith('$2b$') ? challenge.raw.answer_key : '')));
+    setNewChallengeAnswer(answerVal || '');
+
+    const frag = challenge.story_fragment || challenge.raw?.story_fragment || {};
+    setNewChallengeFragmentTitle(frag.title || challenge.title || challenge.name || '');
+    setNewChallengeFragmentHeader(frag.header || '');
+    setNewChallengeFragmentContent(frag.content || '');
+
+    const existingAssets = (challenge.assets || challenge.raw?.assets || []).map((a) => ({
+      name: a.name || 'asset',
+      url: a.url || '#',
+    }));
+    setNewChallengeAssets(existingAssets);
+    setTempAssetName('');
+    setTempAssetUrl('');
+    setShowCreateChallengeModal(true);
+  };
+
   // --- CHALLENGE OPERATION HANDLERS ---
-  // API Endpoint: POST Create Challenge with All Assets (Admin)
+  // API Endpoint: POST / PUT Create/Update Challenge with All Assets (Admin)
   const handleCreateChallenge = async (e) => {
     e.preventDefault();
     if (!newChallengeTitle.trim()) return;
@@ -778,11 +822,109 @@ export function useAdminDashboard() {
 
     const roundNum = parseInt(newChallengeRound, 10) || 1;
     const archiveNum = parseInt(newChallengeArchive, 10) || 1;
-    const maxOrder = challenges.reduce((max, c) => Math.max(max, c.order_number || c.raw?.order_number || 0), 0);
-    const orderNum = maxOrder + 1;
     const titleVal = newChallengeTitle.trim();
     const answerKeyVal = newChallengeAnswer.trim() || 'decrypted_key';
     const pointsVal = parseInt(newChallengePoints, 10) || 100;
+
+    const fragTitle = newChallengeFragmentTitle.trim() || titleVal;
+    const fragHeader = newChallengeFragmentHeader.trim() || 'TRANSMISSION RECEIVED';
+    const fragContent = newChallengeFragmentContent.trim() || fragTitle || `${titleVal} classified transmission fragment decrypted.`;
+
+    const mappedAssets = (newChallengeAssets || []).map((a) => ({
+      type: 'file',
+      url: a.url || '#',
+      name: (a.name || 'asset').trim() || 'asset'
+    }));
+
+    if (editingChallenge) {
+      const targetId = editingChallenge.raw?.id || editingChallenge.id;
+      const orderNum = editingChallenge.order_number || editingChallenge.raw?.order_number || archiveNum;
+
+      const payloadOverrides = {
+        order_number: orderNum,
+        round: roundNum,
+        round_number: roundNum,
+        archive_number: archiveNum,
+        phase: archiveNum,
+        name: titleVal,
+        title: titleVal,
+        time_limit: parsedLimit,
+        points: pointsVal,
+        story_fragment: {
+          title: fragTitle,
+          header: fragHeader,
+          content: fragContent,
+        },
+        assets: mappedAssets,
+      };
+
+      if (newChallengeAnswer.trim()) {
+        payloadOverrides.answer_key = newChallengeAnswer.trim();
+        payloadOverrides.answer = newChallengeAnswer.trim();
+      }
+
+      const payload = buildChallengePayload(editingChallenge, payloadOverrides);
+
+      try {
+        await updateChallenge(targetId, payload);
+        if (newChallengeAnswer.trim() && roundNum) {
+          saveKnownAnswer(roundNum, newChallengeAnswer.trim());
+        }
+
+        setChallenges((prev) =>
+          prev.map((c) =>
+            c.id === editingChallenge.id
+              ? {
+                  ...c,
+                  title: titleVal,
+                  name: titleVal,
+                  round: roundNum,
+                  archiveNumber: archiveNum,
+                  points: pointsVal,
+                  timeLimit: parsedLimit < 99999 ? parsedLimit : 0,
+                  ...(newChallengeAnswer.trim() ? { answer: newChallengeAnswer.trim(), rawAnswer: newChallengeAnswer.trim(), isHashedAnswer: false } : {}),
+                  story_fragment: {
+                    title: fragTitle,
+                    header: fragHeader,
+                    content: fragContent,
+                  },
+                  assets: (newChallengeAssets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
+                }
+              : c
+          )
+        );
+
+        pushLocalLog({
+          teamName: 'SYSTEM',
+          challengeTitle: 'Edit Challenge',
+          answer: `Challenge "${titleVal}" updated successfully.`,
+        });
+
+        setNewChallengeTitle('');
+        setNewChallengeRound(1);
+        setNewChallengeArchive(1);
+        setNewChallengeAnswer('');
+        setNewChallengePoints(100);
+        setNewChallengeTimeLimit(0);
+        setNewChallengeAssets([]);
+        setNewChallengeFragmentTitle('');
+        setNewChallengeFragmentHeader('');
+        setNewChallengeFragmentContent('');
+        setTempAssetName('');
+        setTempAssetUrl('');
+        setEditingChallenge(null);
+        setShowCreateChallengeModal(false);
+        refreshLiveInBackground();
+      } catch (err) {
+        console.error('Failed to update challenge:', err);
+        alert('Failed to update challenge:\n' + (err.message || 'Unknown error'));
+      }
+      return;
+    }
+
+    // CREATE MODE
+    const maxOrder = challenges.reduce((max, c) => Math.max(max, c.order_number || c.raw?.order_number || 0), 0);
+    const orderNum = maxOrder + 1;
 
     try {
       await createChallenge({
@@ -803,11 +945,16 @@ export function useAdminDashboard() {
         description: 'Mission briefing',
         hints: [],
         story_fragment: {
-          title: titleVal,
-          content: 'Decrypted classified archive transmission.',
+          title: fragTitle,
+          header: fragHeader,
+          content: fragContent,
         },
-        assets: (newChallengeAssets || []).map((a) => ({ type: 'file', url: a.url || '#', name: (a.name || 'asset').trim() || 'asset' })),
+        assets: mappedAssets,
       });
+
+      if (newChallengeAnswer.trim() && roundNum) {
+        saveKnownAnswer(roundNum, newChallengeAnswer.trim());
+      }
 
       const newChalObj = {
         id: `chal-${Date.now()}`,
@@ -823,6 +970,11 @@ export function useAdminDashboard() {
         isLocked: true,
         hintsEnabled: false,
         solvedCount: 0,
+        story_fragment: {
+          title: fragTitle,
+          header: fragHeader,
+          content: fragContent,
+        },
         assets: (newChallengeAssets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
       };
       setChallenges((prev) => [...prev, newChalObj]);
@@ -834,6 +986,9 @@ export function useAdminDashboard() {
       setNewChallengePoints(100);
       setNewChallengeTimeLimit(0);
       setNewChallengeAssets([]);
+      setNewChallengeFragmentTitle('');
+      setNewChallengeFragmentHeader('');
+      setNewChallengeFragmentContent('');
       setTempAssetName('');
       setTempAssetUrl('');
       setShowCreateChallengeModal(false);
@@ -1446,9 +1601,9 @@ export function useAdminDashboard() {
     const fragmentContent = newRoundFragmentContent.trim();
     if (fragmentTitle || fragmentHeader || fragmentContent) {
       payload.story_fragment = {
-        ...(fragmentTitle ? { title: fragmentTitle } : {}),
-        ...(fragmentHeader ? { header: fragmentHeader } : {}),
-        ...(fragmentContent ? { content: fragmentContent } : {}),
+        title: fragmentTitle || nameVal,
+        header: fragmentHeader || 'TRANSMISSION RECEIVED',
+        content: fragmentContent || fragmentTitle || `${nameVal} classified transmission fragment decrypted.`,
       };
     }
 
@@ -1795,6 +1950,9 @@ export function useAdminDashboard() {
     setAdjustScoreValue,
     showCreateChallengeModal,
     setShowCreateChallengeModal,
+    editingChallenge,
+    setEditingChallenge,
+    handleOpenEditChallenge,
     newChallengeTitle,
     setNewChallengeTitle,
     newChallengeRound,
@@ -1809,6 +1967,12 @@ export function useAdminDashboard() {
     setNewChallengeTimeLimit,
     newChallengeAssets,
     setNewChallengeAssets,
+    newChallengeFragmentTitle,
+    setNewChallengeFragmentTitle,
+    newChallengeFragmentHeader,
+    setNewChallengeFragmentHeader,
+    newChallengeFragmentContent,
+    setNewChallengeFragmentContent,
     tempAssetName,
     setTempAssetName,
     tempAssetUrl,

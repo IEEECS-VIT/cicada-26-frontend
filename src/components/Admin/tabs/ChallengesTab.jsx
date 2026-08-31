@@ -17,6 +17,18 @@ export default function ChallengesTab() {
     challenges,
     setActiveChallenge,
     setShowCreateChallengeModal,
+    setEditingChallenge,
+    handleOpenEditChallenge,
+    setNewChallengeTitle,
+    setNewChallengeAnswer,
+    setNewChallengePoints,
+    setNewChallengeTimeLimit,
+    setNewChallengeAssets,
+    setNewChallengeFragmentTitle,
+    setNewChallengeFragmentHeader,
+    setNewChallengeFragmentContent,
+    setTempAssetName,
+    setTempAssetUrl,
     setNewChallengeRound,
     setNewChallengeArchive,
     setShowTimeLimitModal,
@@ -66,6 +78,17 @@ export default function ChallengesTab() {
   }, [groupedByRound]);
 
   const handleOpenCreateModal = (targetRound = null) => {
+    setEditingChallenge(null);
+    setNewChallengeTitle('');
+    setNewChallengeAnswer('');
+    setNewChallengePoints(100);
+    setNewChallengeTimeLimit(0);
+    setNewChallengeAssets([]);
+    setNewChallengeFragmentTitle('');
+    setNewChallengeFragmentHeader('');
+    setNewChallengeFragmentContent('');
+    setTempAssetName('');
+    setTempAssetUrl('');
     if (targetRound) {
       setNewChallengeRound(targetRound);
       const archivesInRound = (groupedByRound[targetRound] || []).map((c) => c.archiveNumber || 1);
@@ -104,7 +127,7 @@ export default function ChallengesTab() {
           className="inline-flex items-center gap-2 border border-accretion bg-accretion px-4 py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright transition-colors shadow-[0_0_12px_rgba(209,155,131,0.3)]"
         >
           <Plus className="h-4 w-4" />
-          NEW LOCK
+          NEW ROUND
         </button>
       </div>
 
@@ -144,18 +167,6 @@ export default function ChallengesTab() {
             </button>
           );
         })}
-
-        <button
-          type="button"
-          onClick={() => {
-            const nextRound = roundNumbers.length > 0 ? Math.max(...roundNumbers) + 1 : 1;
-            handleOpenCreateModal(nextRound);
-          }}
-          className="ml-auto inline-flex items-center gap-1 rounded border border-dashed border-accretion/50 bg-black/30 px-3 py-1.5 font-orbitron text-[10px] tracking-wider text-accretion hover:bg-accretion/15 transition-colors"
-        >
-          <Plus className="h-3 w-3" />
-          + NEW ROUND
-        </button>
       </div>
 
       {/* Rounds & Nested Archives List */}
@@ -163,7 +174,7 @@ export default function ChallengesTab() {
         <div className="border border-dashed border-copper/30 bg-black/30 p-12 text-center">
           <FolderArchive className="mx-auto h-8 w-8 text-copper/50 mb-3" />
           <p className="font-orbitron text-sm text-copper">NO CHALLENGES LOADED FOR THIS SECTOR</p>
-          <p className="mt-1 text-xs text-copper/60">Click "NEW LOCK" to initialize an Archive in this Round.</p>
+          <p className="mt-1 text-xs text-copper/60">Click "NEW ROUND" to initialize an Archive in this Round.</p>
         </div>
       ) : (
         <div className="space-y-10">
@@ -450,6 +461,13 @@ export default function ChallengesTab() {
                           </button>
                         </div>
                         <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditChallenge(challenge)}
+                            className="flex-1 border border-accretion/40 bg-accretion/10 py-2 font-rajdhani text-[11px] tracking-[0.16em] text-accretion hover:border-accretion hover:bg-accretion hover:text-black rounded transition-colors"
+                          >
+                            EDIT CHALLENGE
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteChallenge(challenge.id)}
