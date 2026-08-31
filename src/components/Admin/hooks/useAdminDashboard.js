@@ -805,6 +805,7 @@ export function useAdminDashboard() {
     setNewChallengeAssets(existingAssets);
     setTempAssetName('');
     setTempAssetUrl('');
+    setTempAssetSet('');
     setShowCreateChallengeModal(true);
   };
 
@@ -913,6 +914,7 @@ export function useAdminDashboard() {
         setNewChallengeFragmentContent('');
         setTempAssetName('');
         setTempAssetUrl('');
+    setTempAssetSet('');
         setEditingChallenge(null);
         setShowCreateChallengeModal(false);
         refreshLiveInBackground();
@@ -992,6 +994,7 @@ export function useAdminDashboard() {
       setNewChallengeFragmentContent('');
       setTempAssetName('');
       setTempAssetUrl('');
+    setTempAssetSet('');
       setShowCreateChallengeModal(false);
       refreshLiveInBackground();
     } catch (err) {
@@ -1009,6 +1012,7 @@ export function useAdminDashboard() {
     setNewChallengeAssets([...newChallengeAssets, newAsset]);
     setTempAssetName('');
     setTempAssetUrl('');
+    setTempAssetSet('');
   };
 
   const handleRemoveAssetFromChallenge = (idxToRemove) => {
