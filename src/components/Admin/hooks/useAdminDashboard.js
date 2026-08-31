@@ -803,6 +803,7 @@ export function useAdminDashboard() {
     const existingAssets = (challenge.assets || challenge.raw?.assets || []).map((a) => ({
       name: a.name || 'asset',
       url: a.url || '#',
+      ...(a.asset_set ? { asset_set: a.asset_set } : {})
     }));
     setNewChallengeAssets(existingAssets);
     setTempAssetName('');
@@ -837,7 +838,8 @@ export function useAdminDashboard() {
     const mappedAssets = (newChallengeAssets || []).map((a) => ({
       type: 'file',
       url: a.url || '#',
-      name: (a.name || 'asset').trim() || 'asset'
+      name: (a.name || 'asset').trim() || 'asset',
+      ...(a.asset_set ? { asset_set: a.asset_set } : {})
     }));
 
     if (editingChallenge) {
@@ -896,7 +898,11 @@ export function useAdminDashboard() {
                     header: fragHeader,
                     content: fragContent,
                   },
-                  assets: (newChallengeAssets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
+                  assets: (newChallengeAssets || []).map((a) => ({ 
+            name: a.name || 'asset', 
+            url: a.url || '#',
+            ...(a.asset_set ? { asset_set: a.asset_set } : {})
+          })),
                 }
               : c
           )
@@ -994,7 +1000,11 @@ export function useAdminDashboard() {
           header: fragHeader,
           content: fragContent,
         },
-        assets: (newChallengeAssets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
+          assets: (newChallengeAssets || []).map((a) => ({ 
+            name: a.name || 'asset', 
+            url: a.url || '#',
+            ...(a.asset_set ? { asset_set: a.asset_set } : {})
+          })),
       };
       setChallenges((prev) => [...prev, newChalObj]);
 
