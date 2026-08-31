@@ -944,7 +944,7 @@ export function useAdminDashboard() {
     }
 
     try {
-      await createChallenge({
+      const res = await createChallenge({
         round_id: roundIdToUse,
         order_number: orderNum,
         round: roundNum,
@@ -955,8 +955,8 @@ export function useAdminDashboard() {
         title: titleVal,
         answer_key: answerKeyVal,
         answer: answerKeyVal,
-        time_limit: parsedLimit,
         points: pointsVal,
+        time_limit: parsedLimit,
         is_active: false,
         is_locked: true,
         story_context: 'Mission briefing',
@@ -975,7 +975,7 @@ export function useAdminDashboard() {
       }
 
       const newChalObj = {
-        id: `chal-${Date.now()}`,
+        id: res?.data?.id || `chal-${Date.now()}`,
         title: titleVal,
         round: roundNum,
         archiveNumber: archiveNum,
