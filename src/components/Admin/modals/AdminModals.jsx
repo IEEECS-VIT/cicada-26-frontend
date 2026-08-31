@@ -72,6 +72,8 @@ export default function AdminModals() {
     setAdjustScoreValue,
     showCreateChallengeModal,
     setShowCreateChallengeModal,
+    editingChallenge,
+    setEditingChallenge,
     newChallengeTitle,
     setNewChallengeTitle,
     newChallengeRound,
@@ -86,6 +88,12 @@ export default function AdminModals() {
     setNewChallengeTimeLimit,
     newChallengeAssets,
     setNewChallengeAssets,
+    newChallengeFragmentTitle,
+    setNewChallengeFragmentTitle,
+    newChallengeFragmentHeader,
+    setNewChallengeFragmentHeader,
+    newChallengeFragmentContent,
+    setNewChallengeFragmentContent,
     tempAssetName,
     setTempAssetName,
     tempAssetUrl,
@@ -966,17 +974,29 @@ export default function AdminModals() {
         </div>
       )}
 
-      {/* 12. Modal: Create Challenge */}
+      {/* 12. Modal: Create / Edit Challenge */}
       {showCreateChallengeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md border border-accretion/30 bg-black p-8 text-starlight">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto border border-accretion/30 bg-black p-8 text-starlight">
             <div className="flex justify-between items-center mb-6">
               <h3 className="flex items-center gap-2 font-orbitron text-sm tracking-[0.22em] text-starlight">
-                <Plus className="w-4 h-4 text-accretion" />
-                <span>Create New Challenge</span>
+                {editingChallenge ? (
+                  <>
+                    <Edit className="w-4 h-4 text-accretion" />
+                    <span>Edit Challenge: {editingChallenge.title}</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 text-accretion" />
+                    <span>Create New Challenge</span>
+                  </>
+                )}
               </h3>
               <button
-                onClick={() => setShowCreateChallengeModal(false)}
+                onClick={() => {
+                  setShowCreateChallengeModal(false);
+                  setEditingChallenge(null);
+                }}
                 className="text-copper hover:text-starlight"
               >
                 <X className="w-5 h-5" />
@@ -1062,6 +1082,32 @@ export default function AdminModals() {
                   className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                   value={newChallengeAnswer}
                   onChange={(e) => setNewChallengeAnswer(e.target.value)}
+                />
+              </div>
+
+              {/* Story Fragment Section */}
+              <div className="space-y-2 border border-accretion/20 p-3">
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Story Fragment</label>
+                <input
+                  type="text"
+                  placeholder="Fragment title (defaults to challenge title)"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newChallengeFragmentTitle}
+                  onChange={(e) => setNewChallengeFragmentTitle(e.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Header (e.g. FIRST CONTACT)"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newChallengeFragmentHeader}
+                  onChange={(e) => setNewChallengeFragmentHeader(e.target.value)}
+                />
+                <textarea
+                  rows="3"
+                  placeholder="Fragment content (e.g. Decrypted archive transmission data...)"
+                  className="w-full resize-none border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newChallengeFragmentContent}
+                  onChange={(e) => setNewChallengeFragmentContent(e.target.value)}
                 />
               </div>
 
@@ -1160,7 +1206,10 @@ export default function AdminModals() {
               <div className="pt-4 flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowCreateChallengeModal(false)}
+                  onClick={() => {
+                    setShowCreateChallengeModal(false);
+                    setEditingChallenge(null);
+                  }}
                   className="flex-1 border border-copper/30 py-2.5 font-rajdhani text-sm tracking-[0.2em] text-copper hover:border-accretion hover:text-accretion"
                 >
                   Cancel
@@ -1169,7 +1218,7 @@ export default function AdminModals() {
                   type="submit"
                   className="flex-1 border border-accretion bg-accretion py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright"
                 >
-                  Create Challenge
+                  {editingChallenge ? 'Update Challenge' : 'Create Challenge'}
                 </button>
               </div>
             </form>
@@ -1487,14 +1536,14 @@ export default function AdminModals() {
                 />
                 <input
                   type="text"
-                  placeholder="Header (optional)"
+                  placeholder="Header (e.g. MISSION BRIEFING)"
                   className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                   value={newRoundFragmentHeader}
                   onChange={(e) => setNewRoundFragmentHeader(e.target.value)}
                 />
                 <textarea
                   rows="3"
-                  placeholder="Fragment content (optional)"
+                  placeholder="Fragment content"
                   className="w-full resize-none border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                   value={newRoundFragmentContent}
                   onChange={(e) => setNewRoundFragmentContent(e.target.value)}

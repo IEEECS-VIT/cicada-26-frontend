@@ -50,7 +50,6 @@ export const DEFAULT_CREDENTIALS = {
 export const COMMAND_TABS = [
   { id: 'teams', label: 'Teams' },
   { id: 'challenges', label: 'Challenges' },
-  { id: 'rounds', label: 'Rounds' },
   { id: 'logs', label: 'Logs' },
   { id: 'export', label: 'Leaderboard' },
   { id: 'users', label: 'Users' },
