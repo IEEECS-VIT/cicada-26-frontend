@@ -184,7 +184,7 @@ export default function FaqSection() {
           <div className="hidden flex-col items-center lg:flex">
             {showTars && (
               <div className="hidden w-full flex-col items-center lg:flex">
-                <div className="relative h-[clamp(320px,40vw,500px)] w-full">
+                <div className="relative h-[clamp(360px,45vw,560px)] w-full">
                   <Suspense fallback={null}>
                     <TarsWidget />
                   </Suspense>

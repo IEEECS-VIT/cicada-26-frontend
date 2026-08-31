@@ -1,35 +1,32 @@
+import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
 
-/*
- * TarsWidget.tsx
- * ─────────────────────────────────────────────────────────────────
- * The TARS monolith robot, ported from the standalone FAQ app.
- *
- * MOUNTING — read before editing:
- * This is a SECOND WebGL context. lib/tunnel.ts's context is fixed and
- * never unmounts, so both are live at once whenever this is on screen.
- * That's why FaqSection only renders it on >=768px and only after the
- * section first intersects the viewport. Don't hoist it to page load.
- * ─────────────────────────────────────────────────────────────────
+/**
+ * TarsWidget - Standalone 3D Procedural TARS Robot Component
+ * 
+ * @param {Object} props
+ * @param {string} [props.className] - CSS classes for the container (must specify dimensions or be flex/absolute)
+ * @param {boolean} [props.interactive=true] - Enables direct click/tap raycasting on the 3D robot
  */
-
-import * as THREE from "three";
-import { useEffect, useRef } from "react";
-
-export default function TarsWidget() {
+export default function TarsWidget({
+  className = 'w-full h-full relative cursor-pointer',
+  interactive = true
+}) {
   const containerRef = useRef(null);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const width = container.clientWidth || 300;
-    const height = container.clientHeight || 500;
+    let width = container.clientWidth || 300;
+    let height = container.clientHeight || 500;
 
+    // --- 1. THREE.JS SCENE & CAMERA SETUP ---
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-    camera.position.set(3.5, 2.0, 4.5);
-    camera.lookAt(0, 1.2, 0);
+    const camera = new THREE.PerspectiveCamera(46, width / height, 0.1, 100);
+    camera.position.set(3.0, 1.8, 3.9);
+    camera.lookAt(-0.25, 1.2, -0.1);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
@@ -37,21 +34,28 @@ export default function TarsWidget() {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
 
-    /* Studio lighting — warm fill matches the site's accretion amber */
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    // --- 2. LIGHTING RIG ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 3.4);
     keyLight.position.set(5, 8, 5);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0x8b5e3c, 1.5);
+    const fillLight = new THREE.DirectionalLight(0xb58055, 2.4);
     fillLight.position.set(-5, 3, 5);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 2.8);
     rimLight.position.set(0, 6, -6);
     scene.add(rimLight);
 
+    // Warm copper/amber accent light to reflect on TARS metallic surfaces
+    const accentLight = new THREE.PointLight(0xffaa22, 10.0, 15);
+    accentLight.position.set(2, 2.5, 3);
+    scene.add(accentLight);
+
+    // --- 3. PROCEDURAL TEXTURES GENERATION ---
     const tarsGroup = new THREE.Group();
     scene.add(tarsGroup);
 
@@ -59,59 +63,116 @@ export default function TarsWidget() {
     const SEG_HEIGHT = 2.4;
     const SEG_DEPTH = 0.5;
 
+    // A. Brushed metal texture with vertical indents/seams
+    const bodyCanvas = document.createElement('canvas');
+    bodyCanvas.width = 512;
+    bodyCanvas.height = 512;
+    const bodyCtx = bodyCanvas.getContext('2d');
+
+    // Base metallic fill
+    bodyCtx.fillStyle = '#cacad0';
+    bodyCtx.fillRect(0, 0, 512, 512);
+
+    // Fine brushed grain streaks
+    for (let i = 0; i < 1500; i++) {
+      const x = Math.random() * 512;
+      const h = 40 + Math.random() * 200;
+      const y = Math.random() * (512 - h);
+      const alpha = 0.02 + Math.random() * 0.06;
+      
+      bodyCtx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+      bodyCtx.fillRect(x, y, 1 + Math.random() * 2, h);
+      
+      bodyCtx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+      bodyCtx.fillRect(x + 1, y, 1 + Math.random() * 2, h);
+    }
+
+    // Panel seams
+    const drawVerticalIndent = (x) => {
+      bodyCtx.fillStyle = '#3a3a3d';
+      bodyCtx.fillRect(x - 3, 0, 3, 512);
+      bodyCtx.fillStyle = '#1c1c1f';
+      bodyCtx.fillRect(x, 0, 4, 512);
+      bodyCtx.fillStyle = '#d0d0d5';
+      bodyCtx.fillRect(x + 4, 0, 3, 512);
+    };
+    drawVerticalIndent(128);
+    drawVerticalIndent(384);
+
+    const drawHorizontalIndent = (y) => {
+      bodyCtx.fillStyle = '#3a3a3d';
+      bodyCtx.fillRect(0, y - 2, 512, 2);
+      bodyCtx.fillStyle = '#1c1c1f';
+      bodyCtx.fillRect(0, y, 512, 2);
+      bodyCtx.fillStyle = '#d0d0d5';
+      bodyCtx.fillRect(0, y + 2, 512, 2);
+    };
+    drawHorizontalIndent(80);
+    drawHorizontalIndent(432);
+
+    const bodyTex = new THREE.CanvasTexture(bodyCanvas);
+    bodyTex.wrapS = THREE.RepeatWrapping;
+    bodyTex.wrapT = THREE.RepeatWrapping;
+
     const bodyMaterial = new THREE.MeshStandardMaterial({
-      color: 0x9999a0,
-      metalness: 0.6,
-      roughness: 0.35,
+      color: 0xffffff,
+      map: bodyTex,
+      bumpMap: bodyTex,
+      bumpScale: 0.008,
+      metalness: 0.9,
+      roughness: 0.22,
     });
 
     const screenMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2a2a2a,
-      roughness: 0.8,
-      metalness: 0.2,
+      color: 0x151515,
+      roughness: 0.9,
+      metalness: 0.1,
     });
 
-    /* Ridged texture for the outer legs */
-    const ridgeCanvas = document.createElement("canvas");
+    // B. Ridged texture for outer legs
+    const ridgeCanvas = document.createElement('canvas');
     ridgeCanvas.width = 128;
     ridgeCanvas.height = 128;
-    const rctx = ridgeCanvas.getContext("2d");
-    rctx.fillStyle = "#888888";
+    const rctx = ridgeCanvas.getContext('2d');
+    rctx.fillStyle = '#18181b';
     rctx.fillRect(0, 0, 128, 128);
-    rctx.fillStyle = "#555555";
+    rctx.fillStyle = '#0d0d0f';
     for (let x = 8; x < 128; x += 16) rctx.fillRect(x, 0, 4, 128);
+
     const ridgeTex = new THREE.CanvasTexture(ridgeCanvas);
     ridgeTex.wrapS = THREE.RepeatWrapping;
     ridgeTex.wrapT = THREE.RepeatWrapping;
     ridgeTex.repeat.set(2, 1);
     const ridgeMat = new THREE.MeshStandardMaterial({
       map: ridgeTex,
-      metalness: 0.5,
-      roughness: 0.7,
+      metalness: 0.2,
+      roughness: 0.85,
       bumpMap: ridgeTex,
       bumpScale: 0.02,
     });
 
-    /* "TARS" label */
-    const textCanvas = document.createElement("canvas");
+    // C. "TARS" Vertical typography canvas
+    const textCanvas = document.createElement('canvas');
     textCanvas.width = 256;
     textCanvas.height = 1024;
-    const tctx = textCanvas.getContext("2d");
-    tctx.fillStyle = "#F4A233";
-    tctx.font = "bold 220px sans-serif";
-    tctx.textAlign = "center";
-    tctx.textBaseline = "middle";
-    const tStr = "TARS";
-    for (let i = 0; i < 4; i++) tctx.fillText(tStr[i], 128, 160 + i * 240);
+    const tctx = textCanvas.getContext('2d');
+    tctx.fillStyle = '#ff9900';
+    tctx.font = 'bold 220px sans-serif';
+    tctx.textAlign = 'center';
+    tctx.textBaseline = 'middle';
+    const tStr = 'TARS';
+    for (let i = 0; i < 4; i++) {
+      tctx.fillText(tStr[i], 128, 160 + i * 240);
+    }
     const textTex = new THREE.CanvasTexture(textCanvas);
     const textMat = new THREE.MeshBasicMaterial({ map: textTex, transparent: true });
 
-    /* Braille plate */
-    const brailleCanvas = document.createElement("canvas");
+    // D. Braille decal canvas
+    const brailleCanvas = document.createElement('canvas');
     brailleCanvas.width = 256;
     brailleCanvas.height = 1024;
-    const bctx = brailleCanvas.getContext("2d");
-    bctx.fillStyle = "#F4A233";
+    const bctx = brailleCanvas.getContext('2d');
+    bctx.fillStyle = '#ff9900';
     const br = 16;
     for (let i = 0; i < 4; i++) {
       const cy = 160 + i * 240;
@@ -137,15 +198,17 @@ export default function TarsWidget() {
     const brailleTex = new THREE.CanvasTexture(brailleCanvas);
     const brailleMat = new THREE.MeshBasicMaterial({ map: brailleTex, transparent: true });
 
+    // --- 4. GEOMETRIES & SEGMENTS CREATION ---
     const segmentGeo = new THREE.BoxGeometry(SEG_WIDTH, SEG_HEIGHT, SEG_DEPTH);
     const screenGeo = new THREE.PlaneGeometry(SEG_WIDTH, 0.4);
     const ridgeGeo = new THREE.BoxGeometry(SEG_WIDTH + 0.002, 0.4, SEG_DEPTH + 0.002);
     const textGeo = new THREE.PlaneGeometry(0.15, 0.6);
-    const dataGeo = new THREE.PlaneGeometry(0.2, 0.2);
+    let dataGeo = null;
+    let dataMat = null;
+    let dataTex = null;
 
-    const segments = [];;
+    const segments = [];
     const xOffsets = [-0.6, -0.2, 0.2, 0.6];
-    const extraDisposables = [];;
 
     for (let i = 0; i < 4; i++) {
       const segMesh = new THREE.Mesh(segmentGeo, bodyMaterial);
@@ -174,17 +237,18 @@ export default function TarsWidget() {
           txt.position.set(0, 0, Z_OFFSET);
           segMesh.add(txt);
 
-          const dataCanvas = document.createElement("canvas");
+          // Telemetry graphic
+          const dataCanvas = document.createElement('canvas');
           dataCanvas.width = 64;
           dataCanvas.height = 64;
-          const dctx = dataCanvas.getContext("2d");
-          dctx.fillStyle = "#4ade80";
+          const dctx = dataCanvas.getContext('2d');
+          dctx.fillStyle = '#4ade80';
           dctx.fillRect(10, 20, 10, 5);
           dctx.fillRect(25, 20, 20, 5);
           dctx.fillRect(10, 40, 30, 5);
-          const dataTex = new THREE.CanvasTexture(dataCanvas);
-          const dataMat = new THREE.MeshBasicMaterial({ map: dataTex, transparent: true });
-          extraDisposables.push(dataTex, dataMat);
+          dataTex = new THREE.CanvasTexture(dataCanvas);
+          dataMat = new THREE.MeshBasicMaterial({ map: dataTex, transparent: true });
+          dataGeo = new THREE.PlaneGeometry(0.2, 0.2);
           const dataPlane = new THREE.Mesh(dataGeo, dataMat);
           dataPlane.position.set(-0.05, 0, 0.001);
           s1.add(dataPlane);
@@ -201,10 +265,9 @@ export default function TarsWidget() {
 
     const BASE_Y = SEG_HEIGHT / 2;
     tarsGroup.position.y = BASE_Y;
+    tarsGroup.scale.set(1.1, 1.1, 1.1);
 
-    const outerLegs = [segments[0], segments[3]];
-    const innerLegs = [segments[1], segments[2]];
-
+    // --- 5. STATE MACHINE & ANIMATION CONTROLLER ---
     const STATES = { IDLE: 0, WALKING: 1, TRANSITIONING: 2 };
     let currentState = STATES.IDLE;
     let walkTime = 0;
@@ -216,9 +279,16 @@ export default function TarsWidget() {
     let targetRotations = [];
     let startGroupY = BASE_Y;
 
+    let introWeight = 0;
+    const INTRO_DURATION = 0.6;
+    let startWalkRotations = [];
+
     function toggleState() {
       if (currentState === STATES.IDLE || currentState === STATES.TRANSITIONING) {
         currentState = STATES.WALKING;
+        introWeight = 0;
+        startWalkRotations = segments.map((seg) => seg.rotation.x);
+        walkTime = 0;
       } else if (currentState === STATES.WALKING) {
         currentState = STATES.TRANSITIONING;
         transitionProgress = 0;
@@ -230,58 +300,67 @@ export default function TarsWidget() {
       }
     }
 
-    /* Opening a FAQ accordion makes TARS walk — FaqSection dispatches this */
+    // --- 6. EVENT LISTENERS ---
     const handleTarsInteraction = (e) => {
-      const active = e.detail?.active;
-      if (active && (currentState === STATES.IDLE || currentState === STATES.TRANSITIONING)) {
+      if (e.detail?.active && (currentState === STATES.IDLE || currentState === STATES.TRANSITIONING)) {
         toggleState();
-      } else if (!active && currentState === STATES.WALKING) {
+      } else if (!e.detail?.active && currentState === STATES.WALKING) {
         toggleState();
       }
     };
 
-    window.addEventListener("tars-interaction", handleTarsInteraction);
+    window.addEventListener('tars-interaction', handleTarsInteraction);
 
+    // Direct Canvas Click Raycasting
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
     const handlePointerDown = (event) => {
+      if (!interactive) return;
       const rect = container.getBoundingClientRect();
-      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      mouse.x = (x / rect.width) * 2 - 1;
+      mouse.y = -(y / rect.height) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
-      if (raycaster.intersectObjects(segments).length > 0) toggleState();
+      const intersects = raycaster.intersectObjects(segments);
+      if (intersects.length > 0) {
+        toggleState();
+      }
     };
 
-    container.addEventListener("pointerdown", handlePointerDown);
+    container.addEventListener('pointerdown', handlePointerDown);
 
+    // Responsive Scale & Resize Observer
     const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
+      for (let entry of entries) {
         const { width: w, height: h } = entry.contentRect;
         if (w > 0 && h > 0) {
           camera.aspect = w / h;
           camera.updateProjectionMatrix();
           renderer.setSize(w, h);
+
+          tarsGroup.scale.set(1.1, 1.1, 1.1);
         }
       }
     });
     resizeObserver.observe(container);
 
-    const clock = new THREE.Clock();
-    let animationFrameId = 0;
-
-    /* This is a second live WebGL context, at the very bottom of a ~7000px
-       page, and its loop used to run from mount until unmount regardless of
-       whether anyone could see it. Skip the whole frame while off-screen —
-       cheaper than the render, and getDelta() keeps being drained so the walk
-       cycle doesn't jump on the frame it comes back. */
+    // Pause rendering when scrolled out of view to preserve GPU cycles
     let onScreen = true;
     const visibility = new IntersectionObserver(
-      ([entry]) => { onScreen = entry.isIntersecting; },
-      { rootMargin: "100px" }
+      ([entry]) => {
+        onScreen = entry.isIntersecting;
+      },
+      { rootMargin: '100px' }
     );
     visibility.observe(container);
+
+    // --- 7. ANIMATION TICK LOOP ---
+    const clock = new THREE.Clock();
+    let animationFrameId;
 
     function animate() {
       animationFrameId = requestAnimationFrame(animate);
@@ -294,19 +373,27 @@ export default function TarsWidget() {
       } else if (currentState === STATES.WALKING) {
         walkTime += delta * WALK_SPEED;
 
-        const outerAngle = walkTime;
-        const innerAngle = walkTime + Math.PI / 2;
+        if (introWeight < 1.0) {
+          introWeight = Math.min(1.0, introWeight + delta / INTRO_DURATION);
+        }
 
-        outerLegs.forEach((leg) => (leg.rotation.x = outerAngle));
-        innerLegs.forEach((leg) => (leg.rotation.x = innerAngle));
+        const easeIntro = 1 - Math.pow(1 - introWeight, 3);
+        const targetOuterAngle = (startWalkRotations[0] || 0) + walkTime;
+        const targetInnerAngle = (startWalkRotations[1] || 0) + walkTime + Math.PI / 2;
 
-        /* Keep the lowest corner on the floor as the segments tumble */
+        segments.forEach((seg, i) => {
+          const isOuter = (i === 0 || i === 3);
+          const targetAngle = isOuter ? targetOuterAngle : targetInnerAngle;
+          const startAngle = startWalkRotations[i] || 0;
+          seg.rotation.x = THREE.MathUtils.lerp(startAngle, targetAngle, easeIntro);
+        });
+
         const hOuter =
-          (SEG_HEIGHT / 2) * Math.abs(Math.cos(outerAngle)) +
-          (SEG_DEPTH / 2) * Math.abs(Math.sin(outerAngle));
+          (SEG_HEIGHT / 2) * Math.abs(Math.cos(segments[0].rotation.x)) +
+          (SEG_DEPTH / 2) * Math.abs(Math.sin(segments[0].rotation.x));
         const hInner =
-          (SEG_HEIGHT / 2) * Math.abs(Math.cos(innerAngle)) +
-          (SEG_DEPTH / 2) * Math.abs(Math.sin(innerAngle));
+          (SEG_HEIGHT / 2) * Math.abs(Math.cos(segments[1].rotation.x)) +
+          (SEG_DEPTH / 2) * Math.abs(Math.sin(segments[1].rotation.x));
 
         tarsGroup.position.y = Math.max(hOuter, hInner);
       } else if (currentState === STATES.TRANSITIONING) {
@@ -333,31 +420,36 @@ export default function TarsWidget() {
 
     animate();
 
+    // --- 8. LIFECYCLE CLEANUP ---
     return () => {
       cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("tars-interaction", handleTarsInteraction);
-      container.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener('tars-interaction', handleTarsInteraction);
+      container.removeEventListener('pointerdown', handlePointerDown);
       resizeObserver.disconnect();
       visibility.disconnect();
 
-      [
-        segmentGeo, screenGeo, ridgeGeo, textGeo, dataGeo,
-        bodyMaterial, screenMaterial, ridgeMat, textMat, brailleMat,
-        ridgeTex, textTex, brailleTex,
-        ...extraDisposables,
-      ].forEach((d) => d.dispose());
-
       renderer.dispose();
+      segmentGeo.dispose();
+      screenGeo.dispose();
+      ridgeGeo.dispose();
+      textGeo.dispose();
+      if (dataGeo) dataGeo.dispose();
+      bodyMaterial.dispose();
+      screenMaterial.dispose();
+      ridgeMat.dispose();
+      textMat.dispose();
+      brailleMat.dispose();
+      if (dataMat) dataMat.dispose();
+      ridgeTex.dispose();
+      textTex.dispose();
+      brailleTex.dispose();
+      bodyTex.dispose();
+      if (dataTex) dataTex.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [interactive]);
 
-  return (
-    <div
-      ref={containerRef}
-      className="w-full h-full absolute inset-0 drop-shadow-2xl cursor-pointer"
-    />
-  );
+  return <div ref={containerRef} className={className} />;
 }
