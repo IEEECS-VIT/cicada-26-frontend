@@ -19,6 +19,7 @@ export default function ChallengesTab() {
     setActiveChallenge,
     setShowCreateChallengeModal,
     handleOpenCreateRound,
+    handleOpenEditRound,
     setEditingChallenge,
     handleOpenEditChallenge,
     setNewChallengeTitle,
@@ -190,6 +191,9 @@ export default function ChallengesTab() {
         <div className="space-y-10">
           {displayedRoundNumbers.map((roundNum) => {
             const roundChallenges = groupedByRound[roundNum] || [];
+            const roundObj = (rounds || []).find((r) => r.order_number === roundNum);
+            const displayName = roundObj?.name?.toUpperCase() || `ROUND ${String(roundNum).padStart(2, '0')} SECTOR ARCHIVES`;
+
             return (
               <div key={roundNum} className="border border-accretion/25 bg-black/30 p-5 rounded-lg">
                 {/* Round Group Header */}
@@ -200,21 +204,31 @@ export default function ChallengesTab() {
                     </span>
                     <div>
                       <h3 className="font-orbitron text-base font-bold tracking-[0.18em] text-starlight">
-                        ROUND {String(roundNum).padStart(2, '0')} SECTOR ARCHIVES
+                        {displayName}
                       </h3>
                       <p className="font-rajdhani text-xs tracking-wider text-copper">
                         {roundChallenges.length} {roundChallenges.length === 1 ? 'TRANSMISSION ARCHIVE' : 'TRANSMISSION ARCHIVES'} CONFIGURED
                       </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenCreateModal(roundNum)}
-                    className="inline-flex items-center gap-1.5 rounded border border-accretion/40 bg-accretion/10 px-3 py-1.5 font-orbitron text-[10px] tracking-[0.16em] text-accretion hover:bg-accretion hover:text-black transition-colors"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    ADD ARCHIVE TO ROUND {roundNum}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => roundObj && handleOpenEditRound(roundObj)}
+                      className="inline-flex items-center gap-1.5 rounded border border-copper/40 bg-copper/10 px-3 py-1.5 font-orbitron text-[10px] tracking-[0.16em] text-copper hover:bg-copper hover:text-black transition-colors"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                      EDIT ROUND
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCreateModal(roundNum)}
+                      className="inline-flex items-center gap-1.5 rounded border border-accretion/40 bg-accretion/10 px-3 py-1.5 font-orbitron text-[10px] tracking-[0.16em] text-accretion hover:bg-accretion hover:text-black transition-colors"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      ADD ARCHIVE TO ROUND {roundNum}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Archives Grid */}
