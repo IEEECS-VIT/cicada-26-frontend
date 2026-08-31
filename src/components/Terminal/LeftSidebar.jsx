@@ -7,7 +7,18 @@ function pad(n) {
 }
 
 export default function LeftSidebar({ onNavigate }) {
-  const { unlockedRounds, unlockedPhases, currentRound, changeRound, currentPhase, setCurrentPhase, activeTab, setActiveTab, challengeData } = useGameState();
+  const { 
+    unlockedRounds, 
+    unlockedPhases, 
+    currentRound, 
+    changeRound, 
+    currentPhase, 
+    setCurrentPhase, 
+    activeTab, 
+    setActiveTab, 
+    challengeData,
+    completedChallenges 
+  } = useGameState();
   const [expandedRound, setExpandedRound] = useState(currentRound);
 
   const [remaining, setRemaining] = useState(3 * 3600 + 46 * 60 + 21); // Mock 3h 46m 21s
@@ -33,12 +44,22 @@ export default function LeftSidebar({ onNavigate }) {
   const calculateRoundProgress = (roundId) => {
     const roundData = challengeData?.[roundId];
     if (!roundData || !unlockedRounds.includes(roundId)) return 0;
-    // if we've unlocked a round past this one, it's 100%
+    // If we've unlocked a round past this one, it's 100%
     if (Math.max(...unlockedRounds) > roundId) return 100;
     
-    const unlocked = unlockedPhases[roundId] || 1;
-    // Note: if round is completed, unlocked > totalPhases but we'll cap at 100% later if needed, but let's assume it caps at totalPhases for now.
-    return Math.round((Math.min(unlocked, roundData.totalPhases) / roundData.totalPhases) * 100);
+    const phasesList = Object.values(roundData.phases || {});
+    if (phasesList.length === 0) return 0;
+
+    const completedList = completedChallenges || [];
+    const completedInThisRound = phasesList.filter((p) => completedList.includes(p.order_number)).length;
+
+    if (completedInThisRound > 0) {
+      return Math.min(100, Math.round((completedInThisRound / phasesList.length) * 100));
+    }
+
+    const currentUnlockedPhase = unlockedPhases[roundId] || 1;
+    const completedArchives = Math.max(0, currentUnlockedPhase - 1);
+    return Math.min(100, Math.round((completedArchives / phasesList.length) * 100));
   };
 
   return (
@@ -125,14 +146,17 @@ export default function LeftSidebar({ onNavigate }) {
                   
                   {Object.entries(roundData.phases).map(([phaseIdStr, phaseData]) => {
                     const phaseId = parseInt(phaseIdStr);
-                    const isPhaseUnlocked = (unlockedPhases[roundId] || 1) >= phaseId;
-                    const isPhaseActive = currentPhase === phaseId;
+                    const isPhaseUnlocked = isUnlocked && ((unlockedPhases[roundId] || 1) >= phaseId || !phaseData.is_locked || Boolean(phaseData.is_active));
+                    const isPhaseActive = currentRound === roundId && currentPhase === phaseId;
 
                     return (
                       <button
                         key={phaseId}
                         onClick={() => { 
                           if (isPhaseUnlocked) {
+                            if (currentRound !== roundId) {
+                              changeRound(roundId);
+                            }
                             setCurrentPhase(phaseId);
                             setActiveTab('overview');
                             onNavigate?.();

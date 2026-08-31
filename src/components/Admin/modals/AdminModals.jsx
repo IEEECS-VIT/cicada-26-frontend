@@ -76,6 +76,8 @@ export default function AdminModals() {
     setNewChallengeTitle,
     newChallengeRound,
     setNewChallengeRound,
+    newChallengeArchive,
+    setNewChallengeArchive,
     newChallengeAnswer,
     setNewChallengeAnswer,
     newChallengePoints,
@@ -953,12 +955,43 @@ export default function AdminModals() {
             </div>
 
             <form onSubmit={handleCreateChallenge} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Round Number</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                    value={newChallengeRound}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10) || 1;
+                      setNewChallengeRound(val);
+                      const archivesInRound = challenges.filter(c => c.round === val).map(c => c.archiveNumber || 1);
+                      const nextArchive = Math.max(0, ...archivesInRound) + 1;
+                      setNewChallengeArchive(nextArchive);
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Archive Sequence #</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                    value={newChallengeArchive}
+                    onChange={(e) => setNewChallengeArchive(parseInt(e.target.value, 10) || 1)}
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Challenge Title</label>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Archive / Challenge Title</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Memory Buffer Overflow"
+                  placeholder="e.g. Archive 01: Signal Intrusion"
                   className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                   value={newChallengeTitle}
                   onChange={(e) => setNewChallengeTitle(e.target.value)}
@@ -966,17 +999,6 @@ export default function AdminModals() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Round Level</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                    value={newChallengeRound}
-                    onChange={(e) => setNewChallengeRound(e.target.value)}
-                  />
-                </div>
                 <div>
                   <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Point Value</label>
                   <input
@@ -987,6 +1009,17 @@ export default function AdminModals() {
                     className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                     value={newChallengePoints}
                     onChange={(e) => setNewChallengePoints(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Time Limit (Minutes)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                    value={newChallengeTimeLimit}
+                    onChange={(e) => setNewChallengeTimeLimit(e.target.value)}
                   />
                 </div>
               </div>
@@ -1000,18 +1033,6 @@ export default function AdminModals() {
                   className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                   value={newChallengeAnswer}
                   onChange={(e) => setNewChallengeAnswer(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Time Limit (Minutes)</label>
-                <input
-                  type="number"
-                  min="0"
-                  required
-                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                  value={newChallengeTimeLimit}
-                  onChange={(e) => setNewChallengeTimeLimit(e.target.value)}
                 />
               </div>
 

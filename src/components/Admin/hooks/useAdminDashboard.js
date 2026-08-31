@@ -17,6 +17,53 @@ import {
   DEFAULT_CREDENTIALS,
 } from '../constants';
 
+export const parseRoundAndArchive = (x, index = 0) => {
+  let round = x.round ?? x.round_number;
+  let archive = x.archiveNumber ?? x.archive_number ?? x.archive ?? x.phase;
+
+  // 1. Check round_id
+  if (!round && x.round_id) {
+    if (x.round_id === '7db4150a-3259-4ef3-b9d6-d7ccd1d4f24f') {
+      round = 2;
+    } else if (x.round_id === '85d491a1-53d9-46fa-a1cb-98a7da15fd1b') {
+      round = 1;
+    }
+  }
+
+  // 2. Title and string parsing
+  if (!round || !archive) {
+    if (x.order_number >= 100) {
+      round = round || Math.floor(x.order_number / 100);
+      archive = archive || (x.order_number % 100);
+    } else {
+      const str = `${x.name || ''} ${x.title || ''}`;
+      const roundMatch = str.match(/round\s*(\d+)/i);
+      if (roundMatch && !round) {
+        round = parseInt(roundMatch[1], 10);
+      }
+      const archiveMatch = str.match(/archive\s*0?(\d+)/i) || str.match(/phase\s*0?(\d+)/i);
+      if (archiveMatch && !archive) {
+        archive = parseInt(archiveMatch[1], 10);
+      }
+    }
+  }
+
+  // 3. Fallback based on challenge order: Challenges 1..6 -> Round 1; Challenges 7+ -> Round 2
+  if (!round) {
+    if (x.order_number) {
+      if (x.order_number <= 6) round = 1;
+      else round = 2;
+    } else {
+      round = 1;
+    }
+  }
+
+  round = parseInt(round, 10) || 1;
+  archive = parseInt(archive, 10) || (x.order_number ? ((x.order_number - 1) % 6 + 1) : (index + 1));
+
+  return { round, archiveNumber: archive };
+};
+
 export function useAdminDashboard() {
   const { user: authUser, logout } = useAuth();
   const navigate = useNavigate();
@@ -37,7 +84,11 @@ export function useAdminDashboard() {
   });
   const [challenges, setChallenges] = useState(() => {
     const saved = localStorage.getItem('cicada_challenges');
-    return saved ? JSON.parse(saved) : INITIAL_CHALLENGES;
+    const parsed = saved ? JSON.parse(saved) : INITIAL_CHALLENGES;
+    return parsed.map((c, i) => {
+      const { round, archiveNumber } = parseRoundAndArchive(c, i);
+      return { ...c, round, archiveNumber };
+    });
   });
   const [logs, setLogs] = useState(() => {
     const saved = localStorage.getItem('cicada_logs');
@@ -114,6 +165,7 @@ export function useAdminDashboard() {
   const [showCreateChallengeModal, setShowCreateChallengeModal] = useState(false);
   const [newChallengeTitle, setNewChallengeTitle] = useState('');
   const [newChallengeRound, setNewChallengeRound] = useState(1);
+  const [newChallengeArchive, setNewChallengeArchive] = useState(1);
   const [newChallengeAnswer, setNewChallengeAnswer] = useState('');
   const [newChallengePoints, setNewChallengePoints] = useState(100);
   const [newChallengeTimeLimit, setNewChallengeTimeLimit] = useState(0);
@@ -189,7 +241,13 @@ export function useAdminDashboard() {
       url: a.url || '#',
     }));
 
-    const orderNum = parseInt(overrides.order_number ?? challenge?.round ?? raw.order_number ?? 1, 10);
+    const orderNum = parseInt(
+      overrides.order_number ??
+      challenge?.order_number ??
+      raw.order_number ??
+      (challenge?.round ? (challenge.round >= 100 ? challenge.round : (challenge.round * 100 + (challenge.archiveNumber || 1))) : 1),
+      10
+    );
     
     // Normalize time limit: backend schema requires a number >= 1
     const rawLimitInput = overrides.time_limit !== undefined ? overrides.time_limit : (challenge?.timeLimit ?? raw.time_limit);
@@ -400,16 +458,19 @@ export function useAdminDashboard() {
 
       if (Array.isArray(ch?.data) && ch.data.length > 0) {
         const known = getKnownAnswers();
-        setChallenges(ch.data.map((x) => {
+        setChallenges(ch.data.map((x, idx) => {
           const rawAns = x.answer_key || x.answer || '';
           const isHashed = typeof rawAns === 'string' && rawAns.startsWith('$2b$');
           const savedPlain = known[x.id] || known[x.order_number] || '';
           const displayAns = isHashed ? (savedPlain || 'ENCRYPTED (SET)') : (rawAns || '—');
+          const { round, archiveNumber } = parseRoundAndArchive(x, idx);
 
           return {
             id: x.id,
-            title: x.name,
-            round: x.order_number,
+            title: x.name || x.title,
+            round: round,
+            archiveNumber: archiveNumber,
+            order_number: x.order_number,
             answer: displayAns,
             rawAnswer: rawAns,
             isHashedAnswer: isHashed,
@@ -417,7 +478,7 @@ export function useAdminDashboard() {
             isLocked: x.is_active === false,
             hints: x.hints || [],
             hintsEnabled: (x.hints || []).length > 0 && (x.hints || []).some((h) => h.is_visible),
-            solvedCount: solvedCountsByRound[x.order_number] || 0,
+            solvedCount: solvedCountsByRound[x.order_number] || solvedCountsByRound[round] || 0,
             timeLimit: x.time_limit || 0,
             assets: (x.assets || []).map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' })),
             raw: x,
@@ -699,7 +760,10 @@ export function useAdminDashboard() {
       parsedLimit = 2147483647;
     }
 
-    const orderNum = parseInt(newChallengeRound, 10) || 1;
+    const roundNum = parseInt(newChallengeRound, 10) || 1;
+    const archiveNum = parseInt(newChallengeArchive, 10) || 1;
+    const maxOrder = challenges.reduce((max, c) => Math.max(max, c.order_number || c.raw?.order_number || 0), 0);
+    const orderNum = maxOrder + 1;
     const titleVal = newChallengeTitle.trim();
     const answerKeyVal = newChallengeAnswer.trim() || 'decrypted_key';
     const pointsVal = parseInt(newChallengePoints, 10) || 100;
@@ -707,6 +771,10 @@ export function useAdminDashboard() {
     try {
       await createChallenge({
         order_number: orderNum,
+        round: roundNum,
+        round_number: roundNum,
+        archive_number: archiveNum,
+        phase: archiveNum,
         name: titleVal,
         title: titleVal,
         answer_key: answerKeyVal,
@@ -724,7 +792,28 @@ export function useAdminDashboard() {
         },
         assets: (newChallengeAssets || []).map((a) => ({ type: 'file', url: a.url || '#', name: (a.name || 'asset').trim() || 'asset' })),
       });
+
+      const newChalObj = {
+        id: `chal-${Date.now()}`,
+        title: titleVal,
+        round: roundNum,
+        archiveNumber: archiveNum,
+        order_number: orderNum,
+        answer: answerKeyVal,
+        rawAnswer: answerKeyVal,
+        isHashedAnswer: false,
+        points: pointsVal,
+        timeLimit: parsedLimit < 99999 ? parsedLimit : 0,
+        isLocked: true,
+        hintsEnabled: false,
+        solvedCount: 0,
+        assets: (newChallengeAssets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
+      };
+      setChallenges((prev) => [...prev, newChalObj]);
+
       setNewChallengeTitle('');
+      setNewChallengeRound(1);
+      setNewChallengeArchive(1);
       setNewChallengeAnswer('');
       setNewChallengePoints(100);
       setNewChallengeTimeLimit(0);
@@ -763,7 +852,7 @@ export function useAdminDashboard() {
     const payload = buildChallengePayload(activeChallenge, { time_limit: newLimit });
 
     try {
-      const challengeId = activeChallenge.raw?.id || activeChallenge.id || activeChallenge.round;
+      const challengeId = activeChallenge.raw?.id || activeChallenge.id || activeChallenge.order_number;
       await updateChallenge(challengeId, payload);
       setChallenges(challenges.map((c) => (c.id === activeChallenge.id ? { ...c, timeLimit: payload.time_limit } : c)));
       setShowTimeLimitModal(false);
@@ -1142,7 +1231,7 @@ export function useAdminDashboard() {
     const payload = buildChallengePayload(chal, { is_active: newActiveStatus });
 
     try {
-      const targetId = chal.raw?.id || challengeId || chal.round;
+      const targetId = chal.raw?.id || chal.id || chal.raw?.order_number || chal.order_number;
       await updateChallenge(targetId, payload);
       setChallenges(challenges.map((c) => (c.id === challengeId ? { ...c, isLocked: !newActiveStatus } : c)));
       refreshLiveInBackground();
@@ -1207,7 +1296,7 @@ export function useAdminDashboard() {
     const payload = buildChallengePayload(activeChallenge, { answer_key: trimmed });
 
     try {
-      const challengeId = activeChallenge.raw?.id || activeChallenge.id || activeChallenge.round;
+      const challengeId = activeChallenge.raw?.id || activeChallenge.id || activeChallenge.order_number;
       await updateChallenge(challengeId, payload);
       
       saveKnownAnswer(challengeId, trimmed);
@@ -1469,6 +1558,8 @@ export function useAdminDashboard() {
     setNewChallengeTitle,
     newChallengeRound,
     setNewChallengeRound,
+    newChallengeArchive,
+    setNewChallengeArchive,
     newChallengeAnswer,
     setNewChallengeAnswer,
     newChallengePoints,
