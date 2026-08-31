@@ -358,6 +358,14 @@ export default function ChallengesTab() {
                                   <span className="flex min-w-0 items-center gap-1.5 text-starlight">
                                     <File className="h-3 w-3 shrink-0 text-copper" />
                                     <span className="truncate">{asset.name}</span>
+                                    {asset.asset_set ? (
+                                      <span 
+                                        className="shrink-0 rounded bg-copper/20 px-1 py-0.5 text-[9px] font-bold tracking-widest text-copper"
+                                        title={`Assigned specifically to teams in Asset Set ${asset.asset_set}`}
+                                      >
+                                        SET {asset.asset_set}
+                                      </span>
+                                    ) : null}
                                   </span>
                                   <div className="flex items-center gap-2 shrink-0 font-bold">
                                     <a
