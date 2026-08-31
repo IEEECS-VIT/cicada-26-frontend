@@ -456,7 +456,7 @@ export function useAdminDashboard() {
         });
       });
 
-      if (Array.isArray(ch?.data) && ch.data.length > 0) {
+      if (Array.isArray(ch?.data)) {
         const known = getKnownAnswers();
         setChallenges(ch.data.map((x, idx) => {
           const rawAns = x.answer_key || x.answer || '';
@@ -1241,6 +1241,21 @@ export function useAdminDashboard() {
     }
   };
 
+  const handleDeleteChallenge = async (challengeId) => {
+    if (!window.confirm("Are you sure you want to permanently delete this challenge? This action cannot be undone.")) return;
+    const chal = challenges.find((c) => c.id === challengeId);
+    if (!chal) return;
+    try {
+      const targetId = chal.raw?.id || chal.id || chal.raw?.order_number || chal.order_number;
+      await deleteChallenge(targetId);
+      setChallenges((prev) => prev.filter((c) => c.id !== challengeId));
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error("Failed to delete challenge:", err);
+      alert(err.message || 'Failed to delete challenge');
+    }
+  };
+
   // API Endpoint: PATCH /api/admin/challenges/:id/hints/:hintId/toggle (applied per-hint)
   const handleToggleHintChallenge = async (challengeId, currentHintStatus) => {
     const chal = challenges.find((c) => c.id === challengeId);
@@ -1652,6 +1667,7 @@ export function useAdminDashboard() {
     handleOpenProgressOverride,
     handleSaveProgressOverride,
     handleToggleLockChallenge,
+    handleDeleteChallenge,
     handleToggleHintChallenge,
     handleOpenEditAnswer,
     handleSaveEditAnswer,
