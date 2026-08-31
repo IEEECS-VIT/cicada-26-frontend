@@ -938,6 +938,11 @@ export function useAdminDashboard() {
     const targetRound = rounds.find(r => r.order_number === roundNum);
     const roundIdToUse = targetRound?.id || rounds[0]?.id || undefined;
 
+    if (!roundIdToUse) {
+      alert('You must create at least one Round in the Rounds tab before you can create a challenge, as challenges must be assigned to a round.');
+      return;
+    }
+
     try {
       await createChallenge({
         round_id: roundIdToUse,
