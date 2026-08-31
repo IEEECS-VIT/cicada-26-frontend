@@ -7,12 +7,18 @@ export const INITIAL_TEAMS = [
 ];
 
 export const INITIAL_CHALLENGES = [
-  { id: 'chal-101', title: 'Decryption Protocol', round: 1, answer: 'c1c4d4_2067', points: 100, isLocked: false, hintsEnabled: true, solvedCount: 5, timeLimit: 60, assets: [{ name: 'cipher.txt', url: 'https://assets.cicada.org/cipher.txt' }] },
-  { id: 'chal-102', title: 'The Whispering Port', round: 1, answer: 'p0rt_w0rd', points: 150, isLocked: false, hintsEnabled: false, solvedCount: 3, timeLimit: 90, assets: [] },
-  { id: 'chal-201', title: 'Quantum Key Distribution', round: 2, answer: 'qu4ntum_5h1ft', points: 200, isLocked: false, hintsEnabled: true, solvedCount: 2, timeLimit: 120, assets: [{ name: 'quantum_key.bin', url: 'https://assets.cicada.org/quantum_key.bin' }] },
-  { id: 'chal-202', title: 'TARS Terminal Access', round: 2, answer: '3v3nt_h0r1z0n', points: 250, isLocked: true, hintsEnabled: false, solvedCount: 0, timeLimit: 180, assets: [] },
-  { id: 'chal-301', title: 'Cicada Lattice', round: 3, answer: 'c1c4d4_pr1m3', points: 400, isLocked: true, hintsEnabled: false, solvedCount: 0, timeLimit: 240, assets: [{ name: 'lattice_schema.png', url: 'https://assets.cicada.org/lattice_schema.png' }] }
+  // Round 1
+  { id: 'chal-101', title: 'Archive 01: Signal Intrusion', round: 1, archiveNumber: 1, order_number: 101, answer: 'CICADA2026_START', points: 100, isLocked: false, hintsEnabled: true, solvedCount: 5, timeLimit: 0, assets: [{ name: 'relay_handshake.txt', url: 'https://assets.cicada.org/relay_handshake.txt' }, { name: 'Beacon Spectrum', url: 'https://assets.cicada.org/beacon_spectrum.png' }] },
+  { id: 'chal-102', title: 'Archive 02: Boot Sequence', round: 1, archiveNumber: 2, order_number: 102, answer: 'SECTOR7_OVERRIDE', points: 150, isLocked: false, hintsEnabled: true, solvedCount: 4, timeLimit: 2400, assets: [{ name: 'Core Service Manual', url: 'https://assets.cicada.org/manual.pdf' }, { name: 'boot_cfg.ini', url: 'https://assets.cicada.org/boot_cfg.ini' }] },
+  { id: 'chal-103', title: 'Archive 03: Sector Telemetry', round: 1, archiveNumber: 3, order_number: 103, answer: '7-4-1', points: 200, isLocked: false, hintsEnabled: false, solvedCount: 3, timeLimit: 1800, assets: [{ name: 'Sector / Nav Map', url: 'https://assets.cicada.org/nav_map.png' }, { name: 'Research Audio Tape #3', url: 'https://assets.cicada.org/tape3.mp3' }] },
+  { id: 'chal-104', title: 'Archive 04: Decrypted Transcript', round: 1, archiveNumber: 4, order_number: 104, answer: 'CREW_RESEARCH_ALPHA', points: 250, isLocked: false, hintsEnabled: false, solvedCount: 2, timeLimit: 0, assets: [] },
+  // Round 2
+  { id: 'chal-201', title: 'Archive 05: Core Payload Access', round: 2, archiveNumber: 1, order_number: 201, answer: 'ORBITAL_CORE_PAYLOAD', points: 300, isLocked: false, hintsEnabled: true, solvedCount: 1, timeLimit: 0, assets: [{ name: 'quantum_key.bin', url: 'https://assets.cicada.org/quantum_key.bin' }] },
+  { id: 'chal-202', title: 'Archive 06: Final Override', round: 2, archiveNumber: 2, order_number: 202, answer: 'CICADA26_PURGE', points: 350, isLocked: false, hintsEnabled: false, solvedCount: 1, timeLimit: 0, assets: [] },
+  // Round 3
+  { id: 'chal-301', title: 'Archive 07: Quantum Lattice', round: 3, archiveNumber: 1, order_number: 301, answer: 'c1c4d4_pr1m3', points: 400, isLocked: true, hintsEnabled: false, solvedCount: 0, timeLimit: 240, assets: [{ name: 'lattice_schema.png', url: 'https://assets.cicada.org/lattice_schema.png' }] }
 ];
+
 
 export const INITIAL_USERS = [
   { id: 'user-1', username: 'john_doe', email: 'john@gmail.com', role: 'Participant', isApprovedAdmin: false },
