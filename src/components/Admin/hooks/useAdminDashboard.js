@@ -1021,10 +1021,15 @@ export function useAdminDashboard() {
 
   const handleAddAssetToChallenge = () => {
     if (!tempAssetName.trim()) return;
+    
+    const parsedSet = parseInt(tempAssetSet, 10);
+    
     const newAsset = {
       name: tempAssetName.trim(),
-      url: tempAssetUrl.trim() || '#'
+      url: tempAssetUrl.trim() || '#',
+      ...(parsedSet > 0 ? { asset_set: parsedSet } : {})
     };
+    
     setNewChallengeAssets([...newChallengeAssets, newAsset]);
     setTempAssetName('');
     setTempAssetUrl('');

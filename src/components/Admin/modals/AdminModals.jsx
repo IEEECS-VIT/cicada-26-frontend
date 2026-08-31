@@ -1165,7 +1165,10 @@ export default function AdminModals() {
                   <div className="space-y-1 mb-2 max-h-24 overflow-y-auto font-mono">
                     {newChallengeAssets.map((asset, idx) => (
                       <div key={idx} className="flex justify-between items-center bg-black border border-white/10/40 px-2 py-1 rounded text-[10px]">
-                        <span className="truncate max-w-[150px] text-starlight font-semibold">{asset.name}</span>
+                        <span className="truncate max-w-[150px] text-starlight font-semibold">
+                          {asset.name}
+                          {asset.asset_set ? <span className="ml-1 text-[8px] text-copper tracking-widest">[SET {asset.asset_set}]</span> : null}
+                        </span>
                         <span className="truncate max-w-[120px] text-gray-500 text-[9px]">{asset.url}</span>
                         <button
                           type="button"
