@@ -111,6 +111,8 @@ export default function AdminModals() {
     setEditAssetName,
     editAssetUrl,
     setEditAssetUrl,
+    editAssetSet,
+    setEditAssetSet,
     showBulkImportAdminsModal,
     setShowBulkImportAdminsModal,
     bulkAdminsCSVText,

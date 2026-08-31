@@ -205,6 +205,7 @@ export function useAdminDashboard() {
   const [activeAssetChallengeId, setActiveAssetChallengeId] = useState('');
   const [editAssetName, setEditAssetName] = useState('');
   const [editAssetUrl, setEditAssetUrl] = useState('');
+  const [editAssetSet, setEditAssetSet] = useState('');
   const [dragOverChallengeId, setDragOverChallengeId] = useState(null);
 
   // Bulk Import State
@@ -1991,6 +1992,10 @@ export function useAdminDashboard() {
     setEditAssetName,
     editAssetUrl,
     setEditAssetUrl,
+    editAssetSet,
+    setEditAssetSet,
+    editTeamAssetSet,
+    setEditTeamAssetSet,
     dragOverChallengeId,
     setDragOverChallengeId,
     showBulkImportAdminsModal,
