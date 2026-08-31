@@ -15,6 +15,7 @@ import {
 export default function ChallengesTab() {
   const {
     challenges,
+    rounds,
     setActiveChallenge,
     setShowCreateChallengeModal,
     handleOpenCreateRound,
@@ -60,6 +61,14 @@ export default function ChallengesTab() {
   // Group challenges by Round -> Archive
   const groupedByRound = useMemo(() => {
     const groups = {};
+    
+    // Seed groups with all existing rounds so empty rounds render
+    (rounds || []).forEach((r) => {
+      if (r.order_number) {
+        groups[r.order_number] = [];
+      }
+    });
+
     (challenges || []).forEach((c) => {
       const r = c.round || 1;
       if (!groups[r]) groups[r] = [];
@@ -72,7 +81,7 @@ export default function ChallengesTab() {
     });
 
     return groups;
-  }, [challenges]);
+  }, [challenges, rounds]);
 
   const roundNumbers = useMemo(() => {
     return Object.keys(groupedByRound).map(Number).sort((a, b) => a - b);
