@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { getChallenges, getProgress, submitAnswer as apiSubmit } from "../api/challenges";
 
@@ -17,60 +18,185 @@ const ASSET_TYPE_LABEL = {
   text: "TEXT",
 };
 
-// Map the backend's flat challenge sequence into the rounds->phases shape the
-// terminal UI expects (a single "Round 1" with one phase per challenge).
-function buildChallengeData(challenges, progress) {
-  const sorted = [...(challenges || [])].sort((a, b) => a.order_number - b.order_number);
-  const phases = {};
-  sorted.forEach((ch, i) => {
-    const firstAsset = ch.assets?.[0];
-    const fragment = (ch.story_fragment && typeof ch.story_fragment === 'object') ? ch.story_fragment : {};
-    const fragmentTitle = fragment.title || ch.name || `Archive 0${ch.order_number}`;
-    const fragmentContent = fragment.content || ch.story_context || ch.description || "";
-    const primaryContent = fragmentContent || ch.content || "";
+// Map backend challenges into the Rounds -> Archive (Phase) shape
+function parseChallengeHierarchy(ch, index) {
+  let round = ch.round || ch.round_number;
+  let archive = ch.archive_number || ch.archive || ch.phase;
 
-    phases[i + 1] = {
-      id: `C${ch.order_number}`,
-      title: ch.name || `Archive 0${ch.order_number}`,
-      description: fragmentContent || ch.story_context || ch.description || "",
-      content: primaryContent,
-      resourceType: firstAsset ? ASSET_TYPE_LABEL[firstAsset.type] || "FILE" : "TEXT",
-      resourceUrl: firstAsset?.url || "#",
-      assets: ch.assets || [],
-      order_number: ch.order_number,
-      is_locked: ch.is_locked,
-      story_fragment: {
-        title: fragmentTitle,
-        content: fragmentContent,
+  // 1. If round_id matches known round IDs
+  if (!round && ch.round_id) {
+    if (ch.round_id === '7db4150a-3259-4ef3-b9d6-d7ccd1d4f24f') {
+      round = 2;
+    } else if (ch.round_id === '85d491a1-53d9-46fa-a1cb-98a7da15fd1b') {
+      round = 1;
+    }
+  }
+
+  // 2. Title and string parsing
+  if (!round || !archive) {
+    if (ch.order_number >= 100) {
+      round = round || Math.floor(ch.order_number / 100);
+      archive = archive || (ch.order_number % 100);
+    } else {
+      const str = `${ch.name || ''} ${ch.title || ''}`;
+      const roundMatch = str.match(/round\s*(\d+)/i);
+      if (roundMatch && !round) round = parseInt(roundMatch[1], 10);
+      const archiveMatch = str.match(/archive\s*0?(\d+)/i) || str.match(/phase\s*0?(\d+)/i);
+      if (archiveMatch && !archive) archive = parseInt(archiveMatch[1], 10);
+    }
+  }
+
+  // 3. Fallback: Challenges 1..6 -> Round 1; Challenges 7+ -> Round 2
+  if (!round) {
+    if (ch.order_number) {
+      if (ch.order_number <= 6) round = 1;
+      else round = 2;
+    } else {
+      round = 1;
+    }
+  }
+
+  round = parseInt(round, 10) || 1;
+  archive = parseInt(archive, 10) || (ch.order_number ? ((ch.order_number - 1) % 6 + 1) : (index + 1));
+
+  return { round, archive };
+}
+
+function buildChallengeData(challenges, progress) {
+  const sorted = [...(challenges || [])].sort((a, b) => (a.order_number || 0) - (b.order_number || 0));
+  const groupedByRound = {};
+
+  sorted.forEach((ch, i) => {
+    const { round, archive } = parseChallengeHierarchy(ch, i);
+    if (!groupedByRound[round]) {
+      groupedByRound[round] = [];
+    }
+    groupedByRound[round].push({ ch, originalArchive: archive });
+  });
+
+  const rounds = {};
+
+  Object.entries(groupedByRound).forEach(([rStr, chList]) => {
+    const round = parseInt(rStr, 10);
+    chList.sort((a, b) => (a.ch.order_number || 0) - (b.ch.order_number || 0));
+
+    rounds[round] = {
+      title: `Round ${round}`,
+      totalPhases: chList.length,
+      phases: {},
+    };
+
+    chList.forEach((item, phaseIndex) => {
+      const phaseNum = phaseIndex + 1;
+      const ch = item.ch;
+      const archive = item.originalArchive || phaseNum;
+
+      const firstAsset = ch.assets?.[0];
+      const fragment = (ch.story_fragment && typeof ch.story_fragment === 'object') ? ch.story_fragment : {};
+      const fragmentTitle = fragment.title || ch.name || ch.title || `Archive ${String(archive).padStart(2, '0')}`;
+      const fragmentContent = fragment.content || ch.story_context || ch.description || "";
+      const primaryContent = fragmentContent || ch.content || "";
+
+      rounds[round].phases[phaseNum] = {
+        id: `R${round}A${phaseNum}`,
+        title: ch.name || ch.title || `Archive ${String(archive).padStart(2, '0')}`,
+        description: fragmentContent || ch.story_context || ch.description || "",
+        content: primaryContent,
+        resourceType: firstAsset ? ASSET_TYPE_LABEL[firstAsset.type] || "FILE" : "TEXT",
+        resourceUrl: firstAsset?.url || "#",
+        assets: ch.assets || [],
+        order_number: ch.order_number,
+        round: round,
+        archiveNumber: archive,
+        phaseNumber: phaseNum,
+        is_locked: ch.is_locked !== undefined ? ch.is_locked : (ch.is_active === false),
+        is_active: ch.is_active !== undefined ? ch.is_active : (ch.is_locked === false),
+        story_fragment: {
+          title: fragmentTitle,
+          content: fragmentContent,
+        },
+      };
+    });
+  });
+
+  if (Object.keys(rounds).length === 0) {
+    return {
+      1: {
+        title: "Round 1",
+        totalPhases: 0,
+        phases: {},
       },
     };
-  });
-  return {
-    1: {
-      title: "Round 1",
-      totalPhases: sorted.length,
-      phases,
-    },
-  };
+  }
+
+  return rounds;
 }
 
 export function GameStateProvider({ children }) {
   const { teamName } = useAuth();
+  const navigate = useNavigate();
 
   const [challengeData, setChallengeData] = useState(null);
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [unlockedRounds, setUnlockedRounds] = useState([1]);
   const [unlockedPhases, setUnlockedPhases] = useState({ 1: 1 });
 
   const [currentRound, setCurrentRound] = useState(1);
   const [currentPhase, setCurrentPhase] = useState(1);
   const [activeTab, setActiveTab] = useState("overview");
+  const getTerminalStorageKey = useCallback((name) => {
+    const clean = (name || 'guest').trim().toLowerCase();
+    return `cicada_terminal_history_${clean}`;
+  }, []);
+
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-  const [terminalHistory, setTerminalHistory] = useState([]);
+  const [terminalHistory, setTerminalHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cicada_terminal_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [hints, setHints] = useState([]);
 
-  const unlockedRounds = [1];
+  // Load team-scoped terminal history when teamName is available
+  useEffect(() => {
+    if (!teamName) return;
+    try {
+      const key = getTerminalStorageKey(teamName);
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        setTerminalHistory(JSON.parse(saved));
+      } else {
+        const general = localStorage.getItem('cicada_terminal_history');
+        if (general) {
+          const parsed = JSON.parse(general);
+          if (parsed && parsed.length > 0) {
+            setTerminalHistory(parsed);
+            localStorage.setItem(key, general);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load terminal history:", e);
+    }
+  }, [teamName, getTerminalStorageKey]);
+
+  // Persist terminalHistory whenever it updates
+  useEffect(() => {
+    try {
+      const serialized = JSON.stringify(terminalHistory);
+      localStorage.setItem('cicada_terminal_history', serialized);
+      if (teamName) {
+        localStorage.setItem(getTerminalStorageKey(teamName), serialized);
+      }
+    } catch (e) {
+      console.warn("Failed to persist terminal history:", e);
+    }
+  }, [terminalHistory, teamName, getTerminalStorageKey]);
 
   const refresh = useCallback(async (silent = false) => {
     if (!teamName) return;
@@ -80,15 +206,57 @@ export function GameStateProvider({ children }) {
       const [chals, prog] = await Promise.all([getChallenges(), getProgress()]);
       const data = buildChallengeData(chals.data, prog.data);
       setChallengeData(data);
-      const target = Math.max(1, prog?.data?.current_challenge_order || 1);
-      
-      setCurrentPhase(target);
-      setUnlockedPhases({ 1: target });
+      setProgress(prog.data);
+
+      const allRounds = Object.keys(data).map(Number).sort((a, b) => a - b);
+      const targetOrder = prog?.data?.current_challenge_order;
+
+      let teamCurrentRound = prog?.data?.round || prog?.data?.current_round;
+      let targetPhase = 1;
+
+      if (targetOrder) {
+        const matchingChal = (chals.data || []).find((c) => c.order_number === targetOrder);
+        if (matchingChal) {
+          const hierarchy = parseChallengeHierarchy(matchingChal, 0);
+          teamCurrentRound = teamCurrentRound || hierarchy.round;
+          targetPhase = hierarchy.archive;
+        } else if (targetOrder >= 100) {
+          teamCurrentRound = teamCurrentRound || Math.floor(targetOrder / 100);
+          targetPhase = targetOrder % 100;
+        } else {
+          targetPhase = targetOrder;
+        }
+      }
+
+      teamCurrentRound = teamCurrentRound || 1;
+
+      // Determine which rounds are unlocked:
+      // 1. Round 1 is always unlocked.
+      // 2. Any round <= teamCurrentRound.
+      // 3. Any round where at least one challenge is active/unlocked.
+      const unlockedR = allRounds.filter((r) => {
+        if (r === 1) return true;
+        if (r <= teamCurrentRound) return true;
+        const roundPhases = Object.values(data[r]?.phases || {});
+        return roundPhases.some((p) => p.is_locked === false || p.is_active === true);
+      });
+
+      if (unlockedR.length === 0 && allRounds.length > 0) unlockedR.push(allRounds[0]);
+
+      setUnlockedRounds(unlockedR);
+      setCurrentRound((prev) => (unlockedR.includes(prev) ? prev : teamCurrentRound));
+      setCurrentPhase(targetPhase);
+      setUnlockedPhases((prev) => ({
+        ...prev,
+        [teamCurrentRound]: Math.max(prev[teamCurrentRound] || 1, targetPhase),
+      }));
+
       const collected = [];
       (chals.data || []).forEach((ch) => {
+        const { round } = parseChallengeHierarchy(ch, 0);
         (ch.hints || []).forEach((h) => {
           if (h.is_visible !== false) {
-            collected.push({ id: h.id, round: 1, text: h.text, timestamp: Date.now() });
+            collected.push({ id: h.id, round: round, text: h.text, timestamp: Date.now() });
           }
         });
       });
@@ -109,7 +277,17 @@ export function GameStateProvider({ children }) {
     setTerminalHistory((prev) => [...prev, { command, response, timestamp: new Date().toISOString() }]);
   }, []);
 
-  const clearTerminal = useCallback(() => setTerminalHistory([]), []);
+  const clearTerminal = useCallback(() => {
+    setTerminalHistory([]);
+    try {
+      localStorage.removeItem('cicada_terminal_history');
+      if (teamName) {
+        localStorage.removeItem(getTerminalStorageKey(teamName));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [teamName, getTerminalStorageKey]);
 
   const submitAnswer = useCallback(
     async (answer) => {
@@ -121,40 +299,97 @@ export function GameStateProvider({ children }) {
         const res = await apiSubmit(phase.order_number, answer);
 
         if (res.success) {
+          if (phase.order_number) {
+            setProgress((prev) => ({
+              ...(prev || {}),
+              completed_challenges: Array.from(new Set([...(prev?.completed_challenges || prev?.data?.completed_challenges || []), phase.order_number])),
+            }));
+          }
+
           const completedFragment = res.story_fragment || phase.story_fragment;
           if (completedFragment?.title || completedFragment?.content) {
             addTerminalCommand(`fragment`, `${completedFragment.title || `Archive 0${activePhase}`}: ${completedFragment.content || ''}`);
           }
 
-          // Advance phase to next checkpoint
-          const totalPhases = challengeData?.[currentRound]?.totalPhases || 99;
-          const nextPhase = Math.min(activePhase + 1, totalPhases);
-          const nextPhaseData = challengeData?.[currentRound]?.phases?.[nextPhase];
+          const totalPhases = challengeData?.[currentRound]?.totalPhases || Object.keys(challengeData?.[currentRound]?.phases || {}).length || 1;
+          const isRoundComplete = activePhase >= totalPhases;
 
-          if (nextPhaseData && nextPhase > activePhase) {
-            const nextFrag = nextPhaseData.story_fragment;
-            const nextTitle = nextFrag?.title || nextPhaseData.title || `Archive 0${nextPhase}`;
-            const nextContent = nextFrag?.content || nextPhaseData.description || `Decryption channel open for Phase ${nextPhase}.`;
-            addTerminalCommand(`telemetry`, `[UNLOCKED] ${nextTitle}:\n${nextContent}`);
+          if (!isRoundComplete) {
+            // Advance phase within current round
+            const nextPhase = activePhase + 1;
+            const nextPhaseData = challengeData?.[currentRound]?.phases?.[nextPhase];
+
+            if (nextPhaseData) {
+              const nextFrag = nextPhaseData.story_fragment;
+              const nextTitle = nextFrag?.title || nextPhaseData.title || `Archive 0${nextPhase}`;
+              const nextContent = nextFrag?.content || nextPhaseData.description || `Decryption channel open for Phase ${nextPhase}.`;
+              addTerminalCommand(`telemetry`, `[UNLOCKED] ${nextTitle}:\n${nextContent}`);
+            }
+
+            setUnlockedPhases((prev) => ({ ...prev, [currentRound]: Math.max(prev[currentRound] || 1, nextPhase) }));
+            setCurrentPhase(nextPhase);
+
+            await refresh(true);
+
+            return `Correct. Cipher accepted.\nTelemetry advanced to Stage ${nextPhase}: "${nextPhaseData?.title || `Archive 0${nextPhase}`}".`;
+          } else {
+            // Active Round is COMPLETED!
+            await refresh(true);
+
+            const nextRound = currentRound + 1;
+            const nextRoundData = challengeData?.[nextRound];
+            
+            // Check if next round is unlocked and available
+            const isNextRoundUnlocked = Boolean(
+              nextRoundData &&
+              (
+                unlockedRounds.includes(nextRound) ||
+                nextRoundData.phases?.[1]?.is_locked === false ||
+                (progress?.round || progress?.current_round || 1) >= nextRound
+              )
+            );
+
+            if (isNextRoundUnlocked) {
+              // Next round is UNLOCKED -> advance to next round
+              setUnlockedRounds((prev) => Array.from(new Set([...prev, nextRound])));
+              setUnlockedPhases((prev) => ({ ...prev, [nextRound]: 1 }));
+              setCurrentRound(nextRound);
+              setCurrentPhase(1);
+              setActiveTab("overview");
+
+              addTerminalCommand(
+                `telemetry`,
+                `[ROUND COMPLETE] Sector ${currentRound} cleared!\nTransferring operational clearance to Round ${nextRound}...`
+              );
+
+              return `Correct. Cipher accepted.\nRound ${currentRound} completed! Transferring to Round ${nextRound}: "${nextRoundData.title || `Round ${nextRound}`}".`;
+            } else {
+              // Next round is LOCKED -> redirect to team dashboard
+              addTerminalCommand(
+                `telemetry`,
+                `[ROUND COMPLETE] Sector ${currentRound} cleared!\nNext sector is currently locked by Command. Returning to Team Dashboard in 2 seconds...`
+              );
+
+              setTimeout(() => {
+                setIsTerminalOpen(false);
+                navigate("/dashboard");
+              }, 2000);
+
+              return `Correct. Cipher accepted.\nRound ${currentRound} completed! Next round is currently locked. Returning to Team Dashboard...`;
+            }
           }
-
-          setUnlockedPhases((prev) => ({ ...prev, [currentRound]: Math.max(prev[currentRound] || 1, nextPhase) }));
-          setCurrentPhase(nextPhase);
-
-          await refresh(true);
-
-          setUnlockedPhases((prev) => ({ ...prev, [currentRound]: Math.max(prev[currentRound] || 1, nextPhase) }));
-          setCurrentPhase(nextPhase);
-
-          return `Correct. Cipher accepted.\nTelemetry advanced to Stage ${nextPhase}: "${nextPhaseData?.title || `Archive 0${nextPhase}`}".`;
         }
 
         return res.message || "Incorrect decryption key. Please try again.";
       } catch (err) {
+        const backendMsg = err.data?.message || err.data?.error || err.data?.msg;
+        if (backendMsg) {
+          return `${backendMsg}. Please try again.`;
+        }
         return err.message || "Transmission error. Please try again.";
       }
     },
-    [challengeData, unlockedPhases, currentPhase, currentRound, addTerminalCommand, refresh]
+    [challengeData, unlockedPhases, currentPhase, currentRound, unlockedRounds, progress, addTerminalCommand, refresh, navigate]
   );
 
   const changeRound = useCallback((roundNum) => {
@@ -165,11 +400,17 @@ export function GameStateProvider({ children }) {
     }
   }, [unlockedRounds, unlockedPhases]);
 
+  const completedChallenges = useMemo(() => {
+    const list = progress?.completed_challenges || progress?.data?.completed_challenges || [];
+    return Array.isArray(list) ? list : [];
+  }, [progress]);
+
   const value = useMemo(
     () => ({
       teamName,
       challengeData,
       progress,
+      completedChallenges,
       loading,
       error,
       unlockedRounds,
@@ -189,7 +430,7 @@ export function GameStateProvider({ children }) {
       hints,
       refresh,
     }),
-    [teamName, challengeData, progress, loading, error, unlockedRounds, unlockedPhases, currentRound, changeRound, currentPhase, activeTab, isTerminalOpen, terminalHistory, addTerminalCommand, clearTerminal, submitAnswer, hints, refresh]
+    [teamName, challengeData, progress, completedChallenges, loading, error, unlockedRounds, unlockedPhases, currentRound, changeRound, currentPhase, activeTab, isTerminalOpen, terminalHistory, addTerminalCommand, clearTerminal, submitAnswer, hints, refresh]
   );
 
   return <GameStateContext.Provider value={value}>{children}</GameStateContext.Provider>;

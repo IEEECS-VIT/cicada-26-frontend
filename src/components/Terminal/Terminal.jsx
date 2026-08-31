@@ -8,16 +8,53 @@ function pad(n) {
 }
 
 export default function Terminal() {
-  const { teamName, isTerminalOpen, unlockedRounds, currentRound, unlockedPhases, loading, error, challengeData } =
-    useGameState();
+  const { 
+    teamName, 
+    isTerminalOpen, 
+    unlockedRounds, 
+    currentRound, 
+    unlockedPhases, 
+    loading, 
+    error, 
+    challengeData,
+    completedChallenges 
+  } = useGameState();
   const [clock, setClock] = useState("20:13:47");
   const [lineProgress, setLineProgress] = useState(0);
 
   useEffect(() => {
-    let current = (unlockedRounds.length - 1) * 100;
-    current += ((unlockedPhases[currentRound] || 1) / (challengeData?.[currentRound]?.totalPhases || 4)) * 100;
-    setLineProgress(Math.min(100, Math.round((current / 300) * 100)));
-  }, [unlockedRounds, currentRound, unlockedPhases, challengeData]);
+    const roundData = challengeData?.[currentRound];
+    if (!roundData || !unlockedRounds.includes(currentRound)) {
+      setLineProgress(0);
+      return;
+    }
+
+    // If we've completed this round and unlocked past it, it's 100%
+    if (Math.max(...unlockedRounds) > currentRound) {
+      setLineProgress(100);
+      return;
+    }
+
+    const phasesList = Object.values(roundData.phases || {});
+    if (phasesList.length === 0) {
+      setLineProgress(0);
+      return;
+    }
+
+    const completedList = completedChallenges || [];
+    const completedInThisRound = phasesList.filter((p) => completedList.includes(p.order_number)).length;
+
+    let pct = 0;
+    if (completedInThisRound > 0) {
+      pct = Math.min(100, Math.round((completedInThisRound / phasesList.length) * 100));
+    } else {
+      const currentUnlockedPhase = unlockedPhases[currentRound] || 1;
+      const completedArchives = Math.max(0, currentUnlockedPhase - 1);
+      pct = Math.min(100, Math.round((completedArchives / phasesList.length) * 100));
+    }
+
+    setLineProgress(pct);
+  }, [unlockedRounds, currentRound, unlockedPhases, challengeData, completedChallenges]);
 
   useEffect(() => {
     const id = setInterval(() => {

@@ -35,6 +35,11 @@ export default function SubmissionTerminal() {
     scrollToBottom();
   }, [terminalHistory]);
 
+  useEffect(() => {
+    const timer = setTimeout(scrollToBottom, 60);
+    return () => clearTimeout(timer);
+  }, []);
+
   const executeCommandString = (rawCmd) => {
     const cmd = rawCmd.trim();
     if (!cmd) return;
