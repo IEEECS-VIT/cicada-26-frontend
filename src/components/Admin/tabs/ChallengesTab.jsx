@@ -17,6 +17,7 @@ export default function ChallengesTab() {
     challenges,
     setActiveChallenge,
     setShowCreateChallengeModal,
+    handleOpenCreateRound,
     setEditingChallenge,
     handleOpenEditChallenge,
     setNewChallengeTitle,
@@ -123,7 +124,7 @@ export default function ChallengesTab() {
         </div>
         <button
           type="button"
-          onClick={() => handleOpenCreateModal()}
+          onClick={handleOpenCreateRound}
           className="inline-flex items-center gap-2 border border-accretion bg-accretion px-4 py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright transition-colors shadow-[0_0_12px_rgba(209,155,131,0.3)]"
         >
           <Plus className="h-4 w-4" />
