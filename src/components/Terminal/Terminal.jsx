@@ -2,23 +2,15 @@ import React, { useEffect, useState } from "react";
 import { useGameState } from "../../context/GameStateContext";
 import QuestionPanel from "./QuestionPanel";
 import SubmissionTerminal from "./SubmissionTerminal";
+import RoundTransition from "./RoundTransition";
 
 function pad(n) {
   return String(n).padStart(2, "0");
 }
 
 export default function Terminal() {
-  const { 
-    teamName, 
-    isTerminalOpen, 
-    unlockedRounds, 
-    currentRound, 
-    unlockedPhases, 
-    loading, 
-    error, 
-    challengeData,
-    completedChallenges 
-  } = useGameState();
+  const { teamName, isTerminalOpen, unlockedRounds, currentRound, unlockedPhases, loading, error, challengeData, roundTransition, completedChallenges } =
+    useGameState();
   const [clock, setClock] = useState("20:13:47");
   const [lineProgress, setLineProgress] = useState(0);
 
@@ -243,6 +235,8 @@ export default function Terminal() {
           />
         </svg>
       </div>
+
+      {roundTransition && <RoundTransition />}
     </main>
   );
 }

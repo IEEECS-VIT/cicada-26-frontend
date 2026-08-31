@@ -186,7 +186,6 @@ export default function ChallengesTab() {
                       </p>
                     </div>
                   </div>
-
                   <button
                     type="button"
                     onClick={() => handleOpenCreateModal(roundNum)}

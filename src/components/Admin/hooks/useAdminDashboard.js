@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabase';
@@ -8,12 +8,14 @@ import {
   createChallenge, updateChallenge, addAsset, editAsset, deleteAsset, deleteChallenge, adminOverride,
   removeTeamMember, deleteTeam, adjustScore, updateTeam, toggleHint,
   getIpTrackingStatus, toggleIpTracking, getAdminActivityLogs,
+  getAdminRounds, createRound, updateRound, deleteRound, reorderRounds,
 } from '../../../api/admin';
 import {
   INITIAL_TEAMS,
   INITIAL_CHALLENGES,
   INITIAL_USERS,
   INITIAL_LOGS,
+  INITIAL_ROUNDS,
   DEFAULT_CREDENTIALS,
 } from '../constants';
 
@@ -89,6 +91,10 @@ export function useAdminDashboard() {
       const { round, archiveNumber } = parseRoundAndArchive(c, i);
       return { ...c, round, archiveNumber };
     });
+  });
+  const [rounds, setRounds] = useState(() => {
+    const saved = localStorage.getItem('cicada_rounds');
+    return saved ? JSON.parse(saved) : INITIAL_ROUNDS;
   });
   const [logs, setLogs] = useState(() => {
     const saved = localStorage.getItem('cicada_logs');
@@ -173,6 +179,18 @@ export function useAdminDashboard() {
   const [tempAssetName, setTempAssetName] = useState('');
   const [tempAssetUrl, setTempAssetUrl] = useState('');
 
+  // Round Management State (create + edit share one form; activeRound null = create)
+  const [showRoundModal, setShowRoundModal] = useState(false);
+  const [activeRound, setActiveRound] = useState(null);
+  const [newRoundName, setNewRoundName] = useState('');
+  const [newRoundOrder, setNewRoundOrder] = useState('');
+  const [newRoundIsActive, setNewRoundIsActive] = useState(true);
+  const [newRoundFragmentTitle, setNewRoundFragmentTitle] = useState('');
+  const [newRoundFragmentHeader, setNewRoundFragmentHeader] = useState('');
+  const [newRoundFragmentContent, setNewRoundFragmentContent] = useState('');
+  const [deleteRoundId, setDeleteRoundId] = useState('');
+  const [showDeleteRoundConfirmModal, setShowDeleteRoundConfirmModal] = useState(false);
+
   // Time Limit State
   const [showTimeLimitModal, setShowTimeLimitModal] = useState(false);
   const [editTimeLimitValue, setEditTimeLimitValue] = useState(0);
@@ -215,6 +233,10 @@ export function useAdminDashboard() {
   useEffect(() => {
     localStorage.setItem('cicada_challenges', JSON.stringify(challenges));
   }, [challenges]);
+
+  useEffect(() => {
+    localStorage.setItem('cicada_rounds', JSON.stringify(rounds));
+  }, [rounds]);
 
   useEffect(() => {
     localStorage.setItem('cicada_logs', JSON.stringify(logs));
@@ -263,31 +285,6 @@ export function useAdminDashboard() {
     const titleVal = (overrides.title ?? overrides.name ?? challenge?.title ?? raw.title ?? raw.name ?? `Archive ${orderNum}`).trim() || `Archive ${orderNum}`;
     const storyVal = (overrides.story_context ?? overrides.description ?? raw.story_context ?? raw.description ?? "Mission briefing").trim() || "Mission briefing";
 
-    // Backend Zod schema strictly requires story_fragment.title and story_fragment.content to be non-empty strings
-    const rawFragment = (raw.story_fragment && typeof raw.story_fragment === 'object') ? raw.story_fragment : {};
-    const overrideFragment = (overrides.story_fragment && typeof overrides.story_fragment === 'object') ? overrides.story_fragment : {};
-    
-    const fragmentTitle = (
-      overrideFragment.title ||
-      rawFragment.title ||
-      titleVal ||
-      `Archive ${orderNum} Fragment`
-    ).trim() || `Archive ${orderNum} Fragment`;
-
-    const fragmentContent = (
-      overrideFragment.content ||
-      rawFragment.content ||
-      raw.story_context ||
-      raw.description ||
-      storyVal ||
-      "Decrypted classified archive transmission."
-    ).trim() || "Decrypted classified archive transmission.";
-
-    const storyFragmentObj = {
-      title: fragmentTitle,
-      content: fragmentContent,
-    };
-
     const isActive = overrides.is_active !== undefined ? overrides.is_active : (raw.is_active !== undefined ? raw.is_active : !challenge?.isLocked);
     const isLocked = overrides.is_locked !== undefined ? overrides.is_locked : (raw.is_locked !== undefined ? raw.is_locked : challenge?.isLocked ?? false);
 
@@ -303,8 +300,14 @@ export function useAdminDashboard() {
       story_context: storyVal,
       description: storyVal,
       hints: Array.isArray(raw.hints) ? raw.hints : [],
-      story_fragment: storyFragmentObj,
     };
+
+    // Story fragments now live on rounds, not challenges — the backend drops a
+    // per-challenge story_fragment silently. Preserve the challenge's round link
+    // so updates keep it in the same round.
+    if (overrides.round_id || raw.round_id) {
+      payload.round_id = overrides.round_id || raw.round_id;
+    }
 
     // Only include answer_key if explicitly provided or if it's real plaintext.
     // This prevents re-hashing an existing bcrypt hash when updating other fields like
@@ -401,7 +404,7 @@ export function useAdminDashboard() {
     setLiveLoading(true);
     setLiveError('');
     try {
-      const [u, ch, prog, lb, ipStatus, supabaseTeams, adminLogs] = await Promise.all([
+      const [u, ch, prog, lb, ipStatus, supabaseTeams, adminLogs, roundsRes] = await Promise.all([
         listUsers().catch((err) => { console.warn('Could not fetch users:', err); return { data: [] }; }),
         getAdminChallenges().catch((err) => { console.warn('Could not fetch challenges:', err); return { data: [] }; }),
         getAdminProgress().catch((err) => { console.warn('Could not fetch progress:', err); return { data: [] }; }),
@@ -409,6 +412,7 @@ export function useAdminDashboard() {
         getIpTrackingStatus().catch((err) => { console.warn('Could not fetch IP tracking status:', err); return null; }),
         Promise.resolve(supabase.from('teams').select('id, name, points, is_disqualified')).catch(() => ({ data: [] })),
         getAdminActivityLogs().catch((err) => { console.warn('Could not fetch admin activity logs:', err); return { data: [] }; }),
+        getAdminRounds().catch((err) => { console.warn('Could not fetch rounds:', err); return { data: [] }; }),
       ]);
 
       // Real, attributed admin action history from the backend (who actually did what).
@@ -436,6 +440,18 @@ export function useAdminDashboard() {
       const parsedIp = parseIpStatus(ipStatus);
       if (parsedIp !== null) {
         setIpTrackingEnabled(parsedIp);
+      }
+
+      if (Array.isArray(roundsRes?.data)) {
+        setRounds(roundsRes.data.map((x) => ({
+          id: x.id,
+          name: x.name || `Round ${x.order_number}`,
+          order_number: x.order_number,
+          story_fragment: (x.story_fragment && typeof x.story_fragment === 'object') ? x.story_fragment : null,
+          is_active: x.is_active,
+          created_at: x.created_at,
+          updated_at: x.updated_at,
+        })));
       }
 
       if (Array.isArray(u?.data)) {
@@ -1158,7 +1174,14 @@ export function useAdminDashboard() {
 
   const handleOpenProgressOverride = (team) => {
     setActiveTeam(team);
-    setOverrideTargetRound(team.round);
+    const teamOrder = team.round || 1;
+    const candidates = overrideRoundOptions
+      .filter((o) => o.firstChallengeOrder != null && o.firstChallengeOrder <= teamOrder)
+      .sort((a, b) => a.firstChallengeOrder - b.firstChallengeOrder);
+    const target = candidates.length > 0
+      ? candidates[candidates.length - 1].firstChallengeOrder
+      : (overrideRoundOptions[0]?.firstChallengeOrder ?? 1);
+    setOverrideTargetRound(target);
     setShowProgressOverrideModal(true);
   };
 
@@ -1166,15 +1189,17 @@ export function useAdminDashboard() {
     e.preventDefault();
     if (!activeTeam) return;
 
-    const targetRound = parseInt(overrideTargetRound, 10) || 1;
+    const targetOrder = parseInt(overrideTargetRound, 10) || 1;
+    const targetOption = overrideRoundOptions.find((o) => o.firstChallengeOrder === targetOrder);
+    const roundLabel = targetOption?.roundName || `Order ${targetOrder}`;
     try {
-      await adminOverride({ team_name: activeTeam.name, target_challenge_order: targetRound });
+      await adminOverride({ team_name: activeTeam.name, target_challenge_order: targetOrder });
 
       setTeams(teams.map(t => {
         if (t.id === activeTeam.id || t.name === activeTeam.name) {
           return {
             ...t,
-            round: targetRound
+            round: targetOrder
           };
         }
         return t;
@@ -1183,12 +1208,12 @@ export function useAdminDashboard() {
       pushLocalLog({
         teamName: activeTeam.name,
         challengeTitle: 'Progress Override',
-        answer: `Progress force-set to Round ${targetRound}.`,
+        answer: `Progress force-set to ${roundLabel}.`,
       });
 
       setShowProgressOverrideModal(false);
       setActiveTeam(null);
-      alert(`SUCCESS: Team "${activeTeam.name}" progress updated to Round ${targetRound}.`);
+      alert(`SUCCESS: Team "${activeTeam.name}" progress updated to ${roundLabel}.`);
       refreshLiveInBackground();
     } catch (err) {
       console.error("Failed to override progress on backend:", err);
@@ -1198,24 +1223,24 @@ export function useAdminDashboard() {
 
   const handleForceSkipChallenge = async (challenge) => {
     if (!challenge) return;
-    const targetRound = challenge.round || 1;
-    const teamsInRound = teams.filter(t => t.round === targetRound);
+    const targetOrder = challenge.order_number || challenge.round || 1;
+    const teamsInRound = teams.filter(t => t.round === targetOrder);
 
     try {
       const skipPromises = teamsInRound.map(t =>
-        adminOverride({ team_name: t.name, target_challenge_order: targetRound + 1 }).catch(err => {
+        adminOverride({ team_name: t.name, target_challenge_order: targetOrder + 1 }).catch(err => {
           console.warn(`Could not skip for team ${t.name}:`, err);
         })
       );
       await Promise.all(skipPromises);
 
       const skippedNames = new Set(teamsInRound.map((t) => t.name));
-      setTeams(teams.map((t) => (skippedNames.has(t.name) ? { ...t, round: targetRound + 1 } : t)));
+      setTeams(teams.map((t) => (skippedNames.has(t.name) ? { ...t, round: targetOrder + 1 } : t)));
 
       setShowSkipConfirmModal(false);
       setActiveChallenge(null);
       setSkipConfirmInput('');
-      alert(`SUCCESS: All teams in Round ${targetRound} advanced to Round ${targetRound + 1}.`);
+      alert(`SUCCESS: All teams on challenge ${targetOrder} advanced to challenge ${targetOrder + 1}.`);
       refreshLiveInBackground();
     } catch (err) {
       console.error("Failed to skip challenge on backend:", err);
@@ -1345,7 +1370,7 @@ export function useAdminDashboard() {
     if (!team) return;
 
     try {
-      const targetOrder = (activeChallenge.round || 1) + 1;
+      const targetOrder = (activeChallenge.order_number || activeChallenge.round || 1) + 1;
       await adminOverride({
         team_name: team.name,
         target_challenge_order: targetOrder,
@@ -1357,6 +1382,178 @@ export function useAdminDashboard() {
     } catch (err) {
       console.error("Failed to override challenge:", err);
       alert("Failed to override challenge: " + (err.message || "Unknown error"));
+    }
+  };
+
+  // --- ROUND MANAGEMENT HANDLERS ---
+  // API Endpoints: POST/PUT /api/admin/challenges/rounds (+ reorder)
+  const overrideRoundOptions = useMemo(() => {
+    const sortedRounds = [...rounds].sort((a, b) => (a.order_number || 0) - (b.order_number || 0));
+    return sortedRounds.map((r) => {
+      const roundChallenges = challenges
+        .filter((c) => c.raw?.round_id ? c.raw.round_id === r.id : (c.round || 1) === (r.order_number || 1))
+        .sort((a, b) => (a.order_number || a.round || 0) - (b.order_number || b.round || 0));
+      const firstOrder = roundChallenges[0]?.order_number || (roundChallenges.length > 0 ? roundChallenges[0].round : null);
+      return {
+        roundId: r.id,
+        roundName: r.name || `Round ${r.order_number}`,
+        roundOrder: r.order_number || 1,
+        firstChallengeOrder: firstOrder ?? (r.order_number || 1),
+      };
+    });
+  }, [rounds, challenges]);
+
+  const resetRoundForm = () => {
+    setActiveRound(null);
+    setNewRoundName('');
+    setNewRoundOrder('');
+    setNewRoundIsActive(true);
+    setNewRoundFragmentTitle('');
+    setNewRoundFragmentHeader('');
+    setNewRoundFragmentContent('');
+  };
+
+  const handleOpenCreateRound = () => {
+    resetRoundForm();
+    setShowRoundModal(true);
+  };
+
+  const handleOpenEditRound = (round) => {
+    setActiveRound(round);
+    setNewRoundName(round.name || '');
+    setNewRoundOrder(round.order_number != null ? String(round.order_number) : '');
+    setNewRoundIsActive(round.is_active !== false);
+    setNewRoundFragmentTitle(round.story_fragment?.title || '');
+    setNewRoundFragmentHeader(round.story_fragment?.header || '');
+    setNewRoundFragmentContent(round.story_fragment?.content || '');
+    setShowRoundModal(true);
+  };
+
+  const handleSaveRound = async (e) => {
+    e.preventDefault();
+    const nameVal = newRoundName.trim();
+    if (!nameVal) {
+      alert('Please enter a round name.');
+      return;
+    }
+    const payload = {
+      name: nameVal,
+      ...(newRoundOrder.trim() !== '' ? { order_number: parseInt(newRoundOrder, 10) || 1 } : {}),
+      is_active: newRoundIsActive,
+    };
+    const fragmentTitle = newRoundFragmentTitle.trim();
+    const fragmentHeader = newRoundFragmentHeader.trim();
+    const fragmentContent = newRoundFragmentContent.trim();
+    if (fragmentTitle || fragmentHeader || fragmentContent) {
+      payload.story_fragment = {
+        ...(fragmentTitle ? { title: fragmentTitle } : {}),
+        ...(fragmentHeader ? { header: fragmentHeader } : {}),
+        ...(fragmentContent ? { content: fragmentContent } : {}),
+      };
+    }
+
+    try {
+      if (activeRound) {
+        await updateRound(activeRound.id, payload);
+        setRounds(rounds.map((r) => (r.id === activeRound.id ? {
+          ...r,
+          name: payload.name,
+          ...(payload.order_number !== undefined ? { order_number: payload.order_number } : {}),
+          is_active: payload.is_active,
+          ...(payload.story_fragment ? { story_fragment: payload.story_fragment } : {}),
+        } : r)));
+      } else {
+        const res = await createRound(payload);
+        const created = res?.data || payload;
+        setRounds([...rounds, {
+          id: created.id || `round-${Date.now()}`,
+          name: payload.name,
+          order_number: payload.order_number ?? (rounds.length + 1),
+          story_fragment: payload.story_fragment || null,
+          is_active: payload.is_active,
+        }]);
+      }
+      pushLocalLog({
+        teamName: 'SYSTEM',
+        challengeTitle: activeRound ? 'Edit Round' : 'Create Round',
+        answer: `Round "${nameVal}" ${activeRound ? 'updated' : 'created'}.`,
+      });
+      resetRoundForm();
+      setShowRoundModal(false);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error('Failed to save round:', err);
+      alert('Failed to save round: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  const handleOpenDeleteRound = (round) => {
+    setActiveRound(round);
+    setDeleteRoundId('');
+    setShowDeleteRoundConfirmModal(true);
+  };
+
+  const handleDeleteRound = async () => {
+    if (!activeRound) return;
+    if (deleteRoundId.trim().toUpperCase() !== activeRound.name.trim().toUpperCase()) {
+      alert(`Type "${activeRound.name.toUpperCase()}" to confirm deletion.`);
+      return;
+    }
+    const challengeCount = challenges.filter((c) =>
+      c.raw?.round_id ? c.raw.round_id === activeRound.id : (c.round || 1) === (activeRound.order_number || 1)
+    ).length;
+
+    try {
+      if (isUUID(activeRound.id)) {
+        await deleteRound(activeRound.id);
+      } else if (challengeCount > 0) {
+        alert(`Cannot delete round with ${challengeCount} challenge(s) assigned. Move or delete those challenges first.`);
+        return;
+      }
+      setRounds(rounds.filter((r) => r.id !== activeRound.id));
+      pushLocalLog({
+        teamName: 'SYSTEM',
+        challengeTitle: 'Delete Round',
+        answer: `Round "${activeRound.name}" deleted.`,
+      });
+      setShowDeleteRoundConfirmModal(false);
+      setActiveRound(null);
+      setDeleteRoundId('');
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error('Failed to delete round:', err);
+      alert('Failed to delete round:\n' + (err.message || 'Unknown error'));
+      setShowDeleteRoundConfirmModal(false);
+      setActiveRound(null);
+      setDeleteRoundId('');
+    }
+  };
+
+  const handleReorderRound = async (roundId, direction) => {
+    const sorted = [...rounds].sort((a, b) => (a.order_number || 0) - (b.order_number || 0));
+    const idx = sorted.findIndex((r) => r.id === roundId);
+    const swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
+    const reordered = [...sorted];
+    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+    const nextRounds = reordered.map((r, i) => ({ ...r, order_number: i + 1 }));
+    setRounds(nextRounds);
+
+    try {
+      if (nextRounds.every((r) => isUUID(r.id))) {
+        await reorderRounds(nextRounds.map((r) => r.id));
+      } else {
+        console.warn('Local-only reorder: not all round ids are UUIDs, skipping backend reorder.');
+      }
+      pushLocalLog({
+        teamName: 'SYSTEM',
+        challengeTitle: 'Reorder Rounds',
+        answer: `Round "${nextRounds[idx + direction].name}" moved ${direction < 0 ? 'up' : 'down'}.`,
+      });
+    } catch (err) {
+      console.error('Failed to reorder rounds on backend:', err);
+      alert('Failed to reorder rounds on backend:\n' + (err.message || 'Unknown error'));
+      refreshLiveInBackground();
     }
   };
 
@@ -1509,6 +1706,35 @@ export function useAdminDashboard() {
     setTeams,
     challenges,
     setChallenges,
+    rounds,
+    setRounds,
+    overrideRoundOptions,
+    showRoundModal,
+    setShowRoundModal,
+    activeRound,
+    setActiveRound,
+    newRoundName,
+    setNewRoundName,
+    newRoundOrder,
+    setNewRoundOrder,
+    newRoundIsActive,
+    setNewRoundIsActive,
+    newRoundFragmentTitle,
+    setNewRoundFragmentTitle,
+    newRoundFragmentHeader,
+    setNewRoundFragmentHeader,
+    newRoundFragmentContent,
+    setNewRoundFragmentContent,
+    deleteRoundId,
+    setDeleteRoundId,
+    showDeleteRoundConfirmModal,
+    setShowDeleteRoundConfirmModal,
+    handleOpenCreateRound,
+    handleOpenEditRound,
+    handleSaveRound,
+    handleOpenDeleteRound,
+    handleDeleteRound,
+    handleReorderRound,
     logs,
     setLogs,
     activeTab,

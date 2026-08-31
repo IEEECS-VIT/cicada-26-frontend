@@ -143,7 +143,30 @@ export default function AdminModals() {
     handleSaveEditAnswer,
     handleSaveOverrideChallenge,
     handleForceSkipChallenge,
-    handleDeleteTeam
+    handleDeleteTeam,
+    overrideRoundOptions,
+    showRoundModal,
+    setShowRoundModal,
+    activeRound,
+    setActiveRound,
+    newRoundName,
+    setNewRoundName,
+    newRoundOrder,
+    setNewRoundOrder,
+    newRoundIsActive,
+    setNewRoundIsActive,
+    newRoundFragmentTitle,
+    setNewRoundFragmentTitle,
+    newRoundFragmentHeader,
+    setNewRoundFragmentHeader,
+    newRoundFragmentContent,
+    setNewRoundFragmentContent,
+    deleteRoundId,
+    setDeleteRoundId,
+    showDeleteRoundConfirmModal,
+    setShowDeleteRoundConfirmModal,
+    handleSaveRound,
+    handleDeleteRound,
   } = useAdmin();
 
   return (
@@ -413,9 +436,15 @@ export default function AdminModals() {
                   value={overrideTargetRound}
                   onChange={(e) => setOverrideTargetRound(e.target.value)}
                 >
-                  <option value={1}>Round 1 (Initial Stage)</option>
-                  <option value={2}>Round 2 (Qualified Stage)</option>
-                  <option value={3}>Round 3 (Final Decryption Stage)</option>
+                  {overrideRoundOptions.length > 0 ? (
+                    overrideRoundOptions.map((opt) => (
+                      <option key={opt.roundId} value={opt.firstChallengeOrder}>
+                        {opt.roundName} (Challenge {opt.firstChallengeOrder})
+                      </option>
+                    ))
+                  ) : (
+                    <option value={1}>Round 1</option>
+                  )}
                 </select>
               </div>
 
@@ -1383,6 +1412,173 @@ export default function AdminModals() {
                   className="flex-1 border border-accretion bg-accretion py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright"
                 >
                   Save Asset
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    {/* 17. Modal: Create / Edit Round */}
+      {showRoundModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md border border-accretion/30 bg-black p-8 text-starlight">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="flex items-center gap-2 font-orbitron text-sm tracking-[0.22em] text-starlight">
+                {activeRound ? <Edit className="w-4 h-4 text-accretion" /> : <Plus className="w-4 h-4 text-accretion" />}
+                <span>{activeRound ? `Edit Round: ${activeRound.name.toUpperCase()}` : 'Create New Round'}</span>
+              </h3>
+              <button
+                onClick={() => {
+                  setShowRoundModal(false);
+                  setActiveRound(null);
+                }}
+                className="text-copper hover:text-starlight"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRound} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Round Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Signal Acquisition"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newRoundName}
+                  onChange={(e) => setNewRoundName(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Order Number</label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Auto"
+                    className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                    value={newRoundOrder}
+                    onChange={(e) => setNewRoundOrder(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Active</label>
+                  <select
+                    className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none focus:border-accretion"
+                    value={newRoundIsActive ? 'true' : 'false'}
+                    onChange={(e) => setNewRoundIsActive(e.target.value === 'true')}
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2 border border-accretion/20 p-3">
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Story Fragment</label>
+                <input
+                  type="text"
+                  placeholder="Fragment title"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newRoundFragmentTitle}
+                  onChange={(e) => setNewRoundFragmentTitle(e.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Header (optional)"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newRoundFragmentHeader}
+                  onChange={(e) => setNewRoundFragmentHeader(e.target.value)}
+                />
+                <textarea
+                  rows="3"
+                  placeholder="Fragment content (optional)"
+                  className="w-full resize-none border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newRoundFragmentContent}
+                  onChange={(e) => setNewRoundFragmentContent(e.target.value)}
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRoundModal(false);
+                    setActiveRound(null);
+                  }}
+                  className="flex-1 border border-copper/30 py-2.5 font-rajdhani text-sm tracking-[0.2em] text-copper hover:border-accretion hover:text-accretion"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 border border-accretion bg-accretion py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright"
+                >
+                  {activeRound ? 'Save Round' : 'Create Round'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 18. Modal: Delete Round Confirmation */}
+      {showDeleteRoundConfirmModal && activeRound && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md border border-red-500/30 bg-black p-8 text-starlight">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="flex items-center gap-2 font-orbitron text-sm tracking-[0.22em] text-red-300">
+                <AlertCircle className="w-4 h-4" />
+                <span>Delete Round</span>
+              </h3>
+              <button
+                onClick={() => {
+                  setShowDeleteRoundConfirmModal(false);
+                  setActiveRound(null);
+                  setDeleteRoundId('');
+                }}
+                className="text-copper hover:text-starlight"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="border border-red-500/20 bg-black/40 p-3 text-sm text-red-200">
+              PERMANENTLY DELETE ROUND:
+              <div className="font-bold text-red-300 mt-1">{activeRound.name.toUpperCase()}</div>
+              <div className="mt-2 text-[10px] text-orange-400/80 uppercase">
+                Rounds with assigned challenges cannot be deleted. Type the round name to confirm.
+              </div>
+            </div>
+
+            <form onSubmit={handleDeleteRound} className="mt-4 space-y-4">
+              <input
+                type="text"
+                required
+                placeholder={`Type "${activeRound.name}" to confirm`}
+                className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-red-400"
+                value={deleteRoundId}
+                onChange={(e) => setDeleteRoundId(e.target.value)}
+              />
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteRoundConfirmModal(false);
+                    setActiveRound(null);
+                    setDeleteRoundId('');
+                  }}
+                  className="flex-1 border border-copper/30 py-2.5 font-rajdhani text-sm tracking-[0.2em] text-copper hover:border-accretion hover:text-accretion"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 cursor-pointer border border-red-500 bg-red-600 py-2 font-orbitron text-xs uppercase tracking-wider text-white hover:bg-red-500"
+                >
+                  DELETE ROUND
                 </button>
               </div>
             </form>

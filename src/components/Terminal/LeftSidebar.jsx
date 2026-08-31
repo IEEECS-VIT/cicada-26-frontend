@@ -24,6 +24,10 @@ export default function LeftSidebar({ onNavigate }) {
   const [remaining, setRemaining] = useState(3 * 3600 + 46 * 60 + 21); // Mock 3h 46m 21s
 
   useEffect(() => {
+    setExpandedRound(currentRound);
+  }, [currentRound]);
+
+  useEffect(() => {
     const id = setInterval(() => {
       setRemaining((r) => (r > 0 ? r - 1 : 0));
     }, 1000);
