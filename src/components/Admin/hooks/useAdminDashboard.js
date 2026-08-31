@@ -78,7 +78,8 @@ export function useAdminDashboard() {
   const [loginError, setLoginError] = useState('');
 
   // --- CORE DATA STATES (persisted in localStorage for demo responsiveness) ---
-  const [teams, setTeams] = useState(() => {
+  const [rounds, setRounds] = useState([]);
+    const [teams, setTeams] = useState(() => {
     const saved = localStorage.getItem('cicada_teams');
     return saved ? JSON.parse(saved) : INITIAL_TEAMS;
   });
@@ -438,6 +439,10 @@ export function useAdminDashboard() {
         setIpTrackingEnabled(parsedIp);
       }
 
+      if (Array.isArray(rds?.data)) {
+        setRounds(rds.data);
+      }
+
       if (Array.isArray(u?.data)) {
         setUsers(u.data.map((x) => ({
           id: x.id,
@@ -749,6 +754,27 @@ export function useAdminDashboard() {
 
   // --- CHALLENGE OPERATION HANDLERS ---
   // API Endpoint: POST Create Challenge with All Assets (Admin)
+  
+  const handleCreateRound = async (roundNum, storyFragmentData) => {
+    try {
+      const payload = {
+        name: `Round ${roundNum}`,
+        order_number: roundNum,
+        story_fragment: storyFragmentData || null,
+        is_active: true
+      };
+      const res = await apiCreateRound(payload);
+      if (res.success && res.data) {
+        setRounds(prev => [...prev, res.data].sort((a,b) => a.order_number - b.order_number));
+        return { success: true };
+      }
+    } catch(err) {
+      console.error(err);
+      alert('Failed to create round: ' + err.message);
+      return { success: false };
+    }
+  };
+
   const handleCreateChallenge = async (e) => {
     e.preventDefault();
     if (!newChallengeTitle.trim()) return;
@@ -761,6 +787,11 @@ export function useAdminDashboard() {
     }
 
     const roundNum = parseInt(newChallengeRound, 10) || 1;
+    const targetRound = rounds.find(r => r.order_number === roundNum);
+    if (!targetRound) {
+      alert(`Round ${roundNum} does not exist! Please create it first using 'NEW ROUND'.`);
+      return;
+    }
     const archiveNum = parseInt(newChallengeArchive, 10) || 1;
     const maxOrder = challenges.reduce((max, c) => Math.max(max, c.order_number || c.raw?.order_number || 0), 0);
     const orderNum = maxOrder + 1;
@@ -770,6 +801,7 @@ export function useAdminDashboard() {
 
     try {
       await createChallenge({
+        round_id: targetRound.id,
         order_number: orderNum,
         round: roundNum,
         round_number: roundNum,
@@ -1509,6 +1541,8 @@ export function useAdminDashboard() {
     setTeams,
     challenges,
     setChallenges,
+      rounds,
+      setRounds,
     logs,
     setLogs,
     activeTab,
@@ -1679,6 +1713,7 @@ export function useAdminDashboard() {
     filteredTeams,
     filteredLogs,
     getLeaderboardData,
+    handleCreateRound,
     exportToCSV,
     handlePrint,
     unlockedCount,

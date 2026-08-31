@@ -102,3 +102,20 @@ export async function toggleIpTracking(enabled) {
     body: enabled !== undefined ? { enabled } : undefined,
   });
 }
+
+
+export async function getAdminRounds() {
+  return api('/api/admin/rounds', { method: 'GET', admin: true });
+}
+
+export async function createRound(payload) {
+  return api('/api/admin/rounds', { method: 'POST', admin: true, body: payload });
+}
+
+export async function updateRound(id, payload) {
+  return api(`/api/admin/rounds/${id}`, { method: 'PUT', admin: true, body: payload });
+}
+
+export async function deleteRound(id) {
+  return api(`/api/admin/rounds/${id}`, { method: 'DELETE', admin: true });
+}

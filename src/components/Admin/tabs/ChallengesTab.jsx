@@ -37,12 +37,16 @@ export default function ChallengesTab() {
     handleDeleteAsset,
     handleToggleLockChallenge,
     handleDeleteChallenge,
+    rounds,
+    handleCreateRound,
     handleToggleHintChallenge,
     handleOpenEditAnswer,
     handleOpenOverrideChallenge
   } = useAdmin();
 
   const [selectedRoundFilter, setSelectedRoundFilter] = useState('all');
+  const [showRoundModal, setShowRoundModal] = useState(false);
+  const [roundModalData, setRoundModalData] = useState({ roundNum: 1, title: '', content: '' });
 
   // Group challenges by Round -> Archive
   const groupedByRound = useMemo(() => {
