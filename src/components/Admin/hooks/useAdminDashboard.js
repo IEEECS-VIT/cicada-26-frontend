@@ -182,6 +182,7 @@ export function useAdminDashboard() {
   const [newChallengeFragmentContent, setNewChallengeFragmentContent] = useState('');
   const [tempAssetName, setTempAssetName] = useState('');
   const [tempAssetUrl, setTempAssetUrl] = useState('');
+  const [tempAssetSet, setTempAssetSet] = useState('');
 
   // Round Management State (create + edit share one form; activeRound null = create)
   const [showRoundModal, setShowRoundModal] = useState(false);
@@ -1997,6 +1998,8 @@ export function useAdminDashboard() {
     setTempAssetName,
     tempAssetUrl,
     setTempAssetUrl,
+    tempAssetSet,
+    setTempAssetSet,
     showTimeLimitModal,
     setShowTimeLimitModal,
     editTimeLimitValue,
