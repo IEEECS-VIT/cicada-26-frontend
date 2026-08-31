@@ -5,48 +5,81 @@ const TarsWidget = lazy(() => import("./TarsWidget"));
 const FAQ_ITEMS = [
   {
     id: "001",
-    question: "WHAT IS CICADA 2067?",
+    question: "WHERE WILL THE EVENT TAKE PLACE?",
     answer:
-      "CICADA 2067 is a cryptic puzzle-solving competition organized by the IEEE Computer Society. Participants work in teams to solve a series of interconnected puzzles that test their logical reasoning, creativity, observation, and problem-solving skills.",
+      "The challenge will primarily run through the official CICADA 2067 website. Participants should keep the website accessible throughout the event for challenges, submissions, checkpoints, hints, and announcements.",
   },
   {
     id: "002",
-    question: "WHO CAN PARTICIPATE?",
+    question: "WHAT IF I FACE A PROBLEM WITH THE WEBSITE?",
     answer:
-      "The event is open to all eligible students (according to the event rules). Whether you're a beginner or an experienced puzzle solver, everyone is welcome.",
+      "For login issues, broken pages, submission errors, or other technical problems, contact the organizers immediately through the official Discord server.",
   },
   {
     id: "003",
-    question: "DO I NEED PRIOR EXPERIENCE?",
+    question: "HOW MANY SUBMISSIONS ARE ALLOWED?",
     answer:
-      "No. While experience with puzzles can be helpful, the event is designed so that anyone with curiosity and logical thinking can participate.",
+      "The number of submissions allowed may differ between challenges.\nThe submission limit for each challenge will be specified along with the challenge itself on the website.",
   },
   {
     id: "004",
-    question: "IS PARTICIPATION INDIVIDUAL OR IN TEAMS?",
-    answer: "Participation is in teams only.",
+    question: "HOW DO HINTS WORK?",
+    answer:
+      "Participants cannot request hints individually.\nStandardised hints will be released to all participants simultaneously at regular intervals throughout each round.",
   },
   {
     id: "005",
-    question: "WILL HINTS BE PROVIDED?",
-    answer:
-      "Hints may be released after specific intervals or may carry a score penalty, depending on the rules.",
+    question: "WHAT IS THE EVENT TIMELINE?",
+    list: [
+      "10:00 AM – 1:00 PM: Round 1",
+      "1:00 PM – 2:00 PM: Break",
+      "2:00 PM – 3:30 PM: Round 2",
+      "3:30 PM – 5:00 PM: Round 3",
+      "5:00 PM: Competition ends",
+      "5:00 PM – 6:00 PM: Result verification, winner announcement, prize distribution, and closing",
+    ],
+    note: "The event concludes by 6:00 PM.",
   },
   {
     id: "006",
-    question: "WILL OD BE PROVIDED?",
-    answer:
-      "Yes, OD will be provided to the participants if they report to the venue on time and record their attendance.",
+    question: "HOW DO WE COMMUNICATE WITH THE ORGANIZERS?",
+    answer: "There are two primary communication channels:",
+    list: [
+      "Website: Challenges, submissions, checkpoints, hints, and official event information.",
+      "Discord: Doubts, technical issues, checkpoint communication, and contacting organizers.",
+    ],
+    note: "Important announcements may also be communicated through Discord during the event.",
   },
   {
     id: "007",
-    question: "WHAT SHOULD PARTICIPANTS BRING?",
+    question: "CAN WE SKIP A CHALLENGE?",
+    answer:
+      "Unless explicitly stated otherwise, participants must complete the required challenge or checkpoint before progressing further.",
+  },
+  {
+    id: "008",
+    question: "CAN WE USE EXTERNAL RESOURCES OR AI?",
+    answer: "Yes. Participants are allowed to use any resource at their disposal, including:",
     list: [
-      "A fully charged laptop",
-      "Stable internet connection",
-      "Pen and paper for rough work",
-      "Student ID",
+      "Search engines and online resources",
+      "Programming and analysis tools",
+      "AI agents and AI assistants",
+      "Cryptography, steganography, image, audio, and forensic tools",
+      "Any other software or technical resources that may assist in solving the challenges",
     ],
+    note: "However, sharing answers, flags, or challenge solutions with other competing teams is prohibited.",
+  },
+  {
+    id: "009",
+    question: "WHAT HAPPENS IF TWO TEAMS FINISH AT THE SAME TIME?",
+    answer:
+      "Final rankings will be determined according to the official scoring and tie-breaking criteria established by the organizers.",
+  },
+  {
+    id: "010",
+    question: "WHAT SHOULD WE DO AFTER REACHING A CHECKPOINT?",
+    answer:
+      "Follow the instructions displayed on the website. If organizer verification is required, contact the designated coordinator through Discord before continuing.",
   },
 ];
 
@@ -196,18 +229,21 @@ export default function FaqSection() {
                       }`}
                   >
                     <div className="min-h-0 overflow-hidden">
-                      {item.answer && (
-                        <p className="mx-4 mb-5 border-l border-accretion/50 py-0 pl-4 pt-3.5 text-[12.5px] leading-7 text-copper md:mx-5">
-                          {item.answer}
-                        </p>
-                      )}
-                      {item.list && (
-                        <ul className="mx-4 mb-5 list-disc border-l border-accretion/50 py-0 pl-8 pt-3.5 text-[12.5px] leading-7 text-copper md:mx-5">
-                          {item.list.map((listItem) => (
-                            <li key={listItem} className="py-0.5">{listItem}</li>
-                          ))}
-                        </ul>
-                      )}
+                      <div className="mx-4 mb-5 border-l border-accretion/50 py-0 pl-4 pt-3.5 text-[12.5px] leading-7 text-copper md:mx-5">
+                        {item.answer && (
+                          <p className="whitespace-pre-line">{item.answer}</p>
+                        )}
+                        {item.list && (
+                          <ul className="list-disc pl-5 py-1">
+                            {item.list.map((listItem) => (
+                              <li key={listItem} className="py-0.5">{listItem}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {item.note && (
+                          <p className="mt-1 whitespace-pre-line text-copper/90">{item.note}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
