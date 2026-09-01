@@ -180,6 +180,7 @@ export function useAdminDashboard() {
   const [newChallengePoints, setNewChallengePoints] = useState(100);
   const [newChallengeTimeLimit, setNewChallengeTimeLimit] = useState(0);
   const [newChallengeAssets, setNewChallengeAssets] = useState([]);
+  const [newChallengeHints, setNewChallengeHints] = useState([]);
   const [newChallengeFragmentTitle, setNewChallengeFragmentTitle] = useState('');
   const [newChallengeFragmentHeader, setNewChallengeFragmentHeader] = useState('');
   const [newChallengeFragmentContent, setNewChallengeFragmentContent] = useState('');
@@ -311,7 +312,7 @@ export function useAdminDashboard() {
       assets: assets,
       story_context: storyVal,
       description: storyVal,
-      hints: Array.isArray(raw.hints) ? raw.hints : [],
+      hints: overrides.hints ?? challenge?.hints ?? raw.hints ?? [],
     };
 
     if (overrides.story_fragment) {
@@ -895,6 +896,7 @@ export function useAdminDashboard() {
       ...(a.asset_set ? { asset_set: a.asset_set } : {})
     }));
     setNewChallengeAssets(existingAssets);
+    setNewChallengeHints(challenge.hints || challenge.raw?.hints || []);
     setTempAssetName('');
     setTempAssetUrl('');
     setTempAssetSet('');
@@ -955,6 +957,7 @@ export function useAdminDashboard() {
           content: fragContent,
         },
         assets: mappedAssets,
+          hints: newChallengeHints,
       };
 
       if (newChallengeAnswer.trim()) {
@@ -1010,6 +1013,8 @@ export function useAdminDashboard() {
         setNewChallengePoints(100);
         setNewChallengeTimeLimit(0);
         setNewChallengeAssets([]);
+      setNewChallengeHints([]);
+        setNewChallengeHints([]);
         setNewChallengeFragmentTitle('');
         setNewChallengeFragmentHeader('');
         setNewChallengeFragmentContent('');
@@ -1064,6 +1069,7 @@ export function useAdminDashboard() {
           content: fragContent,
         },
         assets: mappedAssets,
+          hints: newChallengeHints,
       });
 
       if (newChallengeAnswer.trim() && roundNum) {
@@ -1104,6 +1110,8 @@ export function useAdminDashboard() {
       setNewChallengePoints(100);
       setNewChallengeTimeLimit(0);
       setNewChallengeAssets([]);
+      setNewChallengeHints([]);
+        setNewChallengeHints([]);
       setNewChallengeFragmentTitle('');
       setNewChallengeFragmentHeader('');
       setNewChallengeFragmentContent('');
@@ -2102,6 +2110,8 @@ export function useAdminDashboard() {
     setNewChallengeTimeLimit,
     newChallengeAssets,
     setNewChallengeAssets,
+      newChallengeHints,
+      setNewChallengeHints,
     newChallengeFragmentTitle,
     setNewChallengeFragmentTitle,
     newChallengeFragmentHeader,

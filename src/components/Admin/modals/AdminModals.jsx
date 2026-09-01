@@ -19,6 +19,8 @@ import {
 
 export default function AdminModals() {
   const {
+    newChallengeHints,
+    setNewChallengeHints,
     teams,
     setTeams,
     challenges,
@@ -309,6 +311,89 @@ export default function AdminModals() {
                   value={newTeamPassword}
                   onChange={(e) => setNewTeamPassword(e.target.value)}
                 />
+              </div>
+
+              {/* Hints Section */}
+              <div className="space-y-2 border border-accretion/20 p-3 mb-4">
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Hints</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newHint = { id: crypto.randomUUID(), text: '', is_visible: true, unlock_minutes: 0 };
+                      setNewChallengeHints([...(newChallengeHints || []), newHint]);
+                    }}
+                    className="text-[10px] bg-copper/10 text-copper px-2 py-0.5 rounded hover:bg-copper/20"
+                  >
+                    + ADD HINT
+                  </button>
+                </div>
+                
+                {(!newChallengeHints || newChallengeHints.length === 0) ? (
+                  <div className="text-xs text-copper/50 italic py-2 text-center">No hints defined for this challenge.</div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {newChallengeHints.map((hint, idx) => (
+                      <div key={hint.id || idx} className="bg-black border border-white/10 p-2 rounded relative flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...newChallengeHints];
+                            updated.splice(idx, 1);
+                            setNewChallengeHints(updated);
+                          }}
+                          className="absolute top-2 right-2 text-red-500 hover:text-red-400"
+                          title="Remove hint"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                        
+                        <div>
+                          <label className="text-[9px] uppercase tracking-wider text-copper/60 mb-1 block">Hint Text</label>
+                          <textarea
+                            placeholder="Type hint here..."
+                            className="w-full bg-black/50 border border-white/10 rounded p-1.5 text-xs text-starlight outline-none focus:border-accretion resize-none h-12"
+                            value={hint.text}
+                            onChange={(e) => {
+                              const updated = [...newChallengeHints];
+                              updated[idx] = { ...updated[idx], text: e.target.value };
+                              setNewChallengeHints(updated);
+                            }}
+                          />
+                        </div>
+                        
+                        <div className="flex gap-4">
+                          <div className="flex-1">
+                            <label className="text-[9px] uppercase tracking-wider text-copper/60 mb-1 block">Unlock Delay (Minutes)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              className="w-full bg-black/50 border border-white/10 rounded p-1.5 text-xs text-starlight outline-none focus:border-accretion"
+                              value={hint.unlock_minutes || 0}
+                              onChange={(e) => {
+                                const updated = [...newChallengeHints];
+                                updated[idx] = { ...updated[idx], unlock_minutes: parseInt(e.target.value, 10) || 0 };
+                                setNewChallengeHints(updated);
+                              }}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 pt-4">
+                            <input
+                              type="checkbox"
+                              checked={hint.is_visible !== false}
+                              onChange={(e) => {
+                                const updated = [...newChallengeHints];
+                                updated[idx] = { ...updated[idx], is_visible: e.target.checked };
+                                setNewChallengeHints(updated);
+                              }}
+                            />
+                            <span className="text-[10px] text-starlight">Visible</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="pt-4 flex gap-3">
