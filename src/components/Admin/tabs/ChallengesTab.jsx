@@ -20,6 +20,7 @@ export default function ChallengesTab() {
     setShowCreateChallengeModal,
     handleOpenCreateRound,
     handleOpenEditRound,
+    handleOpenDeleteRound,
     setEditingChallenge,
     handleOpenEditChallenge,
     setNewChallengeTitle,
@@ -220,6 +221,14 @@ export default function ChallengesTab() {
                     >
                       <Edit className="h-3.5 w-3.5" />
                       EDIT ROUND
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => roundObj && handleOpenDeleteRound(roundObj)}
+                      className="inline-flex items-center gap-1.5 rounded border border-red-900/50 bg-red-900/10 px-3 py-1.5 font-orbitron text-[10px] tracking-[0.16em] text-red-400 hover:bg-red-900/40 hover:text-red-300 transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      DELETE ROUND
                     </button>
                     <button
                       type="button"
