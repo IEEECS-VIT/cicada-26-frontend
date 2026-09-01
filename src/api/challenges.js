@@ -26,3 +26,4 @@ export async function submitAnswer(challenge_identifier, answer) {
     body: { challenge_identifier, answer },
   });
 }
+export async function getRoundTimer() { return api('/api/challenges/round-timer'); }

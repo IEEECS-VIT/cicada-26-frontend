@@ -11,7 +11,8 @@ function pad(n) {
 export default function Terminal() {
   const { teamName, isTerminalOpen, unlockedRounds, currentRound, unlockedPhases, loading, error, challengeData, roundTransition, completedChallenges } =
     useGameState();
-  const [clock, setClock] = useState("20:13:47");
+  const [clock, setClock] = useState("--:--:--");
+  const [timerConfig, setTimerConfig] = useState(null);
   const [lineProgress, setLineProgress] = useState(0);
 
   useEffect(() => {
@@ -49,12 +50,33 @@ export default function Terminal() {
   }, [unlockedRounds, currentRound, unlockedPhases, challengeData, completedChallenges]);
 
   useEffect(() => {
+    getRoundTimer().then(res => {
+      if(res.success && res.data) {
+        setTimerConfig(res.data);
+      }
+    }).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    let remaining = timerConfig ? timerConfig.remaining_seconds : null;
+    let isRunning = timerConfig ? timerConfig.is_running : false;
+
     const id = setInterval(() => {
-      const d = new Date();
-      setClock(`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`);
+      if (isRunning && remaining !== null && remaining > 0) {
+        remaining -= 1;
+        const h = Math.floor(remaining / 3600);
+        const m = Math.floor((remaining % 3600) / 60);
+        const s = remaining % 60;
+        setClock(`${pad(h)}:${pad(m)}:${pad(s)}`);
+      } else if (remaining !== null && remaining <= 0) {
+        setClock("00:00:00");
+      } else {
+        const d = new Date();
+        setClock(`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`);
+      }
     }, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [timerConfig]);
 
   return (
     <main className="relative flex h-full max-h-full flex-col items-center justify-between overflow-hidden bg-black px-1.5 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 text-accretion sm:px-4 sm:pt-2.5 lg:px-6">
