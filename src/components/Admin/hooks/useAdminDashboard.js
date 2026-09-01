@@ -147,7 +147,7 @@ export function useAdminDashboard() {
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamMembers, setNewTeamMembers] = useState('');
   const [newTeamPassword, setNewTeamPassword] = useState('');
-  
+
   const [editTeamName, setEditTeamName] = useState('');
   const [editTeamMembers, setEditTeamMembers] = useState('');
   const [editTeamPoints, setEditTeamPoints] = useState(0);
@@ -164,7 +164,7 @@ export function useAdminDashboard() {
     return saved ? JSON.parse(saved) : INITIAL_USERS;
   });
   const [userSearch, setUserSearch] = useState('');
-  
+
   // Score Adjustment State
   const [showAdjustScoreModal, setShowAdjustScoreModal] = useState(false);
   const [adjustScoreType, setAdjustScoreType] = useState('add'); // add, subtract, set
@@ -283,7 +283,7 @@ export function useAdminDashboard() {
       (challenge?.round ? (challenge.round >= 100 ? challenge.round : (challenge.round * 100 + (challenge.archiveNumber || 1))) : 1),
       10
     );
-    
+
     // Normalize time limit: backend schema requires a number >= 1
     const rawLimitInput = overrides.time_limit !== undefined ? overrides.time_limit : (challenge?.timeLimit ?? raw.time_limit);
     let timeLimitVal = parseInt(rawLimitInput, 10);
@@ -385,11 +385,11 @@ export function useAdminDashboard() {
     if (typeof root.enabled === 'boolean') return root.enabled;
     if (typeof root.tracking === 'boolean') return root.tracking;
     if (typeof root.is_enabled === 'boolean') return root.is_enabled;
-    
+
     for (const key of Object.keys(root)) {
       if (typeof root[key] === 'boolean') return root[key];
     }
-    
+
     if (typeof root.status === 'string') return root.status === 'enabled' || root.status === 'active';
     return null;
   };
@@ -464,6 +464,7 @@ export function useAdminDashboard() {
           id: x.id,
           name: x.name || `Round ${x.order_number}`,
           order_number: x.order_number,
+          time_limit: x.time_limit || 0,
           story_fragment: (x.story_fragment && typeof x.story_fragment === 'object') ? x.story_fragment : null,
           is_active: x.is_active,
           created_at: x.created_at,
@@ -510,15 +511,16 @@ export function useAdminDashboard() {
             points: x.points || 0,
             isLocked: x.is_active === false,
             hints: x.hints || [],
-            hintsEnabled: (x.hints || []).length > 0 && (x.hints || []).some((h) => h.is_visible),
-            solvedCount: solvedCountsByRound[x.order_number] || solvedCountsByRound[round] || 0,
-            timeLimit: x.time_limit || 0,
-            assets: (x.assets || []).map((a) => ({ 
-                id: a.id, 
-                name: a.name || 'asset', 
-                url: a.url || '#',
-                ...(a.asset_set ? { asset_set: a.asset_set } : {})
-              })),
+             hintsEnabled: (x.hints || []).length > 0 && (x.hints || []).some((h) => h.is_visible),
+             solvedCount: solvedCountsByRound[x.order_number] || solvedCountsByRound[round] || 0,
+             timeLimit: x.time_limit || 0,
+             assets: (x.assets || []).map((a) => ({
+                 id: a.id, 
+                 name: a.name || 'asset', 
+                 url: a.url || '#',
+                 type: a.type || a.mime_type || 'file',
+                 ...(a.asset_set ? { asset_set: a.asset_set } : {})
+               })),
             raw: x,
           };
         }));
@@ -888,6 +890,7 @@ export function useAdminDashboard() {
     const existingAssets = (challenge.assets || challenge.raw?.assets || []).map((a) => ({
       name: a.name || 'asset',
       url: a.url || '#',
+      type: a.type || a.mime_type || 'file',
       ...(a.asset_set ? { asset_set: a.asset_set } : {})
     }));
     setNewChallengeAssets(existingAssets);
@@ -922,7 +925,7 @@ export function useAdminDashboard() {
     const fragContent = newChallengeFragmentContent.trim() || fragTitle || `${titleVal} classified transmission fragment decrypted.`;
 
     const mappedAssets = (newChallengeAssets || []).map((a) => ({
-      type: 'file',
+      type: a.type || 'file',
       url: a.url || '#',
       name: (a.name || 'asset').trim() || 'asset',
       ...(a.asset_set ? { asset_set: a.asset_set } : {})
@@ -972,25 +975,25 @@ export function useAdminDashboard() {
           prev.map((c) =>
             c.id === editingChallenge.id
               ? {
-                  ...c,
-                  title: titleVal,
-                  name: titleVal,
-                  round: roundNum,
-                  archiveNumber: archiveNum,
-                  points: pointsVal,
-                  timeLimit: parsedLimit < 99999 ? parsedLimit : 0,
-                  ...(newChallengeAnswer.trim() ? { answer: newChallengeAnswer.trim(), rawAnswer: newChallengeAnswer.trim(), isHashedAnswer: false } : {}),
-                  story_fragment: {
-                    title: fragTitle,
-                    header: fragHeader,
-                    content: fragContent,
-                  },
-                  assets: (newChallengeAssets || []).map((a) => ({ 
-            name: a.name || 'asset', 
-            url: a.url || '#',
-            ...(a.asset_set ? { asset_set: a.asset_set } : {})
-          })),
-                }
+                ...c,
+                title: titleVal,
+                name: titleVal,
+                round: roundNum,
+                archiveNumber: archiveNum,
+                points: pointsVal,
+                timeLimit: parsedLimit < 99999 ? parsedLimit : 0,
+                ...(newChallengeAnswer.trim() ? { answer: newChallengeAnswer.trim(), rawAnswer: newChallengeAnswer.trim(), isHashedAnswer: false } : {}),
+                story_fragment: {
+                  title: fragTitle,
+                  header: fragHeader,
+                  content: fragContent,
+                },
+                assets: (newChallengeAssets || []).map((a) => ({ 
+                  name: a.name || 'asset', 
+                  url: a.url || '#',
+                  ...(a.asset_set ? { asset_set: a.asset_set } : {})
+                })),
+              }
               : c
           )
         );
@@ -1015,7 +1018,7 @@ export function useAdminDashboard() {
         setNewChallengeFragmentContent('');
         setTempAssetName('');
         setTempAssetUrl('');
-    setTempAssetSet('');
+        setTempAssetSet('');
         setEditingChallenge(null);
         setShowCreateChallengeModal(false);
         refreshLiveInBackground();
@@ -1112,7 +1115,7 @@ export function useAdminDashboard() {
       setNewChallengeFragmentContent('');
       setTempAssetName('');
       setTempAssetUrl('');
-    setTempAssetSet('');
+      setTempAssetSet('');
       setShowCreateChallengeModal(false);
       refreshLiveInBackground();
     } catch (err) {
@@ -1164,7 +1167,7 @@ export function useAdminDashboard() {
   };
 
   // --- DIRECT ASSET MANAGEMENT HANDLERS ---
-  
+
   // API Endpoint: POST Add Asset
   const handleAddAssetToChallengeDirect = async (challengeId, fileOrAsset) => {
     try {
@@ -1175,15 +1178,15 @@ export function useAdminDashboard() {
         const { error: uploadError } = await supabase.storage
           .from('assets')
           .upload(filePath, fileOrAsset, { upsert: true });
-          
+
         if (uploadError) throw new Error("Upload failed: " + uploadError.message);
-        
+
         const { data: publicUrlData } = supabase.storage
           .from('assets')
           .getPublicUrl(filePath);
 
-        newAsset = {
-          type: 'file',
+          newAsset = {
+            type: fileOrAsset.type || 'file',
           name: fileOrAsset.name,
           url: publicUrlData.publicUrl
         };
@@ -1242,11 +1245,12 @@ export function useAdminDashboard() {
 
       if (Array.isArray(res?.data)) {
         const updatedAssets = res.data.map((a) => ({ 
-          id: a.id, 
-          name: a.name || 'asset', 
-          url: a.url || '#',
-          ...(a.asset_set ? { asset_set: a.asset_set } : {})
-        }));
+           id: a.id, 
+           name: a.name || 'asset', 
+           url: a.url || '#',
+           type: a.type || a.mime_type || 'file',
+           ...(a.asset_set ? { asset_set: a.asset_set } : {})
+         }));
         setChallenges(challenges.map((c) => (c.id === activeAssetChallengeId ? { ...c, assets: updatedAssets } : c)));
       }
       pushLocalLog({
@@ -1629,7 +1633,7 @@ export function useAdminDashboard() {
     try {
       const challengeId = activeChallenge.raw?.id || activeChallenge.id || activeChallenge.order_number;
       await updateChallenge(challengeId, payload);
-      
+
       saveKnownAnswer(challengeId, trimmed);
       if (activeChallenge.round) {
         saveKnownAnswer(activeChallenge.round, trimmed);
@@ -1731,6 +1735,7 @@ export function useAdminDashboard() {
     }
     const payload = {
       name: nameVal,
+      time_limit: Math.max(0, Number(newRoundTimeLimit) || 0),
       ...(newRoundOrder.trim() !== '' ? { order_number: parseInt(newRoundOrder, 10) || 1 } : {}),
       is_active: newRoundIsActive,
     };
@@ -1749,9 +1754,10 @@ export function useAdminDashboard() {
       if (activeRound) {
         await updateRound(activeRound.id, payload);
         setRounds(rounds.map((r) => (r.id === activeRound.id ? {
-          ...r,
-          name: payload.name,
-          ...(payload.order_number !== undefined ? { order_number: payload.order_number } : {}),
+           ...r,
+           name: payload.name,
+           time_limit: payload.time_limit,
+           ...(payload.order_number !== undefined ? { order_number: payload.order_number } : {}),
           is_active: payload.is_active,
           ...(payload.story_fragment ? { story_fragment: payload.story_fragment } : {}),
         } : r)));
@@ -1760,9 +1766,10 @@ export function useAdminDashboard() {
         const created = res?.data || payload;
         setRounds([...rounds, {
           id: created.id || `round-${Date.now()}`,
-          name: payload.name,
-          order_number: payload.order_number ?? (rounds.length + 1),
-          story_fragment: payload.story_fragment || null,
+           name: payload.name,
+           order_number: payload.order_number ?? (rounds.length + 1),
+           time_limit: payload.time_limit,
+           story_fragment: payload.story_fragment || null,
           is_active: payload.is_active,
         }]);
       }
@@ -1852,7 +1859,7 @@ export function useAdminDashboard() {
 
   const handleDeleteTeam = async (teamId) => {
     const teamName = activeTeam?.name || (teams.find(t => t.id === teamId)?.name) || teamId;
-    
+
     // Immediately persist deletion locally so it never resurrects on refresh
     markTeamAsDeleted(teamName, teamId);
     if (activeTeam?.uuid) markTeamAsDeleted(teamName, activeTeam.uuid);
@@ -1863,8 +1870,8 @@ export function useAdminDashboard() {
         if (activeTeam?.uuid && isUUID(activeTeam.uuid)) {
           resolvedId = activeTeam.uuid;
         } else {
-          const foundInUsers = users.find(u => 
-            (u.teamId && isUUID(u.teamId)) && 
+          const foundInUsers = users.find(u =>
+            (u.teamId && isUUID(u.teamId)) &&
             (u.username === teamName || u.email === teamName || u.teamName === teamName)
           );
           if (foundInUsers?.teamId) {
@@ -1925,17 +1932,17 @@ export function useAdminDashboard() {
 
 
   // --- FILTERED LOGS & TEAMS ---
-  const filteredTeams = teams.filter(t => 
+  const filteredTeams = teams.filter(t =>
     t.name.toLowerCase().includes(teamSearch.toLowerCase()) ||
     t.members.some(m => m.toLowerCase().includes(teamSearch.toLowerCase()))
   );
 
   const filteredLogs = logs.filter(l => {
-    const matchesSearch = 
+    const matchesSearch =
       l.teamName.toLowerCase().includes(logSearch.toLowerCase()) ||
       l.challengeTitle.toLowerCase().includes(logSearch.toLowerCase()) ||
       l.answer.toLowerCase().includes(logSearch.toLowerCase());
-    
+
     if (logStatusFilter === 'correct') {
       return matchesSearch && l.correct === true;
     }
@@ -1971,7 +1978,7 @@ export function useAdminDashboard() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `cicada_leaderboard_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute('download', `cicada_leaderboard_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

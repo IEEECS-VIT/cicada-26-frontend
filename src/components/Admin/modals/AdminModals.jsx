@@ -987,33 +987,30 @@ export default function AdminModals() {
                   <button
                     type="button"
                     onClick={() => setAdjustScoreType('add')}
-                    className={`py-2 text-xs uppercase tracking-wider rounded border font-bold cursor-pointer transition-colors ${
-                      adjustScoreType === 'add'
+                    className={`py-2 text-xs uppercase tracking-wider rounded border font-bold cursor-pointer transition-colors ${adjustScoreType === 'add'
                         ? 'bg-green-500/20 text-green-400 border-green-500/40'
                         : 'border-white/10 text-copper hover:bg-white/5'
-                    }`}
+                      }`}
                   >
                     Add (+)
                   </button>
                   <button
                     type="button"
                     onClick={() => setAdjustScoreType('subtract')}
-                    className={`py-2 text-xs uppercase tracking-wider rounded border font-bold cursor-pointer transition-colors ${
-                      adjustScoreType === 'subtract'
+                    className={`py-2 text-xs uppercase tracking-wider rounded border font-bold cursor-pointer transition-colors ${adjustScoreType === 'subtract'
                         ? 'bg-red-500/20 text-red-400 border-red-500/40'
                         : 'border-white/10 text-copper hover:bg-white/5'
-                    }`}
+                      }`}
                   >
                     Subtract (-)
                   </button>
                   <button
                     type="button"
                     onClick={() => setAdjustScoreType('set')}
-                    className={`py-2 text-xs uppercase tracking-wider rounded border font-bold cursor-pointer transition-colors ${
-                      adjustScoreType === 'set'
+                    className={`py-2 text-xs uppercase tracking-wider rounded border font-bold cursor-pointer transition-colors ${adjustScoreType === 'set'
                         ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
                         : 'border-white/10 text-copper hover:bg-white/5'
-                    }`}
+                      }`}
                   >
                     Set Exact (=)
                   </button>
@@ -1252,7 +1249,7 @@ export default function AdminModals() {
               {/* Assets Section */}
               <div className="space-y-2 border border-accretion/20 p-3">
                 <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Assets</label>
-                
+
                 {/* Drag & Drop Upload Zone */}
                 <div
                   onDragOver={(e) => {
@@ -1273,7 +1270,7 @@ export default function AdminModals() {
                           const { error } = await supabase.storage.from('assets').upload(filePath, file, { upsert: true });
                           if (error) throw error;
                           const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-                          uploadedAssets.push({ name: file.name, url: data.publicUrl });
+                           uploadedAssets.push({ name: file.name, type: file.type || 'file', url: data.publicUrl });
                         }
                         setNewChallengeAssets([...newChallengeAssets, ...uploadedAssets]);
                       } catch (err) {
@@ -1314,7 +1311,7 @@ export default function AdminModals() {
                             const { error } = await supabase.storage.from('assets').upload(filePath, file, { upsert: true });
                             if (error) throw error;
                             const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-                            uploadedAssets.push({ name: file.name, url: data.publicUrl });
+                           uploadedAssets.push({ name: file.name, type: file.type || 'file', url: data.publicUrl });
                           }
                           setNewChallengeAssets([...newChallengeAssets, ...uploadedAssets]);
                         } catch (err) {
@@ -1769,7 +1766,7 @@ export default function AdminModals() {
           </div>
         </div>
       )}
-    {/* 17. Modal: Create / Edit Round */}
+      {/* 17. Modal: Create / Edit Round */}
       {showRoundModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md border border-accretion/30 bg-black p-8 text-starlight">

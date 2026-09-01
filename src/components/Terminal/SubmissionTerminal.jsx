@@ -12,11 +12,11 @@ const QUICK_COMMANDS = [
 ];
 
 export default function SubmissionTerminal() {
-  const { 
-    setIsTerminalOpen, 
-    terminalHistory, 
-    addTerminalCommand, 
-    clearTerminal, 
+  const {
+    setIsTerminalOpen,
+    terminalHistory,
+    addTerminalCommand,
+    clearTerminal,
     submitAnswer,
     challengeData,
     currentRound,
@@ -46,7 +46,7 @@ export default function SubmissionTerminal() {
 
     const parts = cmd.split(' ');
     const baseCmd = parts[0].toLowerCase();
-    
+
     let response = '';
 
     switch (baseCmd) {
@@ -104,7 +104,7 @@ Q: What tools are allowed? -> Audio/Spectrogram, Steg, CyberChef, Stellarium, OS
 Q: How do hints work? -> Intercepted telemetry updates appear on the right sidebar.`;
         addTerminalCommand(cmd, response);
         break;
-      
+
       case 'clear':
         clearTerminal();
         break;
@@ -126,13 +126,13 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
         } else {
           const answer = parts.slice(1).join(' ');
           if (!/^[a-zA-Z0-9_ -]+$/.test(answer)) {
-             response = "Transmission Error: Invalid characters detected. Use alphanumeric only.";
-             addTerminalCommand(cmd, response);
+            response = "Transmission Error: Invalid characters detected. Use alphanumeric only.";
+            addTerminalCommand(cmd, response);
           } else {
-             addTerminalCommand(cmd, "Transmitting answer for decryption...");
-             submitAnswer(answer).then((res) => {
-               addTerminalCommand(`submit ${answer}`, res);
-             });
+            addTerminalCommand(cmd, "Transmitting answer for decryption...");
+            submitAnswer(answer).then((res) => {
+              addTerminalCommand(`submit ${answer}`, res);
+            });
           }
         }
         break;
@@ -248,11 +248,10 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
         <button
           type="submit"
           disabled={!input.trim()}
-          className={`flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-lg border transition-all shrink-0 ${
-            input.trim()
+          className={`flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-lg border transition-all shrink-0 ${input.trim()
               ? 'border-accretion bg-accretion text-black shadow-[0_0_10px_rgba(209,155,131,0.4)] cursor-pointer active:scale-95'
               : 'border-accretion/30 bg-black/40 text-accretion/40 cursor-not-allowed'
-          }`}
+            }`}
           aria-label="Send command"
         >
           <Send className="h-4 w-4" />

@@ -6,37 +6,50 @@ function pad(n) {
   return String(n).padStart(2, "0");
 }
 
+function formatDuration(seconds) {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  return [
+    Math.floor(safeSeconds / 3600),
+    Math.floor((safeSeconds % 3600) / 60),
+    safeSeconds % 60,
+  ].map(pad).join(':');
+}
+
 export default function LeftSidebar({ onNavigate }) {
-  const { 
-    unlockedRounds, 
-    unlockedPhases, 
-    currentRound, 
-    changeRound, 
-    currentPhase, 
-    setCurrentPhase, 
-    activeTab, 
-    setActiveTab, 
+  const {
+    unlockedRounds,
+    unlockedPhases,
+    currentRound,
+    changeRound,
+    currentPhase,
+    setCurrentPhase,
+    activeTab,
+    setActiveTab,
     challengeData,
-    completedChallenges 
+    completedChallenges,
   } = useGameState();
   const [expandedRound, setExpandedRound] = useState(currentRound);
-
-  const [remaining, setRemaining] = useState(3 * 3600 + 46 * 60 + 21); // Mock 3h 46m 21s
+  const roundLimit = challengeData?.[currentRound]?.timeLimitSeconds || 0;
+  const [remaining, setRemaining] = useState(roundLimit);
 
   useEffect(() => {
     setExpandedRound(currentRound);
   }, [currentRound]);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setRemaining((r) => (r > 0 ? r - 1 : 0));
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+    if (!roundLimit) {
+      setRemaining(0);
+      return undefined;
+    }
 
-  const hrs = pad(Math.floor(remaining / 3600));
-  const mins = pad(Math.floor((remaining % 3600) / 60));
-  const secs = pad(remaining % 60);
+    const startedAt = Date.now();
+    const tick = () => {
+      setRemaining(Math.max(0, roundLimit - Math.floor((Date.now() - startedAt) / 1000)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [currentRound, roundLimit]);
 
   const handleRoundClick = (roundId) => {
     if (unlockedRounds.includes(roundId)) {
@@ -50,7 +63,7 @@ export default function LeftSidebar({ onNavigate }) {
     if (!roundData || !unlockedRounds.includes(roundId)) return 0;
     // If we've unlocked a round past this one, it's 100%
     if (Math.max(...unlockedRounds) > roundId) return 100;
-    
+
     const phasesList = Object.values(roundData.phases || {});
     if (phasesList.length === 0) return 0;
 
@@ -68,18 +81,18 @@ export default function LeftSidebar({ onNavigate }) {
 
   return (
     <div className="panel flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden p-2.5 sm:p-4">
-      
+
       {/* Timers */}
       <div className="mb-2.5 shrink-0 border border-accretion/30 bg-black/40 p-2 sm:p-3 rounded-lg">
         <div className="flex justify-between items-center gap-2">
           <p className="label-mono text-[10px] sm:text-xs uppercase tracking-wider text-accretion/80">Round Time</p>
-          <p className="font-orbitron text-sm sm:text-base text-accretion tabular-nums tracking-widest">{hrs}:{mins}:{secs}</p>
+          <p className="font-orbitron text-sm sm:text-base text-accretion tabular-nums tracking-widest">{formatDuration(remaining)}</p>
         </div>
       </div>
 
       {/* Main Links */}
       <div className="mb-2.5 shrink-0 space-y-1">
-        <button 
+        <button
           onClick={() => {
             setActiveTab('overview');
             onNavigate?.();
@@ -89,7 +102,7 @@ export default function LeftSidebar({ onNavigate }) {
           <Radar className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
           <span className="font-orbitron text-[11px] sm:text-xs tracking-widest uppercase">Overview</span>
         </button>
-        <button 
+        <button
           onClick={() => {
             setActiveTab('guidelines');
             onNavigate?.();
@@ -99,7 +112,7 @@ export default function LeftSidebar({ onNavigate }) {
           <RouteIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
           <span className="font-orbitron text-[11px] sm:text-xs tracking-widest uppercase">Guidelines</span>
         </button>
-        <button 
+        <button
           onClick={() => {
             setActiveTab('faq');
             onNavigate?.();
@@ -120,7 +133,7 @@ export default function LeftSidebar({ onNavigate }) {
 
           return (
             <div key={roundId} className="border border-accretion/30 rounded-lg bg-black/40 overflow-hidden">
-              <button 
+              <button
                 onClick={() => handleRoundClick(roundId)}
                 className={`w-full flex items-center justify-between min-h-[40px] p-2.5 transition-colors ${isUnlocked ? 'hover:bg-accretion/10 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                 disabled={!isUnlocked}
@@ -135,7 +148,7 @@ export default function LeftSidebar({ onNavigate }) {
                   isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-accretion shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-accretion shrink-0" />
                 )}
               </button>
-              
+
               {isExpanded && isUnlocked && (
                 <div className="p-2.5 pt-0 space-y-1.5 border-t border-accretion/20">
                   <div className="mb-2 mt-1.5">
@@ -147,7 +160,7 @@ export default function LeftSidebar({ onNavigate }) {
                       <div className="h-full rounded-full bg-accretion shadow-[0_0_6px_#D19B83]" style={{ width: `${calculateRoundProgress(roundId)}%` }} />
                     </div>
                   </div>
-                  
+
                   {Object.entries(roundData.phases).map(([phaseIdStr, phaseData]) => {
                     const phaseId = parseInt(phaseIdStr);
                     const isPhaseUnlocked = isUnlocked && ((unlockedPhases[roundId] || 1) >= phaseId || !phaseData.is_locked || Boolean(phaseData.is_active));
@@ -156,7 +169,7 @@ export default function LeftSidebar({ onNavigate }) {
                     return (
                       <button
                         key={phaseId}
-                        onClick={() => { 
+                        onClick={() => {
                           if (isPhaseUnlocked) {
                             if (currentRound !== roundId) {
                               changeRound(roundId);

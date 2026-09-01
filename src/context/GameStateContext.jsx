@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-import { getChallenges, getProgress, submitAnswer as apiSubmit } from "../api/challenges";
+import { getChallenges, getProgress, getRounds, submitAnswer as apiSubmit } from "../api/challenges";
 
 const GameStateContext = createContext(null);
 
@@ -62,7 +62,10 @@ function parseChallengeHierarchy(ch, index) {
   return { round, archive };
 }
 
-function buildChallengeData(challenges, progress) {
+function buildChallengeData(challenges, progress, roundList = []) {
+  const roundByOrder = new Map(
+    (roundList || []).map((round) => [Number(round.order_number), round])
+  );
   const sorted = [...(challenges || [])].sort((a, b) => (a.order_number || 0) - (b.order_number || 0));
   const groupedByRound = {};
 
@@ -83,6 +86,8 @@ function buildChallengeData(challenges, progress) {
     rounds[round] = {
       title: `Round ${round}`,
       totalPhases: chList.length,
+      // Round limits are configured in minutes by the admin panel.
+      timeLimitSeconds: Math.max(0, Number(roundByOrder.get(round)?.time_limit || 0) * 60),
       phases: {},
     };
 
@@ -91,7 +96,19 @@ function buildChallengeData(challenges, progress) {
       const ch = item.ch;
       const archive = item.originalArchive || phaseNum;
 
-      const firstAsset = ch.assets?.[0];
+      // The API returns the assets already allocated to the participant's set.
+      // Keep every returned asset so the user can choose between all payloads
+      // assigned to this archive, instead of silently dropping all but the first.
+      const assets = Array.isArray(ch.assets)
+        ? ch.assets
+          .filter((asset) => asset && (asset.url || asset.public_url || asset.asset_url || asset.file_url || asset.content))
+          .map((asset) => ({
+            ...asset,
+            url: asset.url || asset.public_url || asset.asset_url || asset.file_url || "#",
+            type: asset.type || asset.mime_type || "file",
+          }))
+        : [];
+      const firstAsset = assets[0];
       const fragment = (ch.story_fragment && typeof ch.story_fragment === 'object') ? ch.story_fragment : {};
       const fragmentTitle = fragment.title || ch.name || ch.title || `Archive ${String(archive).padStart(2, '0')}`;
       const fragmentContent = fragment.content || ch.story_context || ch.description || "";
@@ -104,7 +121,7 @@ function buildChallengeData(challenges, progress) {
         content: primaryContent,
         resourceType: firstAsset ? ASSET_TYPE_LABEL[firstAsset.type] || "FILE" : "TEXT",
         resourceUrl: firstAsset?.url || "#",
-        assets: ch.assets || [],
+        assets,
         order_number: ch.order_number,
         round: round,
         archiveNumber: archive,
@@ -124,6 +141,7 @@ function buildChallengeData(challenges, progress) {
       1: {
         title: "Round 1",
         totalPhases: 0,
+        timeLimitSeconds: 0,
         phases: {},
       },
     };
@@ -204,8 +222,12 @@ export function GameStateProvider({ children }) {
     if (!silent) setLoading(true);
     setError("");
     try {
-      const [chals, prog] = await Promise.all([getChallenges(), getProgress()]);
-      const data = buildChallengeData(chals.data, prog.data);
+      const [chals, prog, roundsRes] = await Promise.all([
+        getChallenges(),
+        getProgress(),
+        getRounds().catch(() => ({ data: [] })),
+      ]);
+      const data = buildChallengeData(chals.data, prog.data, roundsRes?.data);
       setChallengeData(data);
       setProgress(prog.data);
 
