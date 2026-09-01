@@ -278,23 +278,39 @@ export function GameStateProvider({ children }) {
       if (unlockedR.length === 0 && allRounds.length > 0) unlockedR.push(allRounds[0]);
 
       setUnlockedRounds(unlockedR);
-      setCurrentRound((prev) => (unlockedR.includes(prev) ? prev : teamCurrentRound));
-      setCurrentPhase(targetPhase);
+      if (silent !== 'poll') {
+        setCurrentRound((prev) => (unlockedR.includes(prev) ? prev : teamCurrentRound));
+        setCurrentPhase(targetPhase);
+      }
       setUnlockedPhases((prev) => ({
         ...prev,
         [teamCurrentRound]: Math.max(prev[teamCurrentRound] || 1, targetPhase),
       }));
 
-      const collected = [];
-      (chals.data || []).forEach((ch) => {
-        const { round } = parseChallengeHierarchy(ch, 0);
-        (ch.hints || []).forEach((h) => {
-          if (h.is_visible !== false) {
-            collected.push({ id: h.id, round: round, text: h.text, timestamp: Date.now() });
+              const collectedRaw = [];
+        for (const rKey of Object.keys(data)) {
+          const rData = data[rKey];
+          for (const pKey of Object.keys(rData.phases)) {
+            const phaseData = rData.phases[pKey];
+            (phaseData.hints || []).forEach((h) => {
+              if (h.is_visible !== false) {
+                collectedRaw.push({
+                  id: h.id,
+                  round: parseInt(rKey, 10),
+                  phase: parseInt(pKey, 10),
+                  text: h.text,
+                  timestamp: Date.now()
+                });
+              }
+            });
           }
+        }
+        setHints(prev => {
+          return collectedRaw.map(c => {
+            const existing = prev.find(p => p.id === c.id);
+            return existing ? { ...c, timestamp: existing.timestamp } : c;
+          });
         });
-      });
-      setHints(collected);
     } catch (err) {
       console.error("Failed to load mission data:", err);
       setError(err.message || "Failed to load mission data.");
@@ -305,6 +321,13 @@ export function GameStateProvider({ children }) {
 
   useEffect(() => {
     refresh();
+    
+    // Poll dynamically for hints and external unlocks every 10 seconds
+    const interval = setInterval(() => {
+      refresh('poll');
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, [refresh]);
 
   const addTerminalCommand = useCallback((command, response) => {
