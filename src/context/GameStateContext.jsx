@@ -20,45 +20,10 @@ const ASSET_TYPE_LABEL = {
 
 // Map backend challenges into the Rounds -> Archive (Phase) shape
 function parseChallengeHierarchy(ch, index) {
-  let round = ch.round || ch.round_number;
-  let archive = ch.archive_number || ch.archive || ch.phase;
-
-  // 1. If round_id matches known round IDs
-  if (!round && ch.round_id) {
-    if (ch.round_id === '7db4150a-3259-4ef3-b9d6-d7ccd1d4f24f') {
-      round = 2;
-    } else if (ch.round_id === '85d491a1-53d9-46fa-a1cb-98a7da15fd1b') {
-      round = 1;
-    }
-  }
-
-  // 2. Title and string parsing
-  if (!round || !archive) {
-    if (ch.order_number >= 100) {
-      round = round || Math.floor(ch.order_number / 100);
-      archive = archive || (ch.order_number % 100);
-    } else {
-      const str = `${ch.name || ''} ${ch.title || ''}`;
-      const roundMatch = str.match(/round\s*(\d+)/i);
-      if (roundMatch && !round) round = parseInt(roundMatch[1], 10);
-      const archiveMatch = str.match(/archive\s*0?(\d+)/i) || str.match(/phase\s*0?(\d+)/i);
-      if (archiveMatch && !archive) archive = parseInt(archiveMatch[1], 10);
-    }
-  }
-
-  // 3. Fallback: Challenges 1..6 -> Round 1; Challenges 7+ -> Round 2
-  if (!round) {
-    if (ch.order_number) {
-      if (ch.order_number <= 6) round = 1;
-      else round = 2;
-    } else {
-      round = 1;
-    }
-  }
-
-  round = parseInt(round, 10) || 1;
-  archive = parseInt(archive, 10) || (ch.order_number ? ((ch.order_number - 1) % 6 + 1) : (index + 1));
-
+  let round = ch.round_order || ch.round || ch.round_number;
+  if (!round && ch.order_number >= 100) round = Math.floor(ch.order_number / 100);
+  if (!round) round = ch.order_number && ch.order_number <= 6 ? 1 : 2;
+  let archive = ch.archive_number || ch.archive || ch.phase || index + 1;
   return { round, archive };
 }
 
@@ -293,10 +258,10 @@ export function GameStateProvider({ children }) {
       // 2. Any round <= teamCurrentRound.
       // 3. Any round where at least one challenge is active/unlocked.
       const unlockedR = allRounds.filter((r) => {
-        if (r === 1) return true;
         if (r <= teamCurrentRound) return true;
-        const roundPhases = Object.values(data[r]?.phases || {});
-        return roundPhases.some((p) => p.is_locked === false || p.is_active === true);
+        // Always unlock round 1 by default, and any round the team has reached.
+        // We DO NOT rely on is_active because all challenges are generally active globally.
+        return r === 1;
       });
 
       if (unlockedR.length === 0 && allRounds.length > 0) unlockedR.push(allRounds[0]);
