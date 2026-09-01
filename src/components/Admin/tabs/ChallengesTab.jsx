@@ -468,13 +468,7 @@ export default function ChallengesTab() {
                             {challenge.isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
                             {challenge.isLocked ? 'UNLOCK' : 'LOCK'}
                           </button>
-                          <button
-                              type="button"
-                              onClick={() => handleOpenHintModal(challenge)}
-                              className="flex-1 border py-2 font-rajdhani text-[11px] tracking-[0.18em] rounded border-accretion/40 text-accretion hover:bg-accretion hover:text-black transition-colors"
-                            >
-                              MANAGE HINTS
-                            </button>
+                          
                         </div>
                         <div className="flex gap-2">
                           <button

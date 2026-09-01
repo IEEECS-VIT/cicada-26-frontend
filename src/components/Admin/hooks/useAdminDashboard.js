@@ -677,14 +677,9 @@ export function useAdminDashboard() {
       const hintToUpdate = activeChallenge.hints.find(h => h.id === hintId);
       if (!hintToUpdate) return;
 
-      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          text: hintToUpdate.text,
-          is_visible: !currentStatus,
-          unlock_minutes: hintToUpdate.unlock_minutes || 0
-        }),
+      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}/toggle`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
