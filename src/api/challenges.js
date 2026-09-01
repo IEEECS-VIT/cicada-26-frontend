@@ -1,4 +1,30 @@
-import { api } from "./client";
+import { api, API_URL, getValidToken } from "./client";
+
+/**
+ * Fetch a challenge asset through the authenticated API. The backend masks
+ * asset URLs as `/api/challenges/assets/masked?...`, which requires the auth
+ * header that a plain <img>/<video>/<a> tag cannot send.
+ */
+export async function fetchMaskedAssetFile(maskedPath) {
+  const token = await getValidToken();
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`${API_URL}${maskedPath}`, {
+    headers,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch asset [HTTP ${res.status}]`);
+  }
+  return res.blob();
+}
+
+/**
+ * True when the URL is a backend-masked proxy path rather than a direct URL.
+ */
+export function isMaskedAssetUrl(url = "") {
+  return url.startsWith("/api/") || url.includes("/api/challenges/assets/");
+}
 
 export async function getChallenges() {
   return api("/api/challenges");
