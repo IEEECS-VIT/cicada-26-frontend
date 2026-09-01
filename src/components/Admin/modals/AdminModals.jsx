@@ -1154,15 +1154,54 @@ export default function AdminModals() {
               </div>
 
               <div>
-                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Flag / Solution Key</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. c1c4d4_fl4g_value"
-                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                  value={newChallengeAnswer}
-                  onChange={(e) => setNewChallengeAnswer(e.target.value)}
-                />
+                {(() => {
+              const uniqueSets = Array.from(new Set((newChallengeAssets || []).filter(a => typeof a.asset_set === 'number' || a.asset_set).map(a => Number(a.asset_set)))).sort((a,b)=>a-b);
+              
+              let answerObj = {};
+              try {
+                if (typeof newChallengeAnswer === 'string' && newChallengeAnswer.startsWith('{')) {
+                  answerObj = JSON.parse(newChallengeAnswer);
+                } else if (newChallengeAnswer) {
+                  answerObj['global'] = newChallengeAnswer;
+                }
+              } catch(e) {}
+
+              if (uniqueSets.length > 0) {
+                return (
+                  <div className="space-y-4">
+                    <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Set-Specific Solution Keys</label>
+                    {uniqueSets.map(setNum => (
+                      <div key={setNum} className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-copper w-16">Set {setNum}</span>
+                        <input
+                          type="text"
+                          placeholder={`e.g. flag_for_set_${setNum}`}
+                          className="flex-1 border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none focus:border-accretion"
+                          value={answerObj[setNum] || ''}
+                          onChange={(e) => {
+                            const newObj = { ...answerObj, [setNum]: e.target.value };
+                            setNewChallengeAnswer(JSON.stringify(newObj));
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+
+              return (
+                <div>
+                  <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Global Solution Key</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. c1c4d4_fl4g_value"
+                    className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                    value={answerObj['global'] || newChallengeAnswer}
+                    onChange={(e) => setNewChallengeAnswer(e.target.value)}
+                  />
+                </div>
+              );
+            })()}
               </div>
 
               {/* Story Fragment Section */}
