@@ -631,17 +631,12 @@ export function useAdminDashboard() {
 
   const handleDeleteHint = async (hintId) => {
     try {
-      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
+      const data = await deleteHint(activeChallenge.id, hintId);
 
       setChallenges(
-        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints || data } : c))
       );
-      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints || data }));
       toast.success('Hint deleted');
     } catch (err) {
       toast.error(err.message || 'Failed to delete hint');
@@ -653,17 +648,12 @@ export function useAdminDashboard() {
       const hintToUpdate = activeChallenge.hints.find(h => h.id === hintId);
       if (!hintToUpdate) return;
 
-      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}/toggle`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
+      const data = await toggleHint(activeChallenge.id, hintId);
 
       setChallenges(
-        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints || data } : c))
       );
-      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints || data }));
       toast.success('Hint visibility toggled');
     } catch (err) {
       toast.error(err.message || 'Failed to toggle hint visibility');
