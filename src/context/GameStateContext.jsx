@@ -234,7 +234,7 @@ export function GameStateProvider({ children }) {
       const allRounds = Object.keys(data).map(Number).sort((a, b) => a - b);
       const targetOrder = prog?.data?.current_challenge_order;
 
-      let teamCurrentRound = prog?.data?.round || prog?.data?.current_round;
+      let teamCurrentRound = prog?.data?.current_round_order || prog?.data?.round || prog?.data?.current_round;
       let targetPhase = 1;
 
       if (targetOrder) {
