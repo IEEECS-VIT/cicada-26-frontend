@@ -163,6 +163,8 @@ export default function AdminModals() {
     setActiveRound,
     newRoundName,
     setNewRoundName,
+    newRoundTimeLimit,
+    setNewRoundTimeLimit,
     newRoundOrder,
     setNewRoundOrder,
     newRoundIsActive,
@@ -183,6 +185,76 @@ export default function AdminModals() {
 
   return (
     <>
+      {/* Hint Modal */}
+      {showHintModal && activeChallenge && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl border border-accretion/30 bg-black p-8 text-starlight mb-4 max-h-[50vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="flex items-center gap-2 font-orbitron text-sm tracking-[0.22em] text-starlight">
+                <Plus className="w-4 h-4 text-accretion" />
+                <span>Manage Hints: {activeChallenge.title}</span>
+              </h3>
+              <button onClick={() => setShowHintModal(false)} className="text-copper hover:text-starlight">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              {activeChallenge.hints && activeChallenge.hints.length > 0 ? (
+                activeChallenge.hints.map((hint, idx) => (
+                  <div key={hint.id} className="border border-copper/20 p-4 flex justify-between items-center">
+                    <div>
+                      <p className="text-sm text-starlight/80">Hint {idx + 1}: {hint.text}</p>
+                      <p className="text-xs text-copper mt-1">Unlocks in: {hint.unlock_minutes} mins</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleToggleHintVisibility(hint.id, hint.is_visible)}
+                        className={`px-3 py-1 text-xs border ${hint.is_visible ? 'border-accretion text-accretion' : 'border-copper/50 text-copper/50'}`}
+                      >
+                        {hint.is_visible ? 'VISIBLE' : 'HIDDEN'}
+                      </button>
+                      <button onClick={() => handleDeleteHint(hint.id)} className="px-3 py-1 text-xs border border-red-500/50 text-red-500">
+                        DELETE
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-copper/50 italic">No hints yet.</p>
+              )}
+            </div>
+            
+            <form onSubmit={handleAddHint} className="border-t border-copper/20 pt-6 space-y-4">
+              <h4 className="font-rajdhani text-[12px] tracking-[0.2em] text-accretion">ADD NEW HINT</h4>
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Hint Text</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newHintText}
+                  onChange={(e) => setNewHintText(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Unlock Time (mins, 0=immediate)</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newHintUnlockMinutes}
+                  onChange={(e) => setNewHintUnlockMinutes(e.target.value)}
+                />
+              </div>
+              <button type="submit" className="w-full border border-accretion bg-accretion py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright">
+                ADD HINT
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* 1. Modal: Register/Create Team */}
       {showCreateTeamModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
@@ -1512,6 +1584,17 @@ export default function AdminModals() {
                   className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                   value={newRoundName}
                   onChange={(e) => setNewRoundName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Time Limit (mins)</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Unlimited (0)"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newRoundTimeLimit}
+                  onChange={(e) => setNewRoundTimeLimit(e.target.value)}
                 />
               </div>
 

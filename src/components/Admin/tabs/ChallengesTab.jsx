@@ -55,7 +55,8 @@ export default function ChallengesTab() {
     handleToggleLockChallenge,
     handleDeleteChallenge,
     handleToggleHintChallenge,
-    handleOpenEditAnswer,
+      handleOpenHintModal,
+      handleOpenEditAnswer,
     handleOpenOverrideChallenge
   } = useAdmin();
 
@@ -468,16 +469,12 @@ export default function ChallengesTab() {
                             {challenge.isLocked ? 'UNLOCK' : 'LOCK'}
                           </button>
                           <button
-                            type="button"
-                            onClick={() => handleToggleHintChallenge(challenge.id, challenge.hintsEnabled)}
-                            className={`flex-1 border py-2 font-rajdhani text-[11px] tracking-[0.18em] rounded ${
-                              challenge.hintsEnabled
-                                ? 'border-accretion/40 text-accretion'
-                                : 'border-copper/25 text-copper'
-                            }`}
-                          >
-                            {challenge.hintsEnabled ? 'HINTS ON' : 'HINTS OFF'}
-                          </button>
+                              type="button"
+                              onClick={() => handleOpenHintModal(challenge)}
+                              className="flex-1 border py-2 font-rajdhani text-[11px] tracking-[0.18em] rounded border-accretion/40 text-accretion hover:bg-accretion hover:text-black transition-colors"
+                            >
+                              MANAGE HINTS
+                            </button>
                         </div>
                         <div className="flex gap-2">
                           <button
