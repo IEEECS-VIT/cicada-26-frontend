@@ -1176,8 +1176,8 @@ export default function AdminModals() {
                     <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Set-Specific Solution Keys</label>
                     {uniqueSets.map(setNum => {
                       const currentVal = answerObj[setNum];
-                      const displayVal = isHash(currentVal) ? '' : (currentVal || '');
-                      const placeholderStr = isHash(currentVal) ? 'ENCRYPTED (SET) - Type to overwrite' : `e.g. flag_for_set_${setNum}`;
+                      const displayVal = currentVal || '';
+                      const placeholderStr = `e.g. flag_for_set_${setNum}`;
                       
                       return (
                       <div key={setNum} className="flex items-center gap-3">
@@ -1199,8 +1199,8 @@ export default function AdminModals() {
               }
 
               const globalVal = answerObj['global'] || newChallengeAnswer;
-              const displayVal = isHash(globalVal) ? '' : (globalVal || '');
-              const placeholderStr = isHash(globalVal) ? 'ENCRYPTED (SET) - Type to overwrite' : 'e.g. c1c4d4_fl4g_value';
+              const displayVal = globalVal || '';
+              const placeholderStr = 'e.g. c1c4d4_fl4g_value';
 
               return (
                 <div>
