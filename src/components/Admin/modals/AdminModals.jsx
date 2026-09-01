@@ -216,17 +216,23 @@ export default function AdminModals() {
                       <p className="text-sm text-starlight/80">Hint {idx + 1}: {hint.text}</p>
                       <p className="text-xs text-copper mt-1">Unlocks in: {hint.unlock_minutes} mins</p>
                     </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleToggleHintVisibility(hint.id, hint.is_visible)}
-                        className={`px-3 py-1 text-xs border ${hint.is_visible ? 'border-accretion text-accretion' : 'border-copper/50 text-copper/50'}`}
-                      >
-                        {hint.is_visible ? 'VISIBLE' : 'HIDDEN'}
-                      </button>
-                      <button onClick={() => handleDeleteHint(hint.id)} className="px-3 py-1 text-xs border border-red-500/50 text-red-500">
-                        DELETE
-                      </button>
-                    </div>
+                                          <div className="flex items-center gap-4">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="sr-only peer" 
+                            checked={hint.is_visible !== false} 
+                            onChange={() => handleToggleHintVisibility(hint.id, hint.is_visible)} 
+                          />
+                          <div className="w-9 h-5 bg-copper/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accretion"></div>
+                          <span className={`ml-3 text-xs font-rajdhani tracking-widest ${hint.is_visible ? 'text-accretion' : 'text-copper/50'}`}>
+                            {hint.is_visible ? 'VISIBLE' : 'HIDDEN'}
+                          </span>
+                        </label>
+                        <button onClick={() => handleDeleteHint(hint.id)} className="px-3 py-1 text-xs border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-colors">
+                          DELETE
+                        </button>
+                      </div>
                   </div>
                 ))
               ) : (
