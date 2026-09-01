@@ -1,3 +1,5 @@
+import React, { useState } from 'react';
+import { supabase } from '../../../lib/supabase.js';
 import { useAdmin } from '../AdminContext';
 import {
   INITIAL_TEAMS,
@@ -18,6 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminModals() {
+  const [isUploading, setIsUploading] = useState(false);
   const {
     newChallengeHints,
     setNewChallengeHints,
@@ -1256,40 +1259,75 @@ export default function AdminModals() {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
-                  onDrop={(e) => {
+                  onDrop={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    if (isUploading) return;
                     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                       const files = Array.from(e.dataTransfer.files);
-                      const newAssets = files.map(file => ({
-                        name: file.name,
-                        url: `https://assets.cicada.org/uploads/${encodeURIComponent(file.name)}`
-                      }));
-                      setNewChallengeAssets([...newChallengeAssets, ...newAssets]);
+                      setIsUploading(true);
+                      try {
+                        const uploadedAssets = [];
+                        for (const file of files) {
+                          const filePath = `challenges/new_${Date.now()}_${file.name}`;
+                          const { error } = await supabase.storage.from('assets').upload(filePath, file, { upsert: true });
+                          if (error) throw error;
+                          const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
+                          uploadedAssets.push({ name: file.name, url: data.publicUrl });
+                        }
+                        setNewChallengeAssets([...newChallengeAssets, ...uploadedAssets]);
+                      } catch (err) {
+                        console.error('Upload failed:', err);
+                        alert('Upload failed: ' + err.message);
+                      } finally {
+                        setIsUploading(false);
+                      }
                     }
                   }}
-                  onClick={() => document.getElementById('modal-file-upload').click()}
-                  className="border border-dashed border-copper/30 hover:border-accretion bg-black p-4 text-center rounded text-xs text-copper flex flex-col items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  onClick={() => { if (!isUploading) document.getElementById('modal-file-upload').click(); }}
+                  className={`border border-dashed border-copper/30 bg-black p-4 text-center rounded text-xs text-copper flex flex-col items-center justify-center gap-1.5 transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : 'hover:border-accretion cursor-pointer'}`}
                 >
-                  <Upload className="w-5 h-5 text-accretion/50 animate-pulse" />
-                  <span>DRAG & DROP LOCAL FILES HERE OR CLICK TO SELECT</span>
+                  {isUploading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-accretion border-t-transparent rounded-full animate-spin"></div>
+                      <span>UPLOADING TO SUPABASE...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5 text-accretion/50 animate-pulse" />
+                      <span>DRAG & DROP LOCAL FILES HERE OR CLICK TO SELECT</span>
+                    </>
+                  )}
                   <input
                     id="modal-file-upload"
                     type="file"
                     multiple
                     className="hidden"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       if (e.target.files && e.target.files.length > 0) {
                         const files = Array.from(e.target.files);
-                        const newAssets = files.map(file => ({
-                          name: file.name,
-                          url: `https://assets.cicada.org/uploads/${encodeURIComponent(file.name)}`
-                        }));
-                        setNewChallengeAssets([...newChallengeAssets, ...newAssets]);
-                  }
-                }}
-              />
-            </div>
+                        setIsUploading(true);
+                        try {
+                          const uploadedAssets = [];
+                          for (const file of files) {
+                            const filePath = `challenges/new_${Date.now()}_${file.name}`;
+                            const { error } = await supabase.storage.from('assets').upload(filePath, file, { upsert: true });
+                            if (error) throw error;
+                            const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
+                            uploadedAssets.push({ name: file.name, url: data.publicUrl });
+                          }
+                          setNewChallengeAssets([...newChallengeAssets, ...uploadedAssets]);
+                        } catch (err) {
+                          console.error('Upload failed:', err);
+                          alert('Upload failed: ' + err.message);
+                        } finally {
+                          setIsUploading(false);
+                          e.target.value = null; // reset input
+                        }
+                      }
+                    }}
+                  />
+                </div>
 
             {/* Current Assets list */}
             {newChallengeAssets.length > 0 && (
