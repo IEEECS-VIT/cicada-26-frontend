@@ -20,43 +20,19 @@ import {
 } from '../constants';
 
 export const parseRoundAndArchive = (x, index = 0) => {
-  let round = x.round ?? x.round_number;
+  let round = x.round ?? x.round_number ?? x.round_order;
   let archive = x.archiveNumber ?? x.archive_number ?? x.archive ?? x.phase;
 
-  // 1. Check round_id
-  if (!round && x.round_id) {
-    if (x.round_id === '7db4150a-3259-4ef3-b9d6-d7ccd1d4f24f') {
-      round = 2;
-    } else if (x.round_id === '85d491a1-53d9-46fa-a1cb-98a7da15fd1b') {
-      round = 1;
-    }
-  }
-
-  // 2. Title and string parsing
-  if (!round || !archive) {
+  // 1. Title and string parsing for archive if missing
+  if (!archive) {
     if (x.order_number >= 100) {
-      round = round || Math.floor(x.order_number / 100);
-      archive = archive || (x.order_number % 100);
+      archive = (x.order_number % 100);
     } else {
       const str = `${x.name || ''} ${x.title || ''}`;
-      const roundMatch = str.match(/round\s*(\d+)/i);
-      if (roundMatch && !round) {
-        round = parseInt(roundMatch[1], 10);
-      }
       const archiveMatch = str.match(/archive\s*0?(\d+)/i) || str.match(/phase\s*0?(\d+)/i);
-      if (archiveMatch && !archive) {
+      if (archiveMatch) {
         archive = parseInt(archiveMatch[1], 10);
       }
-    }
-  }
-
-  // 3. Fallback based on challenge order: Challenges 1..6 -> Round 1; Challenges 7+ -> Round 2
-  if (!round) {
-    if (x.order_number) {
-      if (x.order_number <= 6) round = 1;
-      else round = 2;
-    } else {
-      round = 1;
     }
   }
 
