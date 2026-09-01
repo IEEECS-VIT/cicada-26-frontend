@@ -63,13 +63,7 @@ export const parseRoundAndArchive = (x, index = 0) => {
   round = parseInt(round, 10) || 1;
   archive = parseInt(archive, 10) || (x.order_number ? ((x.order_number - 1) % 6 + 1) : (index + 1));
 
-  return {
-
-    showHintModal, setShowHintModal,
-    newHintText, setNewHintText,
-    newHintUnlockMinutes, setNewHintUnlockMinutes,
-    handleOpenHintModal, handleAddHint, handleDeleteHint, handleToggleHintVisibility,
- round, archiveNumber: archive };
+  return { round, archiveNumber: archive };
 };
 
 export function useAdminDashboard() {
@@ -2216,6 +2210,10 @@ export function useAdminDashboard() {
     exportToCSV,
     handlePrint,
     unlockedCount,
-    highScore
+    highScore,
+    showHintModal, setShowHintModal,
+    newHintText, setNewHintText,
+    newHintUnlockMinutes, setNewHintUnlockMinutes,
+    handleOpenHintModal, handleAddHint, handleDeleteHint, handleToggleHintVisibility
   };
 }
