@@ -38,6 +38,7 @@ export default function ChallengesTab() {
     handleToggleLockChallenge,
     handleToggleHintChallenge,
     handleOpenEditAnswer,
+    handleOpenReward,
     handleOpenOverrideChallenge
   } = useAdmin();
 
@@ -258,6 +259,26 @@ export default function ChallengesTab() {
                             >
                               <Edit className="h-3 w-3" />
                               SET
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Success Reward */}
+                        <div className="mb-4 border-t border-accretion/15 pt-4 text-sm">
+                          <div className="mb-1 font-rajdhani text-[11px] tracking-[0.22em] text-copper">SUCCESS REWARD</div>
+                          <div className="flex items-center justify-between gap-2 text-starlight">
+                            <span className="truncate font-mono">
+                              {challenge.reward
+                                ? [challenge.reward.link, challenge.reward.code].filter(Boolean).join(' · ') || challenge.reward.label || '—'
+                                : '—'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenReward(challenge)}
+                              className="inline-flex shrink-0 items-center gap-1 font-rajdhani text-[11px] tracking-[0.18em] text-copper hover:text-accretion"
+                            >
+                              <Edit className="h-3 w-3" />
+                              EDIT
                             </button>
                           </div>
                         </div>

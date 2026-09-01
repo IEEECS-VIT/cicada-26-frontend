@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useGameState } from '../../context/GameStateContext';
-import { Power, Send, Terminal as TerminalIcon } from 'lucide-react';
+import { Power, Send, Terminal as TerminalIcon, ExternalLink } from 'lucide-react';
 
 const QUICK_COMMANDS = [
   { label: 'submit <key>', action: 'fill', value: 'submit ' },
@@ -131,7 +131,9 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
           } else {
              addTerminalCommand(cmd, "Transmitting answer for decryption...");
              submitAnswer(answer).then((res) => {
-               addTerminalCommand(`submit ${answer}`, res);
+               const text = typeof res === 'string' ? res : res?.text;
+               const reward = res && typeof res === 'object' ? res.reward : null;
+               addTerminalCommand(`submit ${answer}`, text, reward ? { reward } : undefined);
              });
           }
         }
@@ -205,6 +207,29 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
             <div className="pl-3.5 whitespace-pre-wrap opacity-80 break-words mb-3 text-starlight text-[11px] sm:text-xs leading-relaxed">
               {entry.response}
             </div>
+            {entry.reward && (entry.reward.link || entry.reward.code) && (
+              <div className="pl-3.5 mb-3 space-y-2">
+                {entry.reward.link && (
+                  <a
+                    href={entry.reward.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-accretion/50 bg-accretion/10 px-2.5 py-1 font-mono text-[11px] sm:text-xs text-accretion underline-offset-2 transition-colors hover:bg-accretion hover:text-black hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                    <span className="break-all">{entry.reward.label || entry.reward.link}</span>
+                  </a>
+                )}
+                {entry.reward.code && (
+                  <div>
+                    <div className="label-mono text-[8px] tracking-wider text-accretion/60 sm:text-[9px]">CIPHER FOUND</div>
+                    <div className="inline-block rounded-md border border-amber-400/50 bg-black/60 px-2.5 py-1.5 font-mono text-[11px] sm:text-xs tracking-wider text-amber-300 break-all">
+                      {entry.reward.code}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
         <div ref={endRef} />

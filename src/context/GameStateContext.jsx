@@ -279,8 +279,8 @@ export function GameStateProvider({ children }) {
     refresh();
   }, [refresh]);
 
-  const addTerminalCommand = useCallback((command, response) => {
-    setTerminalHistory((prev) => [...prev, { command, response, timestamp: new Date().toISOString() }]);
+  const addTerminalCommand = useCallback((command, response, extra) => {
+    setTerminalHistory((prev) => [...prev, { command, response, timestamp: new Date().toISOString(), ...(extra || {}) }]);
   }, []);
 
   const clearTerminal = useCallback(() => {
@@ -312,7 +312,7 @@ export function GameStateProvider({ children }) {
     async (answer) => {
       const activePhase = unlockedPhases[currentRound] || currentPhase || 1;
       const phase = challengeData?.[currentRound]?.phases?.[activePhase];
-      if (!phase) return "Error: No active challenge.";
+      if (!phase) return { text: "Error: No active challenge.", reward: null };
 
       try {
         const res = await apiSubmit(phase.order_number, answer);
@@ -388,16 +388,16 @@ export function GameStateProvider({ children }) {
           // Silent refresh: server truth re-syncs unlockedPhases/hints/progress
           // (round/phase stay where we just moved them).
           await refresh(true);
-          return resultText;
+          return { text: resultText, reward: res.success_reward || null };
         }
 
-        return res.message || "Incorrect decryption key. Please try again.";
+        return { text: res.message || "Incorrect decryption key. Please try again.", reward: null };
       } catch (err) {
         const backendMsg = err.data?.message || err.data?.error || err.data?.msg;
         if (backendMsg) {
-          return `${backendMsg}. Please try again.`;
+          return { text: `${backendMsg}. Please try again.`, reward: null };
         }
-        return err.message || "Transmission error. Please try again.";
+        return { text: err.message || "Transmission error. Please try again.", reward: null };
       }
     },
     [challengeData, unlockedPhases, currentPhase, currentRound, addTerminalCommand, refresh, findPhaseData]

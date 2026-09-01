@@ -178,6 +178,9 @@ export function useAdminDashboard() {
   const [newChallengePoints, setNewChallengePoints] = useState(100);
   const [newChallengeTimeLimit, setNewChallengeTimeLimit] = useState(0);
   const [newChallengeAssets, setNewChallengeAssets] = useState([]);
+  const [newChallengeLink, setNewChallengeLink] = useState('');
+  const [newChallengeLabel, setNewChallengeLabel] = useState('');
+  const [newChallengeCode, setNewChallengeCode] = useState('');
   const [tempAssetName, setTempAssetName] = useState('');
   const [tempAssetUrl, setTempAssetUrl] = useState('');
 
@@ -196,6 +199,12 @@ export function useAdminDashboard() {
   // Time Limit State
   const [showTimeLimitModal, setShowTimeLimitModal] = useState(false);
   const [editTimeLimitValue, setEditTimeLimitValue] = useState(0);
+
+  // Success Reward State
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [editRewardLink, setEditRewardLink] = useState('');
+  const [editRewardLabel, setEditRewardLabel] = useState('');
+  const [editRewardCode, setEditRewardCode] = useState('');
 
   // Asset Management States
   const [showEditAssetModal, setShowEditAssetModal] = useState(false);
@@ -317,6 +326,10 @@ export function useAdminDashboard() {
       payload.round_id = overrides.round_id || raw.round_id;
     }
 
+    if (overrides.success_reward !== undefined) {
+      payload.success_reward = overrides.success_reward;
+    }
+
     // Only include answer_key if explicitly provided or if it's real plaintext.
     // This prevents re-hashing an existing bcrypt hash when updating other fields like
     // time_limit — and must also exclude the "ENCRYPTED (SET)" / "—" display placeholders
@@ -338,6 +351,17 @@ export function useAdminDashboard() {
     }
 
     return payload;
+  };
+
+  const getSuccessRewardPayload = (link, label, code) => {
+    const result = {};
+    const trimmedLink = (link || '').trim();
+    const trimmedLabel = (label || '').trim();
+    const trimmedCode = (code || '').trim();
+    if (trimmedLink) result.link = trimmedLink;
+    if (trimmedLabel) result.label = trimmedLabel;
+    if (trimmedCode) result.code = trimmedCode;
+    return Object.keys(result).length ? result : null;
   };
 
   const getKnownAnswers = () => {
@@ -510,6 +534,7 @@ export function useAdminDashboard() {
             hintsEnabled: (x.hints || []).length > 0 && (x.hints || []).some((h) => h.is_visible),
             solvedCount: solvedCountsByRound[x.order_number] || solvedCountsByRound[round] || 0,
             timeLimit: x.time_limit || 0,
+            reward: (x.success_reward && typeof x.success_reward === 'object') ? x.success_reward : null,
             assets: (x.assets || []).map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' })),
             raw: x,
           };
@@ -903,6 +928,7 @@ export function useAdminDashboard() {
           title: titleVal,
           content: 'Decrypted classified archive transmission.',
         },
+        success_reward: getSuccessRewardPayload(newChallengeLink, newChallengeLabel, newChallengeCode),
         assets: (newChallengeAssets || []).map((a) => ({ type: a.type || 'file', url: a.url || '#', name: (a.name || 'asset').trim() || 'asset' })),
       });
 
@@ -920,6 +946,7 @@ export function useAdminDashboard() {
         isLocked: true,
         hintsEnabled: false,
         solvedCount: 0,
+        reward: getSuccessRewardPayload(newChallengeLink, newChallengeLabel, newChallengeCode),
         assets: (newChallengeAssets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
       };
       setChallenges((prev) => [...prev, newChalObj]);
@@ -931,6 +958,9 @@ export function useAdminDashboard() {
       setNewChallengePoints(100);
       setNewChallengeTimeLimit(0);
       setNewChallengeAssets([]);
+      setNewChallengeLink('');
+      setNewChallengeLabel('');
+      setNewChallengeCode('');
       setTempAssetName('');
       setTempAssetUrl('');
       setShowCreateChallengeModal(false);
@@ -994,6 +1024,36 @@ export function useAdminDashboard() {
     } catch (err) {
       console.error("Failed to update challenge time limit on backend:", err);
       alert("Failed to update time limit on backend: " + (err.message || "Validation Error"));
+    }
+  };
+
+  // API Endpoint: PUT Update Challenge Success Reward (Admin)
+  const handleOpenReward = (challenge) => {
+    setActiveChallenge(challenge);
+    const reward = challenge.reward || challenge.raw?.success_reward || null;
+    setEditRewardLink(reward?.link || '');
+    setEditRewardLabel(reward?.label || '');
+    setEditRewardCode(reward?.code || '');
+    setShowRewardModal(true);
+  };
+
+  const handleSaveReward = async (e) => {
+    e.preventDefault();
+    if (!activeChallenge) return;
+
+    const reward = getSuccessRewardPayload(editRewardLink, editRewardLabel, editRewardCode);
+    const payload = buildChallengePayload(activeChallenge, { success_reward: reward });
+
+    try {
+      const challengeId = activeChallenge.raw?.id || activeChallenge.id || activeChallenge.order_number;
+      await updateChallenge(challengeId, payload);
+      setChallenges(challenges.map((c) => (c.id === activeChallenge.id ? { ...c, reward } : c)));
+      setShowRewardModal(false);
+      setActiveChallenge(null);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error("Failed to update challenge success reward on backend:", err);
+      alert("Failed to update success reward on backend: " + (err.message || "Validation Error"));
     }
   };
 
@@ -1926,6 +1986,12 @@ export function useAdminDashboard() {
     setNewChallengeTimeLimit,
     newChallengeAssets,
     setNewChallengeAssets,
+    newChallengeLink,
+    setNewChallengeLink,
+    newChallengeLabel,
+    setNewChallengeLabel,
+    newChallengeCode,
+    setNewChallengeCode,
     tempAssetName,
     setTempAssetName,
     tempAssetUrl,
@@ -1934,6 +2000,14 @@ export function useAdminDashboard() {
     setShowTimeLimitModal,
     editTimeLimitValue,
     setEditTimeLimitValue,
+    showRewardModal,
+    setShowRewardModal,
+    editRewardLink,
+    setEditRewardLink,
+    editRewardLabel,
+    setEditRewardLabel,
+    editRewardCode,
+    setEditRewardCode,
     showEditAssetModal,
     setShowEditAssetModal,
     activeAsset,
@@ -2006,6 +2080,8 @@ export function useAdminDashboard() {
     handleUploadChallengeAssetFiles,
     assetsUploading,
     handleUpdateTimeLimit,
+    handleOpenReward,
+    handleSaveReward,
     handleAddAssetToChallengeDirect,
     handleEditAssetSave,
     handleDeleteAsset,

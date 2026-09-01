@@ -89,10 +89,24 @@ export default function AdminModals() {
     setTempAssetName,
     tempAssetUrl,
     setTempAssetUrl,
+    newChallengeLink,
+    setNewChallengeLink,
+    newChallengeLabel,
+    setNewChallengeLabel,
+    newChallengeCode,
+    setNewChallengeCode,
     showTimeLimitModal,
     setShowTimeLimitModal,
     editTimeLimitValue,
     setEditTimeLimitValue,
+    showRewardModal,
+    setShowRewardModal,
+    editRewardLink,
+    setEditRewardLink,
+    editRewardLabel,
+    setEditRewardLabel,
+    editRewardCode,
+    setEditRewardCode,
     showEditAssetModal,
     setShowEditAssetModal,
     activeAsset,
@@ -135,6 +149,7 @@ export default function AdminModals() {
     handleUploadChallengeAssetFiles,
     assetsUploading,
     handleUpdateTimeLimit,
+    handleSaveReward,
     handleEditAssetSave,
     handleReplaceAssetFile,
     handleResetLeaderboard,
@@ -1067,6 +1082,32 @@ export default function AdminModals() {
                 />
               </div>
 
+              {/* Success Reward Section */}
+              <div className="space-y-2 border border-accretion/20 p-3">
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Success Reward (returned to terminal on correct submit — optional)</label>
+                <input
+                  type="text"
+                  placeholder="Reward Link (e.g. https://...)"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newChallengeLink}
+                  onChange={(e) => setNewChallengeLink(e.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Link Label (shown in terminal — optional)"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newChallengeLabel}
+                  onChange={(e) => setNewChallengeLabel(e.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Reward Code (optional)"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newChallengeCode}
+                  onChange={(e) => setNewChallengeCode(e.target.value)}
+                />
+              </div>
+
               {/* Assets Section */}
               <div className="space-y-2 border border-accretion/20 p-3">
                 <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Assets</label>
@@ -1163,6 +1204,81 @@ export default function AdminModals() {
                   className="flex-1 border border-accretion bg-accretion py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright"
                 >
                   Create Challenge
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 12b. Modal: Edit Success Reward */}
+      {showRewardModal && activeChallenge && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md border border-accretion/30 bg-black p-8 text-starlight">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="flex items-center gap-2 font-orbitron text-sm tracking-[0.22em] text-starlight">
+                <Edit className="w-4 h-4 text-accretion" />
+                <span>Success Reward: {activeChallenge.title}</span>
+              </h3>
+              <button
+                onClick={() => {
+                  setShowRewardModal(false);
+                  setActiveChallenge(null);
+                }}
+                className="text-copper hover:text-starlight"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveReward} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Reward Link</label>
+                <input
+                  type="text"
+                  placeholder="https://... (leave empty to clear)"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={editRewardLink}
+                  onChange={(e) => setEditRewardLink(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Link Label (displayed in terminal)</label>
+                <input
+                  type="text"
+                  placeholder="Optional"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={editRewardLabel}
+                  onChange={(e) => setEditRewardLabel(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Reward Code</label>
+                <input
+                  type="text"
+                  placeholder="Optional"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={editRewardCode}
+                  onChange={(e) => setEditRewardCode(e.target.value)}
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRewardModal(false);
+                    setActiveChallenge(null);
+                  }}
+                  className="flex-1 border border-copper/30 py-2.5 font-rajdhani text-sm tracking-[0.2em] text-copper hover:border-accretion hover:text-accretion"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 border border-accretion bg-accretion py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright"
+                >
+                  Save Reward
                 </button>
               </div>
             </form>
