@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-import { getChallenges, getProgress, submitAnswer as apiSubmit } from "../api/challenges";
+import { getChallenges, getProgress, getRounds, submitAnswer as apiSubmit } from "../api/challenges";
 
 const GameStateContext = createContext(null);
 
@@ -62,9 +62,48 @@ function parseChallengeHierarchy(ch, index) {
   return { round, archive };
 }
 
-function buildChallengeData(challenges, progress) {
+/**
+ * Mirror of the backend's set-allocation logic (see
+ * Cicada-26-Backend challengeService.ts: `hashTeamId`/`filterAssetsBySet`):
+ * each team is deterministically bound to one asset set, and only assets of
+ * that set (plus assets with no set, which all teams receive) are returned.
+ */
+function hashTeamId(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+function filterAssetsBySet(assets, assignedSet, teamIdHash) {
+  if (!Array.isArray(assets) || assets.length === 0) return [];
+
+  const uniqueSets = Array.from(
+    new Set(assets.map((a) => a.asset_set).filter((s) => typeof s === "number"))
+  ).sort((a, b) => a - b);
+
+  if (uniqueSets.length === 0) return assets; // no sets defined: everyone receives all
+
+  let targetSet;
+  if (assignedSet !== null && assignedSet !== undefined && uniqueSets.includes(assignedSet)) {
+    targetSet = assignedSet;
+  } else {
+    targetSet = uniqueSets[teamIdHash % uniqueSets.length];
+  }
+
+  return assets.filter((a) => typeof a.asset_set !== "number" || a.asset_set === targetSet);
+}
+
+function buildChallengeData(challenges, progress, roundList = [], teamName = "", assignedSet = null) {
+  const roundByOrder = new Map(
+    (roundList || []).map((round) => [Number(round.order_number), round])
+  );
   const sorted = [...(challenges || [])].sort((a, b) => (a.order_number || 0) - (b.order_number || 0));
   const groupedByRound = {};
+  const teamIdHash = hashTeamId(String(teamName || ""));
 
   sorted.forEach((ch, i) => {
     const { round, archive } = parseChallengeHierarchy(ch, i);
@@ -83,6 +122,8 @@ function buildChallengeData(challenges, progress) {
     rounds[round] = {
       title: `Round ${round}`,
       totalPhases: chList.length,
+      // Round limits are configured in minutes by the admin panel.
+      timeLimitSeconds: Math.max(0, Number(roundByOrder.get(round)?.time_limit || 0) * 60),
       phases: {},
     };
 
@@ -91,7 +132,16 @@ function buildChallengeData(challenges, progress) {
       const ch = item.ch;
       const archive = item.originalArchive || phaseNum;
 
-      const firstAsset = ch.assets?.[0];
+      // Only surface the assets allotted to this team's set (shareable
+      // assets have no asset_set and are always included).
+      const assets = filterAssetsBySet(ch.assets || [], assignedSet, teamIdHash)
+        .filter((asset) => asset && (asset.url || asset.public_url || asset.asset_url || asset.file_url || asset.content))
+        .map((asset) => ({
+          ...asset,
+          url: asset.url || asset.public_url || asset.asset_url || asset.file_url || "#",
+          type: asset.type || asset.mime_type || "file",
+        }));
+      const firstAsset = assets[0];
       const fragment = (ch.story_fragment && typeof ch.story_fragment === 'object') ? ch.story_fragment : {};
       const fragmentTitle = fragment.title || ch.name || ch.title || `Archive ${String(archive).padStart(2, '0')}`;
       const fragmentContent = fragment.content || ch.story_context || ch.description || "";
@@ -104,7 +154,7 @@ function buildChallengeData(challenges, progress) {
         content: primaryContent,
         resourceType: firstAsset ? ASSET_TYPE_LABEL[firstAsset.type] || "FILE" : "TEXT",
         resourceUrl: firstAsset?.url || "#",
-        assets: ch.assets || [],
+        assets,
         order_number: ch.order_number,
         round: round,
         archiveNumber: archive,
@@ -124,6 +174,7 @@ function buildChallengeData(challenges, progress) {
       1: {
         title: "Round 1",
         totalPhases: 0,
+        timeLimitSeconds: 0,
         phases: {},
       },
     };
@@ -133,7 +184,7 @@ function buildChallengeData(challenges, progress) {
 }
 
 export function GameStateProvider({ children }) {
-  const { teamName } = useAuth();
+  const { teamName, user } = useAuth();
   const navigate = useNavigate();
 
   const [challengeData, setChallengeData] = useState(null);
@@ -204,8 +255,14 @@ export function GameStateProvider({ children }) {
     if (!silent) setLoading(true);
     setError("");
     try {
-      const [chals, prog] = await Promise.all([getChallenges(), getProgress()]);
-      const data = buildChallengeData(chals.data, prog.data);
+      const [chals, prog, roundsRes] = await Promise.all([
+        getChallenges(),
+        getProgress(),
+        getRounds().catch(() => ({ data: [] })),
+      ]);
+      const rawAssignedSet = user?.assigned_asset_set ?? user?.team?.assigned_asset_set;
+      const assignedSet = rawAssignedSet !== null && rawAssignedSet !== undefined ? Number(rawAssignedSet) : null;
+      const data = buildChallengeData(chals.data, prog.data, roundsRes?.data, teamName, assignedSet);
       setChallengeData(data);
       setProgress(prog.data);
 
@@ -268,7 +325,7 @@ export function GameStateProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [teamName]);
+  }, [teamName, user]);
 
   useEffect(() => {
     refresh();

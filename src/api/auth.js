@@ -12,7 +12,7 @@ export async function fetchMe() {
     setAdminKey(data.admin_secret_key);
   }
   return data;
-}
+} //fsjdb
 
 export async function logout() {
   setAdminKey(null);
@@ -22,7 +22,7 @@ export async function logout() {
     return null;
   }
 }
-
+//fekerjge
 export async function seedUser({ email, display_name, register_no }) {
   return api("/api/auth/seed-user", {
     method: "POST",
