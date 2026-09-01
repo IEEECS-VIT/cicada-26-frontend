@@ -130,8 +130,13 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
              addTerminalCommand(cmd, response);
           } else {
              addTerminalCommand(cmd, "Transmitting answer for decryption...");
-             submitAnswer(answer).then((res) => {
+                          submitAnswer(answer).then((res) => {
                addTerminalCommand(`submit ${answer}`, res);
+               if (res.includes("Correct") && !res.includes("already completed")) {
+                 setTimeout(() => {
+                   setIsTerminalOpen(false);
+                 }, 2000);
+               }
              });
           }
         }
