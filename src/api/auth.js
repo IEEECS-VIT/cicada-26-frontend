@@ -22,7 +22,7 @@ export async function logout() {
     return null;
   }
 }
-
+//fekerjge
 export async function seedUser({ email, display_name, register_no }) {
   return api("/api/auth/seed-user", {
     method: "POST",
