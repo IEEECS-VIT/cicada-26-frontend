@@ -17,22 +17,30 @@ export default function LeftSidebar({ onNavigate }) {
     activeTab, 
     setActiveTab, 
     challengeData,
-    completedChallenges 
+    completedChallenges,
+    roundTimer 
   } = useGameState();
   const [expandedRound, setExpandedRound] = useState(currentRound);
 
-  const [remaining, setRemaining] = useState(3 * 3600 + 46 * 60 + 21); // Mock 3h 46m 21s
+  // Round countdown: derived from the server-persisted anchor
+  // (round_started_at + round_duration_seconds - now), never from a local
+  // hardcoded value — so a page reload cannot restart the timer.
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     setExpandedRound(currentRound);
   }, [currentRound]);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setRemaining((r) => (r > 0 ? r - 1 : 0));
-    }, 1000);
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  const durationSecs = roundTimer?.round_duration_seconds ?? 3 * 60 * 60;
+  const startedAt = roundTimer?.round_started_at;
+  const remaining = startedAt
+    ? Math.max(0, Math.floor((new Date(startedAt).getTime() + durationSecs * 1000 - now) / 1000))
+    : durationSecs;
 
   const hrs = pad(Math.floor(remaining / 3600));
   const mins = pad(Math.floor((remaining % 3600) / 60));

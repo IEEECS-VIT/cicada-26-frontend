@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-import { getChallenges, getProgress, submitAnswer as apiSubmit } from "../api/challenges";
+import { getChallenges, getProgress, getRoundTimer, submitAnswer as apiSubmit } from "../api/challenges";
 
 const GameStateContext = createContext(null);
 
@@ -138,6 +138,7 @@ export function GameStateProvider({ children }) {
 
   const [challengeData, setChallengeData] = useState(null);
   const [progress, setProgress] = useState(null);
+  const [roundTimer, setRoundTimer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [unlockedRounds, setUnlockedRounds] = useState([1]);
@@ -208,6 +209,10 @@ export function GameStateProvider({ children }) {
       const data = buildChallengeData(chals.data, prog.data);
       setChallengeData(data);
       setProgress(prog.data);
+
+      getRoundTimer()
+        .then((rt) => { if (rt?.data) setRoundTimer(rt.data); })
+        .catch(() => { /* older backend without the endpoint — keep last known */ });
 
       const allRounds = Object.keys(data).map(Number).sort((a, b) => a - b);
       const targetOrder = prog?.data?.current_challenge_order;
@@ -416,6 +421,7 @@ export function GameStateProvider({ children }) {
       teamName,
       challengeData,
       progress,
+      roundTimer,
       completedChallenges,
       loading,
       error,
@@ -438,7 +444,7 @@ export function GameStateProvider({ children }) {
       roundTransition,
       dismissRoundTransition,
     }),
-    [teamName, challengeData, progress, completedChallenges, loading, error, unlockedRounds, unlockedPhases, currentRound, changeRound, currentPhase, activeTab, isTerminalOpen, terminalHistory, addTerminalCommand, clearTerminal, submitAnswer, hints, refresh, roundTransition, dismissRoundTransition]
+    [teamName, challengeData, progress, roundTimer, completedChallenges, loading, error, unlockedRounds, unlockedPhases, currentRound, changeRound, currentPhase, activeTab, isTerminalOpen, terminalHistory, addTerminalCommand, clearTerminal, submitAnswer, hints, refresh, roundTransition, dismissRoundTransition]
   );
 
   return <GameStateContext.Provider value={value}>{children}</GameStateContext.Provider>;

@@ -20,6 +20,10 @@ export async function getRounds() {
   return api("/api/challenges/rounds");
 }
 
+export async function getRoundTimer() {
+  return api("/api/challenges/round-timer");
+}
+
 export async function submitAnswer(challenge_identifier, answer) {
   return api("/api/challenges/submit", {
     method: "POST",

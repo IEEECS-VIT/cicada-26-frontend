@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabase';
+import { uploadChallengeAsset, getStoredObjectPath } from '../../../api/assets';
 import {
   listUsers, getAdminChallenges, getAdminProgress, getLeaderboard,
   approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
@@ -9,6 +10,7 @@ import {
   removeTeamMember, deleteTeam, adjustScore, updateTeam, toggleHint,
   getIpTrackingStatus, toggleIpTracking, getAdminActivityLogs,
   getAdminRounds, createRound, updateRound, deleteRound, reorderRounds,
+  getAdminRoundTimer, updateAdminRoundTimer,
 } from '../../../api/admin';
 import {
   INITIAL_TEAMS,
@@ -202,6 +204,7 @@ export function useAdminDashboard() {
   const [editAssetName, setEditAssetName] = useState('');
   const [editAssetUrl, setEditAssetUrl] = useState('');
   const [dragOverChallengeId, setDragOverChallengeId] = useState(null);
+  const [assetsUploading, setAssetsUploading] = useState(false);
 
   // Bulk Import State
   const [showBulkImportAdminsModal, setShowBulkImportAdminsModal] = useState(false);
@@ -224,6 +227,11 @@ export function useAdminDashboard() {
   // IP Tracking & Location Lock states
   const [ipTrackingEnabled, setIpTrackingEnabled] = useState(true);
   const [ipTrackingLoading, setIpTrackingLoading] = useState(false);
+
+  // Round Timer states (duration + start anchor persisted in app_settings)
+  const [roundTimer, setRoundTimer] = useState(null);
+  const [roundTimerMinutes, setRoundTimerMinutes] = useState('180');
+  const [roundTimerLoading, setRoundTimerLoading] = useState(false);
 
   // Persist state to localStorage on modification
   useEffect(() => {
@@ -404,7 +412,7 @@ export function useAdminDashboard() {
     setLiveLoading(true);
     setLiveError('');
     try {
-      const [u, ch, prog, lb, ipStatus, supabaseTeams, adminLogs, roundsRes] = await Promise.all([
+      const [u, ch, prog, lb, ipStatus, supabaseTeams, adminLogs, roundsRes, roundTimerRes] = await Promise.all([
         listUsers().catch((err) => { console.warn('Could not fetch users:', err); return { data: [] }; }),
         getAdminChallenges().catch((err) => { console.warn('Could not fetch challenges:', err); return { data: [] }; }),
         getAdminProgress().catch((err) => { console.warn('Could not fetch progress:', err); return { data: [] }; }),
@@ -413,7 +421,13 @@ export function useAdminDashboard() {
         Promise.resolve(supabase.from('teams').select('id, name, points, is_disqualified')).catch(() => ({ data: [] })),
         getAdminActivityLogs().catch((err) => { console.warn('Could not fetch admin activity logs:', err); return { data: [] }; }),
         getAdminRounds().catch((err) => { console.warn('Could not fetch rounds:', err); return { data: [] }; }),
+        getAdminRoundTimer().catch((err) => { console.warn('Could not fetch round timer:', err); return { data: null }; }),
       ]);
+
+      if (roundTimerRes?.data) {
+        setRoundTimer(roundTimerRes.data);
+        setRoundTimerMinutes(String(Math.round((roundTimerRes.data.round_duration_seconds || 0) / 60)));
+      }
 
       // Real, attributed admin action history from the backend (who actually did what).
       // Merged ahead of any locally-fabricated log entries, which had no real attribution.
@@ -618,6 +632,89 @@ export function useAdminDashboard() {
     }
   };
 
+  // --- ROUND TIMER HANDLERS ---
+  // API Endpoints: GET/POST /api/admin/challenges/round-timer
+  // The participant countdown is anchored to app_settings.round_started_at
+  // (server-persisted), so it survives page reloads; these controls change
+  // the anchor and/or the duration.
+  const applyRoundTimerResult = (res) => {
+    if (res?.data) {
+      setRoundTimer(res.data);
+      setRoundTimerMinutes(String(Math.round((res.data.round_duration_seconds || 0) / 60)));
+    }
+    return res;
+  };
+
+  const handleSaveRoundTimerDuration = async (e) => {
+    e.preventDefault();
+    if (roundTimerLoading) return;
+    const minutes = parseInt(roundTimerMinutes, 10);
+    if (!minutes || minutes < 1) {
+      alert('Enter a valid duration in minutes (minimum 1).');
+      return;
+    }
+    setRoundTimerLoading(true);
+    try {
+      const res = await updateAdminRoundTimer({ duration_seconds: minutes * 60 });
+      applyRoundTimerResult(res);
+      pushLocalLog({
+        teamName: 'SYSTEM',
+        challengeTitle: 'Round Timer',
+        answer: `Round duration set to ${minutes} min.`,
+      });
+      alert(`SUCCESS: Round duration set to ${minutes} minutes.`);
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error('Failed to update round timer duration:', err);
+      alert('Failed to update round timer duration:\n' + (err.message || 'Unknown error'));
+    } finally {
+      setRoundTimerLoading(false);
+    }
+  };
+
+  const handleStartRoundTimer = async () => {
+    if (roundTimerLoading) return;
+    setRoundTimerLoading(true);
+    try {
+      const res = await updateAdminRoundTimer({ action: 'start' });
+      applyRoundTimerResult(res);
+      pushLocalLog({
+        teamName: 'SYSTEM',
+        challengeTitle: 'Round Timer',
+        answer: 'Round countdown started.',
+      });
+      alert('SUCCESS: Round countdown started for all participants.');
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error('Failed to start round timer:', err);
+      alert('Failed to start round timer:\n' + (err.message || 'Unknown error'));
+    } finally {
+      setRoundTimerLoading(false);
+    }
+  };
+
+  const handleResetRoundTimer = async () => {
+    if (roundTimerLoading) return;
+    if (!window.confirm('RESET THE ROUND TIMER? THIS STOPS THE COUNTDOWN FOR ALL PARTICIPANTS. YOU CAN RESTART IT WHEN READY.')) return;
+    setRoundTimerLoading(true);
+    try {
+      const res = await updateAdminRoundTimer({ action: 'reset' });
+      applyRoundTimerResult(res);
+      pushLocalLog({
+        teamName: 'SYSTEM',
+        challengeTitle: 'Round Timer',
+        answer: 'Round countdown reset.',
+      });
+      alert('SUCCESS: Round countdown reset.');
+      refreshLiveInBackground();
+    } catch (err) {
+      console.error('Failed to reset round timer:', err);
+      alert('Failed to reset round timer:\n' + (err.message || 'Unknown error'));
+    } finally {
+      setRoundTimerLoading(false);
+    }
+  };
+
   // --- LOGIN FUNCTION ---
   const handleLogin = (e) => {
     e.preventDefault();
@@ -806,7 +903,7 @@ export function useAdminDashboard() {
           title: titleVal,
           content: 'Decrypted classified archive transmission.',
         },
-        assets: (newChallengeAssets || []).map((a) => ({ type: 'file', url: a.url || '#', name: (a.name || 'asset').trim() || 'asset' })),
+        assets: (newChallengeAssets || []).map((a) => ({ type: a.type || 'file', url: a.url || '#', name: (a.name || 'asset').trim() || 'asset' })),
       });
 
       const newChalObj = {
@@ -859,6 +956,26 @@ export function useAdminDashboard() {
     setNewChallengeAssets(newChallengeAssets.filter((_, idx) => idx !== idxToRemove));
   };
 
+  // Uploads files to the S3-backed Supabase Storage 'assets' bucket and appends
+  // the resulting public-URL assets to the create-challenge form list.
+  const handleUploadChallengeAssetFiles = async (files) => {
+    const fileList = Array.from(files || []);
+    if (fileList.length === 0) return;
+    setAssetsUploading(true);
+    try {
+      for (const file of fileList) {
+        try {
+          const asset = await uploadChallengeAsset(file);
+          setNewChallengeAssets((prev) => [...prev, asset]);
+        } catch (err) {
+          alert(`Failed to upload "${file.name}": ${err.message || 'Unknown error'}`);
+        }
+      }
+    } finally {
+      setAssetsUploading(false);
+    }
+  };
+
   // API Endpoint: PUT Update Challenge Time Limit (Admin)
   const handleUpdateTimeLimit = async (e) => {
     e.preventDefault();
@@ -888,22 +1005,7 @@ export function useAdminDashboard() {
       let newAsset;
       if (fileOrAsset.name && fileOrAsset.size !== undefined) {
         // Actually upload to Supabase Storage (requires a public 'assets' bucket)
-        const filePath = `challenges/${challengeId}/${Date.now()}_${fileOrAsset.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('assets')
-          .upload(filePath, fileOrAsset, { upsert: true });
-          
-        if (uploadError) throw new Error("Upload failed: " + uploadError.message);
-        
-        const { data: publicUrlData } = supabase.storage
-          .from('assets')
-          .getPublicUrl(filePath);
-
-        newAsset = {
-          type: 'file',
-          name: fileOrAsset.name,
-          url: publicUrlData.publicUrl
-        };
+        newAsset = await uploadChallengeAsset(fileOrAsset);
       } else {
         newAsset = {
           type: 'file',
@@ -993,6 +1095,21 @@ export function useAdminDashboard() {
         const updatedAssets = res.data.map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' }));
         setChallenges(challenges.map((c) => (c.id === challengeId ? { ...c, assets: updatedAssets } : c)));
       }
+
+      // Best-effort cleanup of the orphaned storage object. Skipped when the
+      // file is still referenced by another challenge's or team's asset.
+      const storedPath = getStoredObjectPath(asset?.url);
+      if (storedPath) {
+        const stillUsedElsewhere = challenges.some(
+          (c) => c.id !== challengeId && (c.assets || []).some((a) => a.url === asset.url)
+        );
+        if (!stillUsedElsewhere) {
+          await supabase.storage.from('assets').remove([storedPath]).catch((storageErr) => {
+            console.warn('Failed to remove storage object:', storedPath, storageErr);
+          });
+        }
+      }
+
       pushLocalLog({
         teamName: 'SYSTEM',
         challengeTitle: 'Delete Asset',
@@ -1003,6 +1120,21 @@ export function useAdminDashboard() {
     } catch (err) {
       console.error('Failed to delete asset on backend:', err);
       alert('Failed to delete asset on backend:\n' + (err.message || 'Unknown error'));
+    }
+  };
+
+  // Uploads a replacement file for the asset being edited and fills the edit
+  // modal's URL field with the resulting storage public URL (applied on Save).
+  const handleReplaceAssetFile = async (file) => {
+    if (!file) return;
+    setAssetsUploading(true);
+    try {
+      const asset = await uploadChallengeAsset(file);
+      setEditAssetUrl(asset.url);
+    } catch (err) {
+      alert('Upload failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setAssetsUploading(false);
     }
   };
 
@@ -1824,6 +1956,14 @@ export function useAdminDashboard() {
     setIpTrackingEnabled,
     ipTrackingLoading,
     handleToggleIpTracking,
+    roundTimer,
+    setRoundTimer,
+    roundTimerMinutes,
+    setRoundTimerMinutes,
+    roundTimerLoading,
+    handleSaveRoundTimerDuration,
+    handleStartRoundTimer,
+    handleResetRoundTimer,
     showDeleteConfirmModal,
     setShowDeleteConfirmModal,
     deleteConfirmInput,
@@ -1863,10 +2003,13 @@ export function useAdminDashboard() {
     handleCreateChallenge,
     handleAddAssetToChallenge,
     handleRemoveAssetFromChallenge,
+    handleUploadChallengeAssetFiles,
+    assetsUploading,
     handleUpdateTimeLimit,
     handleAddAssetToChallengeDirect,
     handleEditAssetSave,
     handleDeleteAsset,
+    handleReplaceAssetFile,
     handleResetTeamProgress,
     handleResetLeaderboard,
     handleCreateTeam,

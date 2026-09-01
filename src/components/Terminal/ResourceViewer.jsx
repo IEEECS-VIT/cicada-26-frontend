@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGameState } from '../../context/GameStateContext';
 import { 
   Copy, 
@@ -28,6 +28,11 @@ export default function ResourceViewer() {
   const phaseData = challengeData?.[currentRound]?.phases?.[currentPhase];
   const [copied, setCopied] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [activeAssetIdx, setActiveAssetIdx] = useState(0);
+
+  useEffect(() => {
+    setActiveAssetIdx(0);
+  }, [currentRound, currentPhase]);
 
   const handleCopy = (text) => {
     if (!text) return;
@@ -45,8 +50,10 @@ export default function ResourceViewer() {
     );
   }
 
-  // Extract the single active resource
-  const primaryAsset = phaseData.assets?.[0];
+  // Extract the selected resource (selector shown when a phase carries 2+ assets)
+  const assets = phaseData.assets || [];
+  const activeIdx = assets.length > 0 ? Math.min(activeAssetIdx, assets.length - 1) : 0;
+  const primaryAsset = assets.length > 0 ? assets[activeIdx] : null;
   const rawType = (primaryAsset?.type || phaseData.resourceType || 'text').toLowerCase();
   const url = (primaryAsset?.url || phaseData.resourceUrl || '').trim();
   const fragment = phaseData.story_fragment || {};
@@ -101,6 +108,26 @@ export default function ResourceViewer() {
           <p className="font-mono text-xs sm:text-sm text-starlight/95 leading-relaxed select-all whitespace-pre-wrap">
             {fragmentContent}
           </p>
+        </div>
+      )}
+
+      {/* Payload Selector (2+ assets attached to this phase) */}
+      {assets.length > 1 && (
+        <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+          {assets.map((asset, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setActiveAssetIdx(idx)}
+              className={`shrink-0 rounded border px-2.5 py-1 font-rajdhani text-[10px] tracking-[0.16em] uppercase transition-colors ${
+                idx === activeIdx
+                  ? 'border-accretion bg-accretion/20 text-accretion'
+                  : 'border-copper/25 text-copper/70 hover:border-accretion/50 hover:text-accretion'
+              }`}
+            >
+              {asset.name || `ASSET ${idx + 1}`}
+            </button>
+          ))}
         </div>
       )}
 

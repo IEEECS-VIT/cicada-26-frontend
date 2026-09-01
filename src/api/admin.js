@@ -122,3 +122,11 @@ export async function toggleIpTracking(enabled) {
     body: enabled !== undefined ? { enabled } : undefined,
   });
 }
+
+export async function getAdminRoundTimer() {
+  return api("/api/admin/challenges/round-timer", { admin: true });
+}
+
+export async function updateAdminRoundTimer(payload) {
+  return api("/api/admin/challenges/round-timer", { method: "POST", admin: true, body: payload });
+}

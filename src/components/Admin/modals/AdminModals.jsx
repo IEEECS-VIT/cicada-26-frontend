@@ -85,7 +85,6 @@ export default function AdminModals() {
     newChallengeTimeLimit,
     setNewChallengeTimeLimit,
     newChallengeAssets,
-    setNewChallengeAssets,
     tempAssetName,
     setTempAssetName,
     tempAssetUrl,
@@ -133,8 +132,11 @@ export default function AdminModals() {
     handleCreateChallenge,
     handleAddAssetToChallenge,
     handleRemoveAssetFromChallenge,
+    handleUploadChallengeAssetFiles,
+    assetsUploading,
     handleUpdateTimeLimit,
     handleEditAssetSave,
+    handleReplaceAssetFile,
     handleResetLeaderboard,
     handleCreateTeam,
     handleSaveTeamEdit,
@@ -1078,34 +1080,25 @@ export default function AdminModals() {
                   onDrop={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                      const files = Array.from(e.dataTransfer.files);
-                      const newAssets = files.map(file => ({
-                        name: file.name,
-                        url: `https://assets.cicada.org/uploads/${encodeURIComponent(file.name)}`
-                      }));
-                      setNewChallengeAssets([...newChallengeAssets, ...newAssets]);
-                    }
+                    handleUploadChallengeAssetFiles(e.dataTransfer.files);
                   }}
                   onClick={() => document.getElementById('modal-file-upload').click()}
                   className="border border-dashed border-copper/30 hover:border-accretion bg-black p-4 text-center rounded text-xs text-copper flex flex-col items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Upload className="w-5 h-5 text-accretion/50 animate-pulse" />
-                  <span>DRAG & DROP LOCAL FILES HERE OR CLICK TO SELECT</span>
+                  <span>
+                    {assetsUploading
+                      ? 'UPLOADING FILES TO STORAGE...'
+                      : 'DRAG & DROP LOCAL FILES HERE OR CLICK TO SELECT'}
+                  </span>
                   <input
                     id="modal-file-upload"
                     type="file"
                     multiple
                     className="hidden"
                     onChange={(e) => {
-                      if (e.target.files && e.target.files.length > 0) {
-                        const files = Array.from(e.target.files);
-                        const newAssets = files.map(file => ({
-                          name: file.name,
-                          url: `https://assets.cicada.org/uploads/${encodeURIComponent(file.name)}`
-                        }));
-                        setNewChallengeAssets([...newChallengeAssets, ...newAssets]);
-                      }
+                      handleUploadChallengeAssetFiles(e.target.files);
+                      e.target.value = '';
                     }}
                   />
                 </div>
@@ -1393,6 +1386,30 @@ export default function AdminModals() {
                   value={editAssetUrl}
                   onChange={(e) => setEditAssetUrl(e.target.value)}
                 />
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={assetsUploading}
+                    onClick={() => document.getElementById('modal-asset-replace-file').click()}
+                    className="inline-flex items-center gap-1.5 border border-accretion/40 py-1.5 px-2.5 font-rajdhani text-[11px] tracking-[0.18em] text-accretion hover:bg-accretion/15 disabled:opacity-60"
+                  >
+                    <Upload className="h-3 w-3" />
+                    {assetsUploading ? 'UPLOADING...' : 'REPLACE WITH FILE'}
+                  </button>
+                  <input
+                    id="modal-asset-replace-file"
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      handleReplaceAssetFile(e.target.files?.[0]);
+                      e.target.value = '';
+                    }}
+                  />
+                  <span className="text-[10px] text-copper/50">Uploads to storage and fills the URL above — Save to apply.</span>
+                </div>
+                <p className="mt-1.5 text-[10px] text-copper/40">
+                  Must be HTTPS on an allowed host (Supabase storage or the backend&apos;s ASSET_ALLOWED_HOSTS).
+                </p>
               </div>
 
               <div className="pt-4 flex gap-3">
