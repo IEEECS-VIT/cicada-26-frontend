@@ -352,63 +352,82 @@ export default function ChallengesTab() {
                               }}
                             />
                           </div>
-                          <div className="space-y-1">
-                            {challenge.assets && challenge.assets.length > 0 ? (
-                              challenge.assets.map((asset, idx) => (
-                                <div key={idx} className="flex items-center justify-between gap-2 border-b border-white/5 py-1.5 text-xs last:border-0">
-                                  <span className="flex min-w-0 items-center gap-1.5 text-starlight">
-                                    <File className="h-3 w-3 shrink-0 text-copper" />
-                                    <span className="truncate">{asset.name}</span>
-                                    {asset.asset_set ? (
-                                      <span 
-                                        className="shrink-0 rounded bg-copper/20 px-1 py-0.5 text-[9px] font-bold tracking-widest text-copper"
-                                        title={`Assigned specifically to teams in Asset Set ${asset.asset_set}`}
-                                      >
-                                        SET {asset.asset_set}
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                  <div className="flex items-center gap-2 shrink-0 font-bold">
-                                    <a
-                                      href={asset.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-copper hover:text-accretion hover:underline"
-                                    >
-                                      Link ↗
-                                    </a>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveAsset(asset);
-                                        setActiveAssetChallengeId(challenge.id);
-                                        setEditAssetName(asset.name);
-                                        setEditAssetUrl(asset.url);
-                                        setEditAssetSet(asset.asset_set ? String(asset.asset_set) : '');
-                                        setShowEditAssetModal(true);
-                                      }}
-                                      className="text-gray-400 hover:text-accretion cursor-pointer"
-                                      title="Edit Asset Details"
-                                    >
-                                      <Edit className="w-2.5 h-2.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteAsset(challenge.id, asset.name)}
-                                      className="text-gray-500 hover:text-red-400 cursor-pointer"
-                                      title="Delete Asset"
-                                    >
-                                      <X className="w-2.5 h-2.5" />
-                                    </button>
-                                  </div>
+                          {(() => {
+                            const assets = challenge.assets || [];
+                            if (assets.length === 0) {
+                              return (
+                                <div className="border border-dashed border-copper/25 px-2 py-3 text-center font-rajdhani text-[11px] tracking-[0.18em] text-copper/50">
+                                  Drop files here
                                 </div>
-                              ))
-                            ) : (
-                              <div className="border border-dashed border-copper/25 px-2 py-3 text-center font-rajdhani text-[11px] tracking-[0.18em] text-copper/50">
-                                Drop files here
+                              );
+                            }
+                            // Group by asset_set
+                            const setMap = {};
+                            assets.forEach((a) => {
+                              const key = a.asset_set ? `set_${a.asset_set}` : 'all';
+                              if (!setMap[key]) setMap[key] = [];
+                              setMap[key].push(a);
+                            });
+                            const allSets = Object.keys(setMap).sort((a, b) => {
+                              if (a === 'all') return 1;
+                              if (b === 'all') return -1;
+                              return parseInt(a.replace('set_','')) - parseInt(b.replace('set_',''));
+                            });
+                            return (
+                              <div className="space-y-2">
+                                {allSets.map((setKey) => {
+                                  const setAssets = setMap[setKey];
+                                  const isAll = setKey === 'all';
+                                  const setNum = isAll ? null : parseInt(setKey.replace('set_',''));
+                                  return (
+                                    <div key={setKey} className={`rounded border ${isAll ? 'border-copper/20' : 'border-accretion/30 bg-accretion/5'}`}>
+                                      <div className={`flex items-center gap-2 px-2 py-1 text-[9px] font-bold tracking-widest uppercase ${isAll ? 'text-copper/60' : 'text-accretion'}`}>
+                                        <Layers className="h-2.5 w-2.5" />
+                                        {isAll ? 'ALL TEAMS' : `SET ${setNum}`}
+                                        <span className="ml-auto text-[8px] opacity-60">{setAssets.length} file{setAssets.length !== 1 ? 's' : ''}</span>
+                                      </div>
+                                      <div className="space-y-0 px-2 pb-1">
+                                        {setAssets.map((asset, idx) => (
+                                          <div key={idx} className="flex items-center justify-between gap-2 border-b border-white/5 py-1 text-xs last:border-0">
+                                            <span className="flex min-w-0 items-center gap-1.5 text-starlight">
+                                              <File className="h-3 w-3 shrink-0 text-copper" />
+                                              <span className="truncate">{asset.name}</span>
+                                            </span>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              <a href={asset.url} target="_blank" rel="noopener noreferrer" className="font-bold text-copper hover:text-accretion hover:underline">Link ↗</a>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setActiveAsset(asset);
+                                                  setActiveAssetChallengeId(challenge.id);
+                                                  setEditAssetName(asset.name);
+                                                  setEditAssetUrl(asset.url);
+                                                  setEditAssetSet(asset.asset_set ? String(asset.asset_set) : '');
+                                                  setShowEditAssetModal(true);
+                                                }}
+                                                className="text-gray-400 hover:text-accretion cursor-pointer"
+                                                title="Edit Asset"
+                                              >
+                                                <Edit className="w-2.5 h-2.5" />
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleDeleteAsset(challenge.id, asset.name)}
+                                                className="text-gray-500 hover:text-red-400 cursor-pointer"
+                                                title="Delete Asset"
+                                              >
+                                                <X className="w-2.5 h-2.5" />
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            )}
-                          </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Value & Solved Count */}

@@ -264,10 +264,11 @@ export function useAdminDashboard() {
 
   const buildChallengePayload = (challenge, overrides = {}) => {
     const raw = challenge?.raw || {};
-    const assets = (challenge?.assets || raw.assets || []).map((a) => ({
+    const assets = (overrides.assets || challenge?.assets || raw.assets || []).map((a) => ({
       type: a.type || 'file',
       name: (a.name || 'asset').trim() || 'asset',
       url: a.url || '#',
+      ...(a.asset_set ? { asset_set: a.asset_set } : {})
     }));
 
     const orderNum = parseInt(
@@ -507,7 +508,12 @@ export function useAdminDashboard() {
             hintsEnabled: (x.hints || []).length > 0 && (x.hints || []).some((h) => h.is_visible),
             solvedCount: solvedCountsByRound[x.order_number] || solvedCountsByRound[round] || 0,
             timeLimit: x.time_limit || 0,
-            assets: (x.assets || []).map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' })),
+            assets: (x.assets || []).map((a) => ({ 
+                id: a.id, 
+                name: a.name || 'asset', 
+                url: a.url || '#',
+                ...(a.asset_set ? { asset_set: a.asset_set } : {})
+              })),
             raw: x,
           };
         }));
