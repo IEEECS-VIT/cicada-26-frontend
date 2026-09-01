@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useGameState } from '../../context/GameStateContext';
-import { Power, Send, Terminal as TerminalIcon, Link as LinkIcon } from 'lucide-react';
+import { Power, Send, Terminal as TerminalIcon } from 'lucide-react';
 
 const QUICK_COMMANDS = [
   { label: 'submit <key>', action: 'fill', value: 'submit ' },
@@ -131,11 +131,7 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
           } else {
              addTerminalCommand(cmd, "Transmitting answer for decryption...");
              submitAnswer(answer).then((res) => {
-               if (typeof res === 'string') {
-                 addTerminalCommand(`submit ${answer}`, res);
-               } else {
-                 addTerminalCommand(`submit ${answer}`, res.text, res.reward);
-               }
+               addTerminalCommand(`submit ${answer}`, res);
              });
           }
         }
@@ -206,34 +202,9 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
               <span className="text-accretion/60 select-none">&gt;</span>
               <span className="break-all">{entry.command}</span>
             </div>
-            <div className="pl-3.5 whitespace-pre-wrap opacity-80 break-words mb-1 text-starlight text-[11px] sm:text-xs leading-relaxed">
-                {entry.response}
-              </div>
-              {entry.reward && (
-                <div className="pl-3.5 mb-3 mt-1.5 flex flex-col gap-1.5 border-l-2 border-accretion/40 ml-1 py-1">
-                  {entry.reward.label && (
-                    <span className="text-accretion font-orbitron text-[10px] sm:text-[11px] font-bold tracking-wider uppercase ml-2">
-                      [REWARD] {entry.reward.label}
-                    </span>
-                  )}
-                  {entry.reward.code && (
-                    <div className="ml-2 px-2 py-1 bg-accretion/10 text-accretion font-mono text-[11px] sm:text-xs rounded border border-accretion/20 max-w-fit">
-                      {entry.reward.code}
-                    </div>
-                  )}
-                  {entry.reward.link && (
-                    <a 
-                      href={entry.reward.link} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="ml-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-accretion/15 hover:bg-accretion/25 text-accretion font-rajdhani font-semibold text-xs sm:text-sm tracking-wider rounded border border-accretion/30 max-w-fit transition-colors"
-                    >
-                      <LinkIcon className="w-3 h-3" />
-                      ACCESS PAYLOAD
-                    </a>
-                  )}
-                </div>
-              )}
+            <div className="pl-3.5 whitespace-pre-wrap opacity-80 break-words mb-3 text-starlight text-[11px] sm:text-xs leading-relaxed">
+              {entry.response}
+            </div>
           </div>
         ))}
         <div ref={endRef} />
