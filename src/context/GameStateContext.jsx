@@ -126,7 +126,8 @@ function buildChallengeData(challenges, progress, roundList = [], teamName = "",
         phaseNumber: phaseNum,
         is_locked: ch.is_locked !== undefined ? ch.is_locked : (ch.is_active === false),
         is_active: ch.is_active !== undefined ? ch.is_active : (ch.is_locked === false),
-        story_fragment: {
+          hints: ch.hints || [],
+          story_fragment: {
           title: fragmentTitle,
           content: fragmentContent,
         },
