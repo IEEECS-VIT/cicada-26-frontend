@@ -19,6 +19,8 @@ import {
 
 export default function AdminModals() {
   const {
+    newChallengeHints,
+    setNewChallengeHints,
     teams,
     setTeams,
     challenges,
@@ -163,6 +165,8 @@ export default function AdminModals() {
     setActiveRound,
     newRoundName,
     setNewRoundName,
+    newRoundTimeLimit,
+    setNewRoundTimeLimit,
     newRoundOrder,
     setNewRoundOrder,
     newRoundIsActive,
@@ -179,10 +183,84 @@ export default function AdminModals() {
     setShowDeleteRoundConfirmModal,
     handleSaveRound,
     handleDeleteRound,
+    showHintModal, setShowHintModal,
+    newHintText, setNewHintText,
+    newHintUnlockMinutes, setNewHintUnlockMinutes,
+    handleAddHint, handleDeleteHint, handleToggleHintVisibility,
   } = useAdmin();
 
   return (
     <>
+      {/* Hint Modal */}
+      {showHintModal && activeChallenge && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl border border-accretion/30 bg-black p-8 text-starlight mb-4 max-h-[50vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="flex items-center gap-2 font-orbitron text-sm tracking-[0.22em] text-starlight">
+                <Plus className="w-4 h-4 text-accretion" />
+                <span>Manage Hints: {activeChallenge.title}</span>
+              </h3>
+              <button onClick={() => setShowHintModal(false)} className="text-copper hover:text-starlight">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              {activeChallenge.hints && activeChallenge.hints.length > 0 ? (
+                activeChallenge.hints.map((hint, idx) => (
+                  <div key={hint.id} className="border border-copper/20 p-4 flex justify-between items-center">
+                    <div>
+                      <p className="text-sm text-starlight/80">Hint {idx + 1}: {hint.text}</p>
+                      <p className="text-xs text-copper mt-1">Unlocks in: {hint.unlock_minutes} mins</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleToggleHintVisibility(hint.id, hint.is_visible)}
+                        className={`px-3 py-1 text-xs border ${hint.is_visible ? 'border-accretion text-accretion' : 'border-copper/50 text-copper/50'}`}
+                      >
+                        {hint.is_visible ? 'VISIBLE' : 'HIDDEN'}
+                      </button>
+                      <button onClick={() => handleDeleteHint(hint.id)} className="px-3 py-1 text-xs border border-red-500/50 text-red-500">
+                        DELETE
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-copper/50 italic">No hints yet.</p>
+              )}
+            </div>
+            
+            <form onSubmit={handleAddHint} className="border-t border-copper/20 pt-6 space-y-4">
+              <h4 className="font-rajdhani text-[12px] tracking-[0.2em] text-accretion">ADD NEW HINT</h4>
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Hint Text</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newHintText}
+                  onChange={(e) => setNewHintText(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Unlock Time (mins, 0=immediate)</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newHintUnlockMinutes}
+                  onChange={(e) => setNewHintUnlockMinutes(e.target.value)}
+                />
+              </div>
+              <button type="submit" className="w-full border border-accretion bg-accretion py-2.5 font-orbitron text-[10px] tracking-[0.2em] text-black hover:bg-accretion-bright">
+                ADD HINT
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* 1. Modal: Register/Create Team */}
       {showCreateTeamModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
@@ -1078,15 +1156,68 @@ export default function AdminModals() {
               </div>
 
               <div>
-                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Flag / Solution Key</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. c1c4d4_fl4g_value"
-                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                  value={newChallengeAnswer}
-                  onChange={(e) => setNewChallengeAnswer(e.target.value)}
-                />
+                {(() => {
+              const uniqueSets = Array.from(new Set((newChallengeAssets || []).filter(a => typeof a.asset_set === 'number' || a.asset_set).map(a => Number(a.asset_set)))).sort((a,b)=>a-b);
+              
+              let answerObj = {};
+              try {
+                if (typeof newChallengeAnswer === 'string' && newChallengeAnswer.startsWith('{')) {
+                  answerObj = JSON.parse(newChallengeAnswer);
+                } else if (newChallengeAnswer) {
+                  answerObj['global'] = newChallengeAnswer;
+                }
+              } catch(e) {}
+
+              const isHash = (str) => typeof str === 'string' && str.startsWith('$2b$');
+
+              if (uniqueSets.length > 0) {
+                return (
+                  <div className="space-y-4">
+                    <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Set-Specific Solution Keys</label>
+                    {uniqueSets.map(setNum => {
+                      const currentVal = answerObj[setNum];
+                      const displayVal = isHash(currentVal) ? '' : (currentVal || '');
+                      const placeholderStr = isHash(currentVal) ? 'ENCRYPTED (SET) - Type to overwrite' : `e.g. flag_for_set_${setNum}`;
+                      
+                      return (
+                      <div key={setNum} className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-copper w-16">Set {setNum}</span>
+                        <input
+                          type="text"
+                          placeholder={placeholderStr}
+                          className="flex-1 border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                          value={displayVal}
+                          onChange={(e) => {
+                            const newObj = { ...answerObj, [setNum]: e.target.value };
+                            setNewChallengeAnswer(JSON.stringify(newObj));
+                          }}
+                        />
+                      </div>
+                    )})}
+                  </div>
+                );
+              }
+
+              const globalVal = answerObj['global'] || newChallengeAnswer;
+              const displayVal = isHash(globalVal) ? '' : (globalVal || '');
+              const placeholderStr = isHash(globalVal) ? 'ENCRYPTED (SET) - Type to overwrite' : 'e.g. c1c4d4_fl4g_value';
+
+              return (
+                <div>
+                  <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Global Solution Key</label>
+                  <input
+                    type="text"
+                    placeholder={placeholderStr}
+                    className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                    value={displayVal}
+                    onChange={(e) => {
+                      const newObj = { ...answerObj, 'global': e.target.value };
+                      setNewChallengeAnswer(JSON.stringify(newObj));
+                    }}
+                  />
+                </div>
+              );
+            })()}
               </div>
 
               {/* Story Fragment Section */}
@@ -1155,30 +1286,138 @@ export default function AdminModals() {
                           url: `https://assets.cicada.org/uploads/${encodeURIComponent(file.name)}`
                         }));
                         setNewChallengeAssets([...newChallengeAssets, ...newAssets]);
-                      }
-                    }}
-                  />
-                </div>
+                  }
+                }}
+              />
+            </div>
 
-                {/* Current Assets list */}
-                {newChallengeAssets.length > 0 && (
-                  <div className="space-y-1 mb-2 max-h-24 overflow-y-auto font-mono">
-                    {newChallengeAssets.map((asset, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-black border border-white/10/40 px-2 py-1 rounded text-[10px]">
-                        <span className="truncate max-w-[150px] text-starlight font-semibold">{asset.name}</span>
-                        <span className="truncate max-w-[120px] text-gray-500 text-[9px]">{asset.url}</span>
+            {/* Current Assets list */}
+            {newChallengeAssets.length > 0 && (
+              <div className="space-y-1 mb-2 max-h-48 overflow-y-auto font-mono">
+                {newChallengeAssets.map((asset, idx) => (
+                  <div key={idx} className="flex justify-between items-center bg-black border border-white/10/40 px-2 py-1 rounded text-[10px]">
+                    <div className="flex flex-col min-w-0 flex-1 mr-2">
+                      <span className="truncate text-starlight font-semibold">
+                        {asset.name}
+                      </span>
+                      <span className="truncate text-gray-500 text-[9px]">{asset.url}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-copper/60 text-[9px] uppercase">Set:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="All"
+                          className="w-12 bg-black border border-copper/30 rounded px-1 py-0.5 text-center text-starlight text-[10px] outline-none focus:border-accretion"
+                          value={asset.asset_set || ''}
+                          onChange={(e) => {
+                            const newAssets = [...newChallengeAssets];
+                            if (e.target.value) {
+                              newAssets[idx].asset_set = parseInt(e.target.value, 10);
+                            } else {
+                              delete newAssets[idx].asset_set;
+                            }
+                            setNewChallengeAssets(newAssets);
+                          }}
+                          title="Leave empty to give to all teams. Enter a number to restrict to a specific set."
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAssetFromChallenge(idx)}
+                        className="text-red-400 hover:text-red-300 font-bold uppercase text-[9px] cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+              {/* Hints Section */}
+              <div className="space-y-2 border border-accretion/20 p-3 mb-4">
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Hints</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newHint = { id: crypto.randomUUID(), text: '', is_visible: true, unlock_minutes: 0 };
+                      setNewChallengeHints([...(newChallengeHints || []), newHint]);
+                    }}
+                    className="text-[10px] bg-copper/10 text-copper px-2 py-0.5 rounded hover:bg-copper/20"
+                  >
+                    + ADD HINT
+                  </button>
+                </div>
+                
+                {(!newChallengeHints || newChallengeHints.length === 0) ? (
+                  <div className="text-xs text-copper/50 italic py-2 text-center">No hints defined for this challenge.</div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {newChallengeHints.map((hint, idx) => (
+                      <div key={hint.id || idx} className="bg-black border border-white/10 p-2 rounded relative flex flex-col gap-2">
                         <button
                           type="button"
-                          onClick={() => handleRemoveAssetFromChallenge(idx)}
-                          className="text-red-400 hover:text-red-300 font-bold uppercase text-[9px] cursor-pointer"
+                          onClick={() => {
+                            const updated = [...newChallengeHints];
+                            updated.splice(idx, 1);
+                            setNewChallengeHints(updated);
+                          }}
+                          className="absolute top-2 right-2 text-red-500 hover:text-red-400"
+                          title="Remove hint"
                         >
-                          Remove
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
+                        
+                        <div>
+                          <label className="text-[9px] uppercase tracking-wider text-copper/60 mb-1 block">Hint Text</label>
+                          <textarea
+                            placeholder="Type hint here..."
+                            className="w-full bg-black/50 border border-white/10 rounded p-1.5 text-xs text-starlight outline-none focus:border-accretion resize-none h-12"
+                            value={hint.text}
+                            onChange={(e) => {
+                              const updated = [...newChallengeHints];
+                              updated[idx] = { ...updated[idx], text: e.target.value };
+                              setNewChallengeHints(updated);
+                            }}
+                          />
+                        </div>
+                        
+                        <div className="flex gap-4">
+                          <div className="flex-1">
+                            <label className="text-[9px] uppercase tracking-wider text-copper/60 mb-1 block">Unlock Delay (Minutes)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              className="w-full bg-black/50 border border-white/10 rounded p-1.5 text-xs text-starlight outline-none focus:border-accretion"
+                              value={hint.unlock_minutes || 0}
+                              onChange={(e) => {
+                                const updated = [...newChallengeHints];
+                                updated[idx] = { ...updated[idx], unlock_minutes: parseInt(e.target.value, 10) || 0 };
+                                setNewChallengeHints(updated);
+                              }}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 pt-4">
+                            <input
+                              type="checkbox"
+                              checked={hint.is_visible !== false}
+                              onChange={(e) => {
+                                const updated = [...newChallengeHints];
+                                updated[idx] = { ...updated[idx], is_visible: e.target.checked };
+                                setNewChallengeHints(updated);
+                              }}
+                            />
+                            <span className="text-[10px] text-starlight">Visible</span>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
-
                 <div className="space-y-2">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <input
@@ -1457,6 +1696,18 @@ export default function AdminModals() {
                 />
               </div>
 
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Set # (Optional)</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Leave blank for all teams"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={editAssetSet || ''}
+                  onChange={(e) => setEditAssetSet(e.target.value)}
+                />
+              </div>
+
               <div className="pt-4 flex gap-3">
                 <button
                   type="button"
@@ -1510,6 +1761,17 @@ export default function AdminModals() {
                   className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
                   value={newRoundName}
                   onChange={(e) => setNewRoundName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Time Limit (mins)</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Unlimited (0)"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={newRoundTimeLimit}
+                  onChange={(e) => setNewRoundTimeLimit(e.target.value)}
                 />
               </div>
 

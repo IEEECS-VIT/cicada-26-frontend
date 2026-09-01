@@ -135,6 +135,9 @@ export function useAdminDashboard() {
   const [showProgressOverrideModal, setShowProgressOverrideModal] = useState(false);
   const [showEditAnswerModal, setShowEditAnswerModal] = useState(false);
   const [showOverrideChallengeModal, setShowOverrideChallengeModal] = useState(false);
+  const [showHintModal, setShowHintModal] = useState(false);
+  const [newHintText, setNewHintText] = useState('');
+  const [newHintUnlockMinutes, setNewHintUnlockMinutes] = useState(0);
 
   // Active records for modals
   const [activeTeam, setActiveTeam] = useState(null);
@@ -177,16 +180,19 @@ export function useAdminDashboard() {
   const [newChallengePoints, setNewChallengePoints] = useState(100);
   const [newChallengeTimeLimit, setNewChallengeTimeLimit] = useState(0);
   const [newChallengeAssets, setNewChallengeAssets] = useState([]);
+  const [newChallengeHints, setNewChallengeHints] = useState([]);
   const [newChallengeFragmentTitle, setNewChallengeFragmentTitle] = useState('');
   const [newChallengeFragmentHeader, setNewChallengeFragmentHeader] = useState('');
   const [newChallengeFragmentContent, setNewChallengeFragmentContent] = useState('');
   const [tempAssetName, setTempAssetName] = useState('');
   const [tempAssetUrl, setTempAssetUrl] = useState('');
+  const [tempAssetSet, setTempAssetSet] = useState('');
 
   // Round Management State (create + edit share one form; activeRound null = create)
   const [showRoundModal, setShowRoundModal] = useState(false);
   const [activeRound, setActiveRound] = useState(null);
   const [newRoundName, setNewRoundName] = useState('');
+  const [newRoundTimeLimit, setNewRoundTimeLimit] = useState(0);
   const [newRoundOrder, setNewRoundOrder] = useState('');
   const [newRoundIsActive, setNewRoundIsActive] = useState(true);
   const [newRoundFragmentTitle, setNewRoundFragmentTitle] = useState('');
@@ -206,6 +212,7 @@ export function useAdminDashboard() {
   const [editAssetName, setEditAssetName] = useState('');
   const [editAssetUrl, setEditAssetUrl] = useState('');
   const [editAssetSet, setEditAssetSet] = useState('');
+  const [editTeamAssetSet, setEditTeamAssetSet] = useState('');
   const [dragOverChallengeId, setDragOverChallengeId] = useState(null);
 
   // Bulk Import State
@@ -262,10 +269,11 @@ export function useAdminDashboard() {
 
   const buildChallengePayload = (challenge, overrides = {}) => {
     const raw = challenge?.raw || {};
-    const assets = (challenge?.assets || raw.assets || []).map((a) => ({
+    const assets = (overrides.assets || challenge?.assets || raw.assets || []).map((a) => ({
       type: a.type || 'file',
       name: (a.name || 'asset').trim() || 'asset',
       url: a.url || '#',
+      ...(a.asset_set ? { asset_set: a.asset_set } : {})
     }));
 
     const orderNum = parseInt(
@@ -304,7 +312,7 @@ export function useAdminDashboard() {
       assets: assets,
       story_context: storyVal,
       description: storyVal,
-      hints: Array.isArray(raw.hints) ? raw.hints : [],
+      hints: overrides.hints ?? challenge?.hints ?? raw.hints ?? [],
     };
 
     if (overrides.story_fragment) {
@@ -505,7 +513,12 @@ export function useAdminDashboard() {
             hintsEnabled: (x.hints || []).length > 0 && (x.hints || []).some((h) => h.is_visible),
             solvedCount: solvedCountsByRound[x.order_number] || solvedCountsByRound[round] || 0,
             timeLimit: x.time_limit || 0,
-            assets: (x.assets || []).map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' })),
+            assets: (x.assets || []).map((a) => ({ 
+                id: a.id, 
+                name: a.name || 'asset', 
+                url: a.url || '#',
+                ...(a.asset_set ? { asset_set: a.asset_set } : {})
+              })),
             raw: x,
           };
         }));
@@ -605,6 +618,80 @@ export function useAdminDashboard() {
   // any drift (e.g. from another admin's concurrent change) a moment later.
   const refreshLiveInBackground = () => {
     refreshLive().catch((err) => console.warn('Background refresh failed:', err));
+  };
+
+  
+  const handleOpenHintModal = (challenge) => {
+    setActiveChallenge(challenge);
+    setShowHintModal(true);
+  };
+
+  const handleAddHint = async (e) => {
+    e.preventDefault();
+    if (!newHintText.trim()) return toast.error('Hint text required');
+    try {
+      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          text: newHintText,
+          unlock_minutes: parseInt(newHintUnlockMinutes, 10) || 0,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      setChallenges(
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
+      );
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
+      setNewHintText('');
+      setNewHintUnlockMinutes(0);
+      toast.success('Hint added');
+    } catch (err) {
+      toast.error(err.message || 'Failed to add hint');
+    }
+  };
+
+  const handleDeleteHint = async (hintId) => {
+    try {
+      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      setChallenges(
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
+      );
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
+      toast.success('Hint deleted');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete hint');
+    }
+  };
+
+  const handleToggleHintVisibility = async (hintId, currentStatus) => {
+    try {
+      const hintToUpdate = activeChallenge.hints.find(h => h.id === hintId);
+      if (!hintToUpdate) return;
+
+      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}/toggle`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      setChallenges(
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
+      );
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
+      toast.success('Hint visibility toggled');
+    } catch (err) {
+      toast.error(err.message || 'Failed to toggle hint visibility');
+    }
   };
 
   const handleToggleIpTracking = async () => {
@@ -801,8 +888,10 @@ export function useAdminDashboard() {
     const existingAssets = (challenge.assets || challenge.raw?.assets || []).map((a) => ({
       name: a.name || 'asset',
       url: a.url || '#',
+      ...(a.asset_set ? { asset_set: a.asset_set } : {})
     }));
     setNewChallengeAssets(existingAssets);
+    setNewChallengeHints(challenge.hints || challenge.raw?.hints || []);
     setTempAssetName('');
     setTempAssetUrl('');
     setTempAssetSet('');
@@ -835,14 +924,19 @@ export function useAdminDashboard() {
     const mappedAssets = (newChallengeAssets || []).map((a) => ({
       type: 'file',
       url: a.url || '#',
-      name: (a.name || 'asset').trim() || 'asset'
+      name: (a.name || 'asset').trim() || 'asset',
+      ...(a.asset_set ? { asset_set: a.asset_set } : {})
     }));
 
     if (editingChallenge) {
       const targetId = editingChallenge.raw?.id || editingChallenge.id;
       const orderNum = editingChallenge.order_number || editingChallenge.raw?.order_number || archiveNum;
 
+      const targetRound = rounds.find(r => r.order_number === roundNum);
+      const roundIdToUse = targetRound?.id || undefined;
+
       const payloadOverrides = {
+        round_id: roundIdToUse,
         order_number: orderNum,
         round: roundNum,
         round_number: roundNum,
@@ -858,6 +952,7 @@ export function useAdminDashboard() {
           content: fragContent,
         },
         assets: mappedAssets,
+          hints: newChallengeHints,
       };
 
       if (newChallengeAnswer.trim()) {
@@ -890,7 +985,11 @@ export function useAdminDashboard() {
                     header: fragHeader,
                     content: fragContent,
                   },
-                  assets: (newChallengeAssets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
+                  assets: (newChallengeAssets || []).map((a) => ({ 
+            name: a.name || 'asset', 
+            url: a.url || '#',
+            ...(a.asset_set ? { asset_set: a.asset_set } : {})
+          })),
                 }
               : c
           )
@@ -909,6 +1008,8 @@ export function useAdminDashboard() {
         setNewChallengePoints(100);
         setNewChallengeTimeLimit(0);
         setNewChallengeAssets([]);
+      setNewChallengeHints([]);
+        setNewChallengeHints([]);
         setNewChallengeFragmentTitle('');
         setNewChallengeFragmentHeader('');
         setNewChallengeFragmentContent('');
@@ -929,8 +1030,18 @@ export function useAdminDashboard() {
     const maxOrder = challenges.reduce((max, c) => Math.max(max, c.order_number || c.raw?.order_number || 0), 0);
     const orderNum = maxOrder + 1;
 
+    // Find the correct round_id from rounds array
+    const targetRound = rounds.find(r => r.order_number === roundNum);
+    const roundIdToUse = targetRound?.id || rounds[0]?.id || undefined;
+
+    if (!roundIdToUse) {
+      alert('You must create at least one Round in the Rounds tab before you can create a challenge, as challenges must be assigned to a round.');
+      return;
+    }
+
     try {
-      await createChallenge({
+      const res = await createChallenge({
+        round_id: roundIdToUse,
         order_number: orderNum,
         round: roundNum,
         round_number: roundNum,
@@ -940,8 +1051,8 @@ export function useAdminDashboard() {
         title: titleVal,
         answer_key: answerKeyVal,
         answer: answerKeyVal,
-        time_limit: parsedLimit,
         points: pointsVal,
+        time_limit: parsedLimit,
         is_active: false,
         is_locked: true,
         story_context: 'Mission briefing',
@@ -953,6 +1064,7 @@ export function useAdminDashboard() {
           content: fragContent,
         },
         assets: mappedAssets,
+          hints: newChallengeHints,
       });
 
       if (newChallengeAnswer.trim() && roundNum) {
@@ -960,7 +1072,7 @@ export function useAdminDashboard() {
       }
 
       const newChalObj = {
-        id: `chal-${Date.now()}`,
+        id: res?.data?.id || `chal-${Date.now()}`,
         title: titleVal,
         round: roundNum,
         archiveNumber: archiveNum,
@@ -978,7 +1090,11 @@ export function useAdminDashboard() {
           header: fragHeader,
           content: fragContent,
         },
-        assets: (newChallengeAssets || []).map((a) => ({ name: a.name || 'asset', url: a.url || '#' })),
+          assets: (newChallengeAssets || []).map((a) => ({ 
+            name: a.name || 'asset', 
+            url: a.url || '#',
+            ...(a.asset_set ? { asset_set: a.asset_set } : {})
+          })),
       };
       setChallenges((prev) => [...prev, newChalObj]);
 
@@ -989,6 +1105,8 @@ export function useAdminDashboard() {
       setNewChallengePoints(100);
       setNewChallengeTimeLimit(0);
       setNewChallengeAssets([]);
+      setNewChallengeHints([]);
+        setNewChallengeHints([]);
       setNewChallengeFragmentTitle('');
       setNewChallengeFragmentHeader('');
       setNewChallengeFragmentContent('');
@@ -1005,10 +1123,15 @@ export function useAdminDashboard() {
 
   const handleAddAssetToChallenge = () => {
     if (!tempAssetName.trim()) return;
+    
+    const parsedSet = parseInt(tempAssetSet, 10);
+    
     const newAsset = {
       name: tempAssetName.trim(),
-      url: tempAssetUrl.trim() || '#'
+      url: tempAssetUrl.trim() || '#',
+      ...(parsedSet > 0 ? { asset_set: parsedSet } : {})
     };
+    
     setNewChallengeAssets([...newChallengeAssets, newAsset]);
     setTempAssetName('');
     setTempAssetUrl('');
@@ -1110,13 +1233,20 @@ export function useAdminDashboard() {
     const assetIdentifier = activeAsset.id || activeAsset.name;
 
     try {
+      const parsedSet = parseInt(editAssetSet, 10);
       const res = await editAsset(targetChallengeId, assetIdentifier, {
         name: editAssetName.trim(),
         url: editAssetUrl.trim() || undefined,
+        ...(parsedSet > 0 ? { asset_set: parsedSet } : { asset_set: null })
       });
 
       if (Array.isArray(res?.data)) {
-        const updatedAssets = res.data.map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' }));
+        const updatedAssets = res.data.map((a) => ({ 
+          id: a.id, 
+          name: a.name || 'asset', 
+          url: a.url || '#',
+          ...(a.asset_set ? { asset_set: a.asset_set } : {})
+        }));
         setChallenges(challenges.map((c) => (c.id === activeAssetChallengeId ? { ...c, assets: updatedAssets } : c)));
       }
       pushLocalLog({
@@ -1130,6 +1260,7 @@ export function useAdminDashboard() {
       setActiveAssetChallengeId('');
       setEditAssetName('');
       setEditAssetUrl('');
+      setEditAssetSet('');
       refreshLiveInBackground();
     } catch (err) {
       console.error('Failed to edit asset on backend:', err);
@@ -1566,6 +1697,7 @@ export function useAdminDashboard() {
   const resetRoundForm = () => {
     setActiveRound(null);
     setNewRoundName('');
+    setNewRoundTimeLimit(0);
     setNewRoundOrder('');
     setNewRoundIsActive(true);
     setNewRoundFragmentTitle('');
@@ -1581,6 +1713,7 @@ export function useAdminDashboard() {
   const handleOpenEditRound = (round) => {
     setActiveRound(round);
     setNewRoundName(round.name || '');
+    setNewRoundTimeLimit(round.time_limit || 0);
     setNewRoundOrder(round.order_number != null ? String(round.order_number) : '');
     setNewRoundIsActive(round.is_active !== false);
     setNewRoundFragmentTitle(round.story_fragment?.title || '');
@@ -1972,6 +2105,8 @@ export function useAdminDashboard() {
     setNewChallengeTimeLimit,
     newChallengeAssets,
     setNewChallengeAssets,
+      newChallengeHints,
+      setNewChallengeHints,
     newChallengeFragmentTitle,
     setNewChallengeFragmentTitle,
     newChallengeFragmentHeader,
@@ -1982,6 +2117,8 @@ export function useAdminDashboard() {
     setTempAssetName,
     tempAssetUrl,
     setTempAssetUrl,
+    tempAssetSet,
+    setTempAssetSet,
     showTimeLimitModal,
     setShowTimeLimitModal,
     editTimeLimitValue,
@@ -2081,6 +2218,10 @@ export function useAdminDashboard() {
     exportToCSV,
     handlePrint,
     unlockedCount,
-    highScore
+    highScore,
+    showHintModal, setShowHintModal,
+    newHintText, setNewHintText,
+    newHintUnlockMinutes, setNewHintUnlockMinutes,
+    handleOpenHintModal, handleAddHint, handleDeleteHint, handleToggleHintVisibility
   };
 }
