@@ -238,9 +238,10 @@ export function GameStateProvider({ children }) {
       let targetPhase = 1;
 
       if (targetOrder) {
-        const matchingChal = (chals.data || []).find((c) => c.order_number === targetOrder);
-        if (matchingChal) {
-          const hierarchy = parseChallengeHierarchy(matchingChal, 0);
+        const matchingIndex = (chals.data || []).findIndex((c) => c.order_number === targetOrder);
+          const matchingChal = (chals.data || [])[matchingIndex];
+          if (matchingChal) {
+            const hierarchy = parseChallengeHierarchy(matchingChal, matchingIndex);
           teamCurrentRound = teamCurrentRound || hierarchy.round;
           targetPhase = hierarchy.archive;
         } else if (targetOrder >= 100) {
