@@ -563,9 +563,7 @@ export function useAdminDashboard() {
         // teams.points (via the admin score-adjustment endpoint) is the source of truth when
         // available; the public leaderboard's challenges_completed count is only a fallback for
         // teams the score endpoint hasn't touched yet.
-        const finalPoints = teamRecord && typeof teamRecord.points === 'number'
-          ? teamRecord.points
-          : (lbMap[teamName] != null ? lbMap[teamName] : (progRecord.challenges_solved || 0));
+        const finalPoints = (teamRecord && typeof teamRecord.points === 'number' ? teamRecord.points : 0) + (lbMap[teamName] != null ? lbMap[teamName] : ((progRecord.challenges_solved || 0) * 100));
 
         return {
           id: resolvedUuid || teamName,
