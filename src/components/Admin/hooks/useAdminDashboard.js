@@ -642,9 +642,9 @@ export function useAdminDashboard() {
       if (!data.success) throw new Error(data.error);
 
       setChallenges(
-        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.hints } : c))
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
       );
-      setActiveChallenge(prev => ({ ...prev, hints: data.hints }));
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
       setNewHintText('');
       setNewHintUnlockMinutes(0);
       toast.success('Hint added');
@@ -663,9 +663,9 @@ export function useAdminDashboard() {
       if (!data.success) throw new Error(data.error);
 
       setChallenges(
-        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.hints } : c))
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
       );
-      setActiveChallenge(prev => ({ ...prev, hints: data.hints }));
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
       toast.success('Hint deleted');
     } catch (err) {
       toast.error(err.message || 'Failed to delete hint');
@@ -685,9 +685,9 @@ export function useAdminDashboard() {
       if (!data.success) throw new Error(data.error);
 
       setChallenges(
-        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.hints } : c))
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
       );
-      setActiveChallenge(prev => ({ ...prev, hints: data.hints }));
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
       toast.success('Hint visibility toggled');
     } catch (err) {
       toast.error(err.message || 'Failed to toggle hint visibility');
