@@ -63,7 +63,13 @@ export const parseRoundAndArchive = (x, index = 0) => {
   round = parseInt(round, 10) || 1;
   archive = parseInt(archive, 10) || (x.order_number ? ((x.order_number - 1) % 6 + 1) : (index + 1));
 
-  return { round, archiveNumber: archive };
+  return {
+
+    showHintModal, setShowHintModal,
+    newHintText, setNewHintText,
+    newHintUnlockMinutes, setNewHintUnlockMinutes,
+    handleOpenHintModal, handleAddHint, handleDeleteHint, handleToggleHintVisibility,
+ round, archiveNumber: archive };
 };
 
 export function useAdminDashboard() {
@@ -614,6 +620,85 @@ export function useAdminDashboard() {
   // any drift (e.g. from another admin's concurrent change) a moment later.
   const refreshLiveInBackground = () => {
     refreshLive().catch((err) => console.warn('Background refresh failed:', err));
+  };
+
+  
+  const handleOpenHintModal = (challenge) => {
+    setActiveChallenge(challenge);
+    setShowHintModal(true);
+  };
+
+  const handleAddHint = async (e) => {
+    e.preventDefault();
+    if (!newHintText.trim()) return toast.error('Hint text required');
+    try {
+      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          text: newHintText,
+          unlock_minutes: parseInt(newHintUnlockMinutes, 10) || 0,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      setChallenges(
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.hints } : c))
+      );
+      setActiveChallenge(prev => ({ ...prev, hints: data.hints }));
+      setNewHintText('');
+      setNewHintUnlockMinutes(0);
+      toast.success('Hint added');
+    } catch (err) {
+      toast.error(err.message || 'Failed to add hint');
+    }
+  };
+
+  const handleDeleteHint = async (hintId) => {
+    try {
+      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      setChallenges(
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.hints } : c))
+      );
+      setActiveChallenge(prev => ({ ...prev, hints: data.hints }));
+      toast.success('Hint deleted');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete hint');
+    }
+  };
+
+  const handleToggleHintVisibility = async (hintId, currentStatus) => {
+    try {
+      const hintToUpdate = activeChallenge.hints.find(h => h.id === hintId);
+      if (!hintToUpdate) return;
+
+      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          text: hintToUpdate.text,
+          is_visible: !currentStatus,
+          unlock_minutes: hintToUpdate.unlock_minutes || 0
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      setChallenges(
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.hints } : c))
+      );
+      setActiveChallenge(prev => ({ ...prev, hints: data.hints }));
+      toast.success('Hint visibility toggled');
+    } catch (err) {
+      toast.error(err.message || 'Failed to toggle hint visibility');
+    }
   };
 
   const handleToggleIpTracking = async () => {
