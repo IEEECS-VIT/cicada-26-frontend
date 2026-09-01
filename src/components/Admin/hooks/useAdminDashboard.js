@@ -188,6 +188,7 @@ export function useAdminDashboard() {
   const [showRoundModal, setShowRoundModal] = useState(false);
   const [activeRound, setActiveRound] = useState(null);
   const [newRoundName, setNewRoundName] = useState('');
+  const [newRoundTimeLimit, setNewRoundTimeLimit] = useState(0);
   const [newRoundOrder, setNewRoundOrder] = useState('');
   const [newRoundIsActive, setNewRoundIsActive] = useState(true);
   const [newRoundFragmentTitle, setNewRoundFragmentTitle] = useState('');
@@ -1611,6 +1612,7 @@ export function useAdminDashboard() {
   const resetRoundForm = () => {
     setActiveRound(null);
     setNewRoundName('');
+    setNewRoundTimeLimit(0);
     setNewRoundOrder('');
     setNewRoundIsActive(true);
     setNewRoundFragmentTitle('');
@@ -1626,6 +1628,7 @@ export function useAdminDashboard() {
   const handleOpenEditRound = (round) => {
     setActiveRound(round);
     setNewRoundName(round.name || '');
+    setNewRoundTimeLimit(round.time_limit || 0);
     setNewRoundOrder(round.order_number != null ? String(round.order_number) : '');
     setNewRoundIsActive(round.is_active !== false);
     setNewRoundFragmentTitle(round.story_fragment?.title || '');
