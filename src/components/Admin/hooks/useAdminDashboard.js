@@ -135,6 +135,9 @@ export function useAdminDashboard() {
   const [showProgressOverrideModal, setShowProgressOverrideModal] = useState(false);
   const [showEditAnswerModal, setShowEditAnswerModal] = useState(false);
   const [showOverrideChallengeModal, setShowOverrideChallengeModal] = useState(false);
+  const [showHintModal, setShowHintModal] = useState(false);
+  const [newHintText, setNewHintText] = useState('');
+  const [newHintUnlockMinutes, setNewHintUnlockMinutes] = useState(0);
 
   // Active records for modals
   const [activeTeam, setActiveTeam] = useState(null);
