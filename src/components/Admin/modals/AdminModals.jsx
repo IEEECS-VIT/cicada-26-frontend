@@ -181,6 +181,10 @@ export default function AdminModals() {
     setShowDeleteRoundConfirmModal,
     handleSaveRound,
     handleDeleteRound,
+    showHintModal, setShowHintModal,
+    newHintText, setNewHintText,
+    newHintUnlockMinutes, setNewHintUnlockMinutes,
+    handleAddHint, handleDeleteHint, handleToggleHintVisibility,
   } = useAdmin();
 
   return (
