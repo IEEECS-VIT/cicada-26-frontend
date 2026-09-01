@@ -572,7 +572,7 @@ export function useAdminDashboard() {
           uuid: resolvedUuid,
           name: teamName,
           members: (resolvedUuid ? membersByTeamId[resolvedUuid] : null) || membersByTeamName[teamName] || [],
-          round: progRecord.current_challenge_order || 1,
+          round: progRecord.current_round_order || 1,
           points: finalPoints,
           status: teamRecord?.is_disqualified ? 'disqualified' : 'active',
         };
