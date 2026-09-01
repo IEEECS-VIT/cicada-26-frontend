@@ -751,8 +751,7 @@ export function initTunnel(refs: TunnelRefs): () => void {
     // that hard-edged box floating mid-page is the seam between the hero and the
     // first card. Ramp both overlays in only as the viewport approaches its stuck
     // position, so the darkening arrives as part of the scroll rather than a cut.
-    const viewportRect = viewport.getBoundingClientRect();
-    const stuckT = clamp01(1 - viewportRect.top / 220).toFixed(3);
+    const stuckT = clamp01(1 - trackRectTop / 220).toFixed(3);
     vignette.style.opacity = stuckT;
     topFade.style.opacity = stuckT;
 

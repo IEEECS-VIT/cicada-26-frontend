@@ -36,11 +36,11 @@ export default function BlackHoleBackground() {
           x: Math.random() * width,
           y: Math.random() * height,
           depth,
-          radius: 0.5 + depth * 1.5,
+          radius: 0.4 + depth * 1.4,
           phase: Math.random() * Math.PI * 2,
           speed: 0.03 + depth * 0.06,
-          isWarm: Math.random() < 0.35,
-          isCyan: Math.random() < 0.2,
+          isWarm: Math.random() < 0.38,
+          isCyan: Math.random() < 0.15,
         });
       }
 
@@ -84,7 +84,7 @@ export default function BlackHoleBackground() {
 
       ctx.clearRect(0, 0, width, height);
 
-      // Black hole center position: slightly right of center on desktop for dramatic backdrop behind text
+      // Black hole center position: placed for cinematic backdrop
       const isMobile = width < 768;
       const bhX = isMobile ? width * 0.5 : width * 0.72 + (mouse.x - 0.5) * 35;
       const bhY = isMobile ? height * 0.28 : height * 0.45 + (mouse.y - 0.5) * 25;
@@ -121,24 +121,24 @@ export default function BlackHoleBackground() {
         const alpha = (0.25 + s.depth * 0.75) * twinkle;
         ctx.beginPath();
         if (s.isWarm) {
-          ctx.fillStyle = `rgba(255, 220, 180, ${alpha.toFixed(3)})`;
+          ctx.fillStyle = `rgba(246, 214, 184, ${alpha.toFixed(3)})`;
         } else if (s.isCyan) {
-          ctx.fillStyle = `rgba(170, 225, 255, ${alpha.toFixed(3)})`;
+          ctx.fillStyle = `rgba(180, 210, 235, ${alpha.toFixed(3)})`;
         } else {
-          ctx.fillStyle = `rgba(245, 248, 255, ${alpha.toFixed(3)})`;
+          ctx.fillStyle = `rgba(245, 238, 230, ${alpha.toFixed(3)})`;
         }
         ctx.arc(px, py, s.radius, 0, Math.PI * 2);
         ctx.fill();
 
         if (s.depth > 0.82 && twinkle > 0.75) {
           ctx.beginPath();
-          ctx.fillStyle = `rgba(255, 240, 210, ${(alpha * 0.25).toFixed(3)})`;
+          ctx.fillStyle = `rgba(246, 206, 168, ${(alpha * 0.2).toFixed(3)})`;
           ctx.arc(px, py, s.radius * 4, 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
-      // 2. Upper Gravitational Lensing Halo (Signature Gargantua Curved Upper Arc)
+      // 2. Upper Gravitational Lensing Halo (Signature Gargantua Curved Upper Arc - Dashboard Amber/Copper Palette)
       ctx.save();
       const lensGradTop = ctx.createRadialGradient(
         bhX,
@@ -148,10 +148,10 @@ export default function BlackHoleBackground() {
         bhY,
         horizonRadius * 2.8
       );
-      lensGradTop.addColorStop(0, "rgba(255, 250, 225, 0.98)");
-      lensGradTop.addColorStop(0.15, "rgba(255, 217, 125, 0.92)");
-      lensGradTop.addColorStop(0.42, "rgba(244, 162, 51, 0.7)");
-      lensGradTop.addColorStop(0.75, "rgba(180, 75, 15, 0.25)");
+      lensGradTop.addColorStop(0, "rgba(255, 244, 230, 0.98)");
+      lensGradTop.addColorStop(0.15, "rgba(246, 206, 168, 0.92)");
+      lensGradTop.addColorStop(0.42, "rgba(224, 162, 121, 0.72)");
+      lensGradTop.addColorStop(0.75, "rgba(166, 95, 52, 0.25)");
       lensGradTop.addColorStop(1, "rgba(0, 0, 0, 0)");
 
       ctx.beginPath();
@@ -181,9 +181,9 @@ export default function BlackHoleBackground() {
         bhY,
         horizonRadius * 2.4
       );
-      lensGradBottom.addColorStop(0, "rgba(255, 235, 190, 0.85)");
-      lensGradBottom.addColorStop(0.22, "rgba(244, 162, 51, 0.65)");
-      lensGradBottom.addColorStop(0.6, "rgba(170, 65, 12, 0.22)");
+      lensGradBottom.addColorStop(0, "rgba(255, 238, 218, 0.85)");
+      lensGradBottom.addColorStop(0.22, "rgba(224, 162, 121, 0.65)");
+      lensGradBottom.addColorStop(0.6, "rgba(155, 85, 45, 0.22)");
       lensGradBottom.addColorStop(1, "rgba(0, 0, 0, 0)");
 
       ctx.beginPath();
@@ -214,11 +214,11 @@ export default function BlackHoleBackground() {
         bhY,
         horizonRadius * 3.6
       );
-      diskGlow.addColorStop(0, "rgba(255, 255, 245, 1.0)");
-      diskGlow.addColorStop(0.12, "rgba(255, 225, 140, 0.95)");
-      diskGlow.addColorStop(0.32, "rgba(244, 162, 51, 0.85)");
-      diskGlow.addColorStop(0.62, "rgba(192, 110, 15, 0.45)");
-      diskGlow.addColorStop(0.88, "rgba(100, 35, 8, 0.15)");
+      diskGlow.addColorStop(0, "rgba(255, 248, 240, 1.0)");
+      diskGlow.addColorStop(0.12, "rgba(248, 216, 185, 0.95)");
+      diskGlow.addColorStop(0.32, "rgba(224, 162, 121, 0.85)");
+      diskGlow.addColorStop(0.62, "rgba(168, 98, 54, 0.45)");
+      diskGlow.addColorStop(0.88, "rgba(95, 45, 20, 0.15)");
       diskGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
 
       ctx.beginPath();
@@ -261,11 +261,11 @@ export default function BlackHoleBackground() {
 
         ctx.beginPath();
         if (doppler > 0.35) {
-          ctx.fillStyle = `rgba(255, 250, 235, ${particleAlpha.toFixed(3)})`;
+          ctx.fillStyle = `rgba(255, 248, 238, ${particleAlpha.toFixed(3)})`;
         } else if (doppler > -0.15) {
-          ctx.fillStyle = `rgba(255, 215, 120, ${(particleAlpha * 0.92).toFixed(3)})`;
+          ctx.fillStyle = `rgba(246, 208, 172, ${(particleAlpha * 0.92).toFixed(3)})`;
         } else {
-          ctx.fillStyle = `rgba(244, 140, 45, ${(particleAlpha * 0.8).toFixed(3)})`;
+          ctx.fillStyle = `rgba(224, 162, 121, ${(particleAlpha * 0.8).toFixed(3)})`;
         }
         ctx.arc(diskX, diskY, p.size * (0.8 + brightness * 0.5), 0, Math.PI * 2);
         ctx.fill();
@@ -275,9 +275,9 @@ export default function BlackHoleBackground() {
       ctx.save();
       ctx.beginPath();
       ctx.arc(bhX, bhY, horizonRadius, 0, Math.PI * 2);
-      ctx.fillStyle = "#000000";
+      ctx.fillStyle = "#07050a";
       ctx.shadowColor = "#000000";
-      ctx.shadowBlur = 24;
+      ctx.shadowBlur = 28;
       ctx.fill();
       ctx.restore();
 
@@ -293,8 +293,8 @@ export default function BlackHoleBackground() {
       );
       photonRing.addColorStop(0, "rgba(0, 0, 0, 0)");
       photonRing.addColorStop(0.35, "rgba(255, 255, 255, 1.0)");
-      photonRing.addColorStop(0.7, "rgba(255, 220, 140, 0.9)");
-      photonRing.addColorStop(1, "rgba(244, 162, 51, 0)");
+      photonRing.addColorStop(0.7, "rgba(246, 214, 184, 0.92)");
+      photonRing.addColorStop(1, "rgba(224, 162, 121, 0)");
 
       ctx.beginPath();
       ctx.arc(bhX, bhY, horizonRadius * 1.04, 0, Math.PI * 2);
@@ -329,7 +329,7 @@ export default function BlackHoleBackground() {
             slopeY: Math.sin(angle),
             duration: 600 + Math.random() * 550,
             elapsed: -i * 150,
-            colorHue: Math.random() < 0.45 ? "gold" : "cyan",
+            colorHue: Math.random() < 0.45 ? "copper" : "warmWhite",
           });
         }
         nextShootingStar = 650 + Math.random() * 1600;
@@ -354,16 +354,16 @@ export default function BlackHoleBackground() {
         const tailY = star.y - star.slopeY * star.length;
 
         const grad = ctx.createLinearGradient(star.x, star.y, tailX, tailY);
-        if (star.colorHue === "gold") {
-          grad.addColorStop(0, `rgba(255, 255, 245, ${(1.0 * intensity).toFixed(3)})`);
-          grad.addColorStop(0.15, `rgba(255, 217, 125, ${(0.85 * intensity).toFixed(3)})`);
-          grad.addColorStop(0.6, `rgba(244, 162, 51, ${(0.4 * intensity).toFixed(3)})`);
-          grad.addColorStop(1, "rgba(244, 162, 51, 0)");
+        if (star.colorHue === "copper") {
+          grad.addColorStop(0, `rgba(255, 248, 240, ${(1.0 * intensity).toFixed(3)})`);
+          grad.addColorStop(0.15, `rgba(246, 206, 168, ${(0.85 * intensity).toFixed(3)})`);
+          grad.addColorStop(0.6, `rgba(224, 162, 121, ${(0.4 * intensity).toFixed(3)})`);
+          grad.addColorStop(1, "rgba(224, 162, 121, 0)");
         } else {
           grad.addColorStop(0, `rgba(255, 255, 255, ${(1.0 * intensity).toFixed(3)})`);
-          grad.addColorStop(0.18, `rgba(180, 235, 255, ${(0.85 * intensity).toFixed(3)})`);
-          grad.addColorStop(0.6, `rgba(100, 190, 255, ${(0.35 * intensity).toFixed(3)})`);
-          grad.addColorStop(1, "rgba(100, 190, 255, 0)");
+          grad.addColorStop(0.18, `rgba(246, 214, 184, ${(0.85 * intensity).toFixed(3)})`);
+          grad.addColorStop(0.6, `rgba(224, 162, 121, ${(0.35 * intensity).toFixed(3)})`);
+          grad.addColorStop(1, "rgba(224, 162, 121, 0)");
         }
 
         ctx.strokeStyle = grad;
@@ -379,9 +379,9 @@ export default function BlackHoleBackground() {
         ctx.arc(star.x, star.y, 2.0, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = star.colorHue === "gold"
-          ? `rgba(255, 217, 125, ${(0.5 * intensity).toFixed(3)})`
-          : `rgba(180, 230, 255, ${(0.5 * intensity).toFixed(3)})`;
+        ctx.fillStyle = star.colorHue === "copper"
+          ? `rgba(246, 206, 168, ${(0.5 * intensity).toFixed(3)})`
+          : `rgba(246, 214, 184, ${(0.5 * intensity).toFixed(3)})`;
         ctx.beginPath();
         ctx.arc(star.x, star.y, 5.0, 0, Math.PI * 2);
         ctx.fill();
@@ -401,11 +401,11 @@ export default function BlackHoleBackground() {
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
-      {/* 1. Deep Space Solid Void Base */}
-      <div className="absolute inset-0 bg-[#040206]" />
+      {/* 1. Deep Space Solid Void Base matching Dashboard */}
+      <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_82%_42%,#17100c_0%,#0b0709_42%,#07050a_100%)]" />
 
-      {/* 2. Starry Nebula Texture */}
-      <div className="absolute inset-0 bg-[url('/assets/starry-bg.jpg')] bg-cover bg-center opacity-35 mix-blend-screen" />
+      {/* 2. Dashboard Nebula Texture */}
+      <div className="absolute inset-0 bg-[url('/assets/dashboard-nebula.png')] bg-cover bg-[68%_34%] opacity-55 mix-blend-screen" />
 
       {/* 3. Black Hole + Shooting Star Canvas (Active 60fps) */}
       <canvas
@@ -414,12 +414,16 @@ export default function BlackHoleBackground() {
       />
 
       {/* 4. Atmospheric Accretion Glow Wash */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_45%,rgba(244,162,51,0.18)_0%,rgba(192,120,16,0.08)_35%,transparent_70%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_45%,rgba(224,162,121,0.18)_0%,rgba(178,104,58,0.08)_35%,transparent_70%)]" />
 
-      {/* 5. Cinematic Vignette Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/75" />
+      {/* 5. Ambient Glowing Orbs matching Dashboard */}
+      <div className="absolute rounded-full -right-[14vw] top-[8vh] w-[58vw] h-[58vw] bg-[radial-gradient(circle_at_50%_50%,rgba(232,168,116,.18)_0%,rgba(178,104,58,.08)_34%,transparent_70%)] blur-[24px]" />
+      <div className="absolute rounded-full -left-[22vw] -bottom-[18vh] w-[56vw] h-[56vw] bg-[radial-gradient(circle_at_50%_50%,rgba(140,150,190,.08)_0%,rgba(60,70,110,.04)_45%,transparent_70%)] blur-[28px]" />
 
-      {/* 6. Subtle CRT Scanline overlay for Interstellar terminal aesthetic */}
+      {/* 6. Cinematic Vignette Gradient */}
+      <div className="absolute inset-0 bg-[radial-gradient(115%_85%_at_50%_45%,transparent_45%,rgba(4,3,6,.55)_78%,rgba(3,2,5,.9)_100%)]" />
+
+      {/* 7. Subtle CRT Scanline overlay */}
       <div className="absolute inset-0 bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_3px,rgba(0,0,0,0.18)_3px,rgba(0,0,0,0.18)_4px)] opacity-35" />
     </div>
   );
