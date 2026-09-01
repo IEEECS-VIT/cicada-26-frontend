@@ -1166,38 +1166,52 @@ export default function AdminModals() {
                 }
               } catch(e) {}
 
+              const isHash = (str) => typeof str === 'string' && str.startsWith('$2b$');
+
               if (uniqueSets.length > 0) {
                 return (
                   <div className="space-y-4">
                     <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Set-Specific Solution Keys</label>
-                    {uniqueSets.map(setNum => (
+                    {uniqueSets.map(setNum => {
+                      const currentVal = answerObj[setNum];
+                      const displayVal = isHash(currentVal) ? '' : (currentVal || '');
+                      const placeholderStr = isHash(currentVal) ? 'ENCRYPTED (SET) - Type to overwrite' : `e.g. flag_for_set_${setNum}`;
+                      
+                      return (
                       <div key={setNum} className="flex items-center gap-3">
                         <span className="text-sm font-bold text-copper w-16">Set {setNum}</span>
                         <input
                           type="text"
-                          placeholder={`e.g. flag_for_set_${setNum}`}
-                          className="flex-1 border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none focus:border-accretion"
-                          value={answerObj[setNum] || ''}
+                          placeholder={placeholderStr}
+                          className="flex-1 border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                          value={displayVal}
                           onChange={(e) => {
                             const newObj = { ...answerObj, [setNum]: e.target.value };
                             setNewChallengeAnswer(JSON.stringify(newObj));
                           }}
                         />
                       </div>
-                    ))}
+                    )})}
                   </div>
                 );
               }
+
+              const globalVal = answerObj['global'] || newChallengeAnswer;
+              const displayVal = isHash(globalVal) ? '' : (globalVal || '');
+              const placeholderStr = isHash(globalVal) ? 'ENCRYPTED (SET) - Type to overwrite' : 'e.g. c1c4d4_fl4g_value';
 
               return (
                 <div>
                   <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Global Solution Key</label>
                   <input
                     type="text"
-                    placeholder="e.g. c1c4d4_fl4g_value"
+                    placeholder={placeholderStr}
                     className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                    value={answerObj['global'] || newChallengeAnswer}
-                    onChange={(e) => setNewChallengeAnswer(e.target.value)}
+                    value={displayVal}
+                    onChange={(e) => {
+                      const newObj = { ...answerObj, 'global': e.target.value };
+                      setNewChallengeAnswer(JSON.stringify(newObj));
+                    }}
                   />
                 </div>
               );
