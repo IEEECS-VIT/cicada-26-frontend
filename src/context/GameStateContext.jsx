@@ -237,20 +237,30 @@ export function GameStateProvider({ children }) {
       let teamCurrentRound = prog?.data?.current_round_order || prog?.data?.round || prog?.data?.current_round;
       let targetPhase = 1;
 
-      if (targetOrder) {
-        const matchingIndex = (chals.data || []).findIndex((c) => c.order_number === targetOrder);
-          const matchingChal = (chals.data || [])[matchingIndex];
-          if (matchingChal) {
-            const hierarchy = parseChallengeHierarchy(matchingChal, matchingIndex);
-          teamCurrentRound = teamCurrentRound || hierarchy.round;
-          targetPhase = hierarchy.archive;
-        } else if (targetOrder >= 100) {
-          teamCurrentRound = teamCurrentRound || Math.floor(targetOrder / 100);
-          targetPhase = targetOrder % 100;
-        } else {
-          targetPhase = targetOrder;
+              if (targetOrder) {
+          let foundRound = null;
+          let foundPhase = null;
+          for (const rKey of Object.keys(data)) {
+            for (const pKey of Object.keys(data[rKey].phases)) {
+              if (data[rKey].phases[pKey].order_number === targetOrder) {
+                foundRound = parseInt(rKey, 10);
+                foundPhase = parseInt(pKey, 10);
+                break;
+              }
+            }
+            if (foundRound) break;
+          }
+
+          if (foundPhase) {
+            teamCurrentRound = teamCurrentRound || foundRound;
+            targetPhase = foundPhase;
+          } else if (targetOrder >= 100) {
+            teamCurrentRound = teamCurrentRound || Math.floor(targetOrder / 100);
+            targetPhase = targetOrder % 100;
+          } else {
+            targetPhase = targetOrder;
+          }
         }
-      }
 
       teamCurrentRound = teamCurrentRound || 1;
 
