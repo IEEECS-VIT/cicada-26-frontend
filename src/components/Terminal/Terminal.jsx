@@ -8,10 +8,22 @@ function pad(n) {
   return String(n).padStart(2, "0");
 }
 
+function formatIstTime(date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${pad(values.hour)}:${pad(values.minute)}:${pad(values.second)}`;
+}
+
 export default function Terminal() {
   const { teamName, isTerminalOpen, unlockedRounds, currentRound, unlockedPhases, loading, error, challengeData, roundTransition, completedChallenges } =
     useGameState();
-  const [clock, setClock] = useState("20:13:47");
+  const [clock, setClock] = useState(() => formatIstTime(new Date()));
   const [lineProgress, setLineProgress] = useState(0);
 
   useEffect(() => {
@@ -49,10 +61,9 @@ export default function Terminal() {
   }, [unlockedRounds, currentRound, unlockedPhases, challengeData, completedChallenges]);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      const d = new Date();
-      setClock(`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`);
-    }, 1000);
+    const tick = () => setClock(formatIstTime(new Date()));
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
 

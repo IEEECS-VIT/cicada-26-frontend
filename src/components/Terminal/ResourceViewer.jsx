@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGameState } from '../../context/GameStateContext';
-import { 
-  Copy, 
-  Check, 
-  ExternalLink, 
-  FileText, 
-  Database, 
-  Volume2, 
-  Film, 
-  Image as ImageIcon, 
-  Maximize2, 
+import {
+  Copy,
+  Check,
+  ExternalLink,
+  FileText,
+  Database,
+  Volume2,
+  Film,
+  Image as ImageIcon,
+  Maximize2,
   X,
   FileDown
 } from 'lucide-react';
@@ -28,6 +28,11 @@ export default function ResourceViewer() {
   const phaseData = challengeData?.[currentRound]?.phases?.[currentPhase];
   const [copied, setCopied] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [activeAssetIdx, setActiveAssetIdx] = useState(0);
+
+  useEffect(() => {
+    setActiveAssetIdx(0);
+  }, [currentRound, currentPhase]);
 
   const handleCopy = (text) => {
     if (!text) return;
@@ -45,8 +50,11 @@ export default function ResourceViewer() {
     );
   }
 
-  // Extract the single active resource
-  const primaryAsset = phaseData.assets?.[0];
+  // The backend applies set allocation before returning assets. Show every
+  // asset assigned to this archive and let the participant select its payload.
+  const assets = phaseData.assets || [];
+  const activeIdx = assets.length > 0 ? Math.min(activeAssetIdx, assets.length - 1) : 0;
+  const primaryAsset = assets[activeIdx];
   const rawType = (primaryAsset?.type || phaseData.resourceType || 'text').toLowerCase();
   const url = (primaryAsset?.url || phaseData.resourceUrl || '').trim();
   const fragment = phaseData.story_fragment || {};
@@ -101,6 +109,25 @@ export default function ResourceViewer() {
           <p className="font-mono text-xs sm:text-sm text-starlight/95 leading-relaxed select-all whitespace-pre-wrap">
             {fragmentContent}
           </p>
+        </div>
+      )}
+
+      {assets.length > 1 && (
+        <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+          {assets.map((asset, idx) => (
+            <button
+              key={`${asset.id || asset.name || 'asset'}-${idx}`}
+              type="button"
+              onClick={() => setActiveAssetIdx(idx)}
+              className={`shrink-0 rounded border px-2.5 py-1 font-rajdhani text-[10px] tracking-[0.16em] uppercase transition-colors ${
+                idx === activeIdx
+                  ? 'border-accretion bg-accretion/20 text-accretion'
+                  : 'border-copper/25 text-copper/70 hover:border-accretion/50 hover:text-accretion'
+              }`}
+            >
+              {asset.name || `ASSET ${idx + 1}`}
+            </button>
+          ))}
         </div>
       )}
 
@@ -327,11 +354,11 @@ export default function ResourceViewer() {
 
       {/* Image Lightbox Modal */}
       {lightboxOpen && hasValidUrl && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3 sm:p-6 backdrop-blur-md"
           onClick={() => setLightboxOpen(false)}
         >
-          <div 
+          <div
             className="relative max-h-[92vh] max-w-[95vw] rounded-xl border border-accretion/60 bg-black p-2 shadow-[0_0_30px_rgba(209,155,131,0.4)] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >

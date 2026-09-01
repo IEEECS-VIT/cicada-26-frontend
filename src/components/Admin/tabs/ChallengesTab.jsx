@@ -154,11 +154,10 @@ export default function ChallengesTab() {
         <button
           type="button"
           onClick={() => setSelectedRoundFilter('all')}
-          className={`rounded border px-3 py-1.5 font-orbitron text-[10px] tracking-wider transition-all ${
-            selectedRoundFilter === 'all'
+          className={`rounded border px-3 py-1.5 font-orbitron text-[10px] tracking-wider transition-all ${selectedRoundFilter === 'all'
               ? 'border-accretion bg-accretion/20 text-accretion font-bold shadow-[0_0_8px_rgba(209,155,131,0.25)]'
               : 'border-copper/30 bg-black/40 text-copper hover:border-accretion/60 hover:text-accretion'
-          }`}
+            }`}
         >
           ALL ROUNDS ({challenges.length})
         </button>
@@ -171,11 +170,10 @@ export default function ChallengesTab() {
               key={roundNum}
               type="button"
               onClick={() => setSelectedRoundFilter(String(roundNum))}
-              className={`rounded border px-3 py-1.5 font-orbitron text-[10px] tracking-wider transition-all ${
-                isSelected
+              className={`rounded border px-3 py-1.5 font-orbitron text-[10px] tracking-wider transition-all ${isSelected
                   ? 'border-accretion bg-accretion/20 text-accretion font-bold shadow-[0_0_8px_rgba(209,155,131,0.25)]'
                   : 'border-copper/30 bg-black/40 text-copper hover:border-accretion/60 hover:text-accretion'
-              }`}
+                }`}
             >
               ROUND {roundNum} ({count} {count === 1 ? 'Archive' : 'Archives'})
             </button>
@@ -258,9 +256,8 @@ export default function ChallengesTab() {
                             </span>
                           </div>
                           <span
-                            className={`font-rajdhani text-[11px] font-bold tracking-[0.22em] ${
-                              challenge.isLocked ? 'text-red-300' : 'text-accretion'
-                            }`}
+                            className={`font-rajdhani text-[11px] font-bold tracking-[0.22em] ${challenge.isLocked ? 'text-red-300' : 'text-accretion'
+                              }`}
                           >
                             {challenge.isLocked ? 'LOCKED' : 'OPEN'}
                           </span>
@@ -331,11 +328,10 @@ export default function ChallengesTab() {
                               });
                             }
                           }}
-                          className={`mb-4 border p-3 text-sm transition rounded ${
-                            dragOverChallengeId === challenge.id
+                          className={`mb-4 border p-3 text-sm transition rounded ${dragOverChallengeId === challenge.id
                               ? 'border-accretion bg-accretion/10'
                               : 'border-copper/20'
-                          }`}
+                            }`}
                         >
                           <div className="flex justify-between items-center mb-2">
                             <span className="font-rajdhani text-[11px] tracking-[0.22em] text-copper">
@@ -459,27 +455,26 @@ export default function ChallengesTab() {
                           <button
                             type="button"
                             onClick={() => handleToggleLockChallenge(challenge.id, challenge.isLocked)}
-                            className={`flex flex-1 items-center justify-center gap-1.5 border py-2 font-rajdhani text-[11px] tracking-[0.18em] rounded ${
-                              challenge.isLocked
+                            className={`flex flex-1 items-center justify-center gap-1.5 border py-2 font-rajdhani text-[11px] tracking-[0.18em] rounded ${challenge.isLocked
                                 ? 'border-red-400/40 text-red-300 hover:bg-red-500/10'
                                 : 'border-accretion/40 text-accretion hover:bg-accretion/10'
-                            }`}
+                              }`}
                           >
                             {challenge.isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
                             {challenge.isLocked ? 'UNLOCK' : 'LOCK'}
                           </button>
-                            <button
-                                type="button"
-                                onClick={() => handleOpenHintModal(challenge)}
-                                className="flex-1 border py-2 font-rajdhani text-[11px] tracking-[0.18em] rounded border-accretion/40 text-accretion hover:bg-accretion hover:text-black transition-colors"
-                              >
-                                MANAGE HINTS
-                              </button>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenOverrideChallenge(challenge)}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenHintModal(challenge)}
+                            className="flex-1 border py-2 font-rajdhani text-[11px] tracking-[0.18em] rounded border-accretion/40 text-accretion hover:bg-accretion hover:text-black transition-colors"
+                          >
+                            MANAGE HINTS
+                          </button>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenOverrideChallenge(challenge)}
                             className="flex-1 border border-copper/25 py-2 font-rajdhani text-[11px] tracking-[0.16em] text-copper hover:border-accretion hover:text-accretion rounded"
                           >
                             FORCE COMPLETE
@@ -492,11 +487,10 @@ export default function ChallengesTab() {
                               setShowSkipConfirmModal(true);
                             }}
                             disabled={safeguardActive}
-                            className={`flex-1 border py-2 font-rajdhani text-[11px] tracking-[0.16em] rounded ${
-                              safeguardActive
+                            className={`flex-1 border py-2 font-rajdhani text-[11px] tracking-[0.16em] rounded ${safeguardActive
                                 ? 'cursor-not-allowed border-copper/15 text-copper/30'
                                 : 'border-copper/25 text-copper hover:border-accretion hover:text-accretion'
-                            }`}
+                              }`}
                             title={safeguardActive ? 'Safeguard Mode Active (Locked)' : 'Skip challenge for all'}
                           >
                             {safeguardActive ? 'LOCKED' : 'SKIP ALL'}
@@ -509,11 +503,10 @@ export default function ChallengesTab() {
                               setShowResetChallengeConfirmModal(true);
                             }}
                             disabled={safeguardActive}
-                            className={`border px-3 py-2 rounded ${
-                              safeguardActive
+                            className={`border px-3 py-2 rounded ${safeguardActive
                                 ? 'cursor-not-allowed border-copper/15 text-copper/30'
                                 : 'border-copper/25 text-copper hover:border-red-400 hover:text-red-300'
-                            }`}
+                              }`}
                             title={safeguardActive ? 'Safeguard Mode Active (Locked)' : 'Reset Challenge Stats'}
                           >
                             {safeguardActive ? <Lock className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}
