@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useGameState } from '../../context/GameStateContext';
+import { fetchMaskedAssetFile, isMaskedAssetUrl } from '../../api/challenges';
 import {
   Copy,
   Check,
@@ -23,16 +24,66 @@ function getYoutubeEmbedUrl(url) {
   return null;
 }
 
+const EXT_PATTERNS = {
+  audio: /\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|wma)($|\?)/i,
+  video: /\.(mp4|webm|mov|mkv|m4v|avi)($|\?)/i,
+  image: /\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)($|\?)/i,
+  pdf: /\.pdf($|\?)/i,
+};
+
 export default function ResourceViewer() {
   const { challengeData, currentRound, currentPhase } = useGameState();
   const phaseData = challengeData?.[currentRound]?.phases?.[currentPhase];
   const [copied, setCopied] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activeAssetIdx, setActiveAssetIdx] = useState(0);
+  const [assetSrc, setAssetSrc] = useState(null);
+  const [assetLoading, setAssetLoading] = useState(false);
+  const [assetError, setAssetError] = useState(false);
 
   useEffect(() => {
     setActiveAssetIdx(0);
   }, [currentRound, currentPhase]);
+
+  // Backend assets are masked behind /api/challenges/assets/masked, which
+  // requires the Authorization header. Fetch them through the authenticated
+  // API and expose a blob URL the media elements can actually load.
+  useEffect(() => {
+    setAssetSrc(null);
+    setAssetError(false);
+    let objectUrl = null;
+    let cancelled = false;
+
+    if (!phaseData) return undefined;
+    const assetsList = phaseData.assets || [];
+    const safeIdx = Math.min(activeAssetIdx, Math.max(0, assetsList.length - 1));
+    const url = (assetsList[safeIdx]?.url || phaseData.resourceUrl || '').trim();
+    if (!url || url === '#') return undefined;
+
+    if (!isMaskedAssetUrl(url)) {
+      setAssetSrc(url);
+      return undefined;
+    }
+
+    setAssetLoading(true);
+    fetchMaskedAssetFile(url)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setAssetSrc(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setAssetError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setAssetLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [phaseData?.assets, phaseData?.resourceUrl, activeAssetIdx, currentRound, currentPhase]);
 
   const handleCopy = (text) => {
     if (!text) return;
@@ -50,8 +101,8 @@ export default function ResourceViewer() {
     );
   }
 
-  // The backend applies set allocation before returning assets. Show every
-  // asset assigned to this archive and let the participant select its payload.
+  // assets here are already filtered to this team's allotted set by
+  // GameStateContext (filterAssetsBySet).
   const assets = phaseData.assets || [];
   const activeIdx = assets.length > 0 ? Math.min(activeAssetIdx, assets.length - 1) : 0;
   const primaryAsset = assets[activeIdx];
@@ -63,24 +114,30 @@ export default function ResourceViewer() {
   const content = primaryAsset?.content || phaseData.content || fragmentContent || '';
   const assetName = primaryAsset?.name || fragmentTitle;
 
-  // Determine normalized resource type
+  // Resolve the displayed URL: masked backend paths are proxied through the
+  // authenticated blob fetch above; direct URLs (storage/CDN) load as-is.
+  const displayUrl = assetSrc || url;
+  const hasValidUrl = Boolean(displayUrl) && displayUrl !== '#';
+
+  // Determine normalized resource type (type field -> MIME -> URL -> asset name)
   let resourceType = 'text';
-  if (rawType.includes('audio') || url.match(/\.(mp3|wav|ogg|m4a|aac|flac)($|\?)/i)) {
+  if (rawType.includes('audio') || EXT_PATTERNS.audio.test(url) || EXT_PATTERNS.audio.test(assetName)) {
     resourceType = 'audio';
-  } else if (rawType.includes('video') || url.match(/\.(mp4|webm|mov|mkv)($|\?)/i) || getYoutubeEmbedUrl(url)) {
+  } else if (rawType.includes('video') || EXT_PATTERNS.video.test(url) || EXT_PATTERNS.video.test(assetName) || getYoutubeEmbedUrl(url)) {
     resourceType = 'video';
-  } else if (rawType.includes('image') || rawType.includes('img') || url.match(/\.(jpg|jpeg|png|gif|webp|svg)($|\?)/i)) {
+  } else if (rawType.includes('image') || rawType.includes('img') || EXT_PATTERNS.image.test(url) || EXT_PATTERNS.image.test(assetName)) {
     resourceType = 'image';
-  } else if (rawType.includes('pdf') || url.match(/\.pdf($|\?)/i)) {
+  } else if (rawType.includes('pdf') || EXT_PATTERNS.pdf.test(url) || EXT_PATTERNS.pdf.test(assetName)) {
     resourceType = 'pdf';
-  } else if (content || rawType.includes('text')) {
+  } else if (rawType.includes('text') || (!primaryAsset && content)) {
     resourceType = 'text';
-  } else if (url && url !== '#') {
+  } else if (hasValidUrl) {
     resourceType = 'file';
+  } else if (content) {
+    resourceType = 'text';
   }
 
-  const youtubeEmbed = resourceType === 'video' ? getYoutubeEmbedUrl(url) : null;
-  const hasValidUrl = url && url !== '#';
+  const youtubeEmbed = resourceType === 'video' ? getYoutubeEmbedUrl(displayUrl) : null;
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-y-auto pr-1 space-y-2.5 scrollbar-hide">
@@ -168,9 +225,9 @@ export default function ResourceViewer() {
               </button>
             )}
 
-            {hasValidUrl && (
+            {hasValidUrl && !assetLoading && (
               <a
-                href={url}
+                href={displayUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 rounded bg-black/60 border border-accretion/30 px-2 py-0.5 font-mono text-[9px] text-copper hover:text-accretion hover:border-accretion transition-colors"
@@ -183,13 +240,25 @@ export default function ResourceViewer() {
           </div>
         </div>
 
-        {/* 1. IMAGE TYPE */}
-        {resourceType === 'image' && (
+        {assetLoading && (
+          <div className="flex flex-1 items-center justify-center py-10">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-6 w-6 border-2 border-accretion border-t-transparent rounded-full animate-spin" />
+              <p className="font-orbitron text-[10px] tracking-[0.24em] text-accretion/70">RETRIEVING PAYLOAD...</p>
+            </div>
+          </div>
+        )}
+        {assetError && (
+          <div className="flex flex-1 items-center justify-center py-10">
+            <p className="font-orbitron text-[10px] tracking-[0.24em] text-red-300">UPLINK BLOCKED — ASSET COULD NOT BE RETRIEVED</p>
+          </div>
+        )}
+        {!assetLoading && !assetError && resourceType === 'image' && (
           <div className="flex flex-col items-center justify-center flex-1 min-h-0 space-y-2">
             {hasValidUrl ? (
               <div className="relative group max-w-full flex items-center justify-center rounded-lg overflow-hidden border border-accretion/40 bg-black/70 shadow-[0_0_20px_rgba(209,155,131,0.15)]">
                 <img
-                  src={url}
+                  src={displayUrl}
                   alt={assetName || "Mission Clue"}
                   className="max-h-[42vh] sm:max-h-[48vh] w-auto max-w-full object-contain rounded cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
                   onClick={() => setLightboxOpen(true)}
@@ -216,7 +285,7 @@ export default function ResourceViewer() {
         )}
 
         {/* 2. AUDIO TYPE */}
-        {resourceType === 'audio' && (
+        {!assetLoading && !assetError && resourceType === 'audio' && (
           <div className="flex flex-col justify-center flex-1 min-h-0 py-2 space-y-3">
             <div className="rounded-lg border border-accretion/45 bg-black/70 p-3.5 sm:p-5 shadow-[0_0_20px_rgba(209,155,131,0.15)]">
               <div className="flex items-center justify-between gap-2 mb-3">
@@ -254,7 +323,7 @@ export default function ResourceViewer() {
                     preload="metadata"
                     className="w-full h-10 rounded outline-none border border-accretion/40 bg-black"
                   >
-                    <source src={url} />
+                    <source src={displayUrl} type={primaryAsset?.type || 'audio/mpeg'} />
                     Your browser does not support the audio element.
                   </audio>
                 </div>
@@ -268,7 +337,7 @@ export default function ResourceViewer() {
         )}
 
         {/* 3. VIDEO TYPE */}
-        {resourceType === 'video' && (
+        {!assetLoading && !assetError && resourceType === 'video' && (
           <div className="flex flex-col items-center justify-center flex-1 min-h-0 space-y-2">
             {hasValidUrl ? (
               <div className="relative w-full overflow-hidden rounded-lg border border-accretion/45 bg-black/80 shadow-[0_0_20px_rgba(209,155,131,0.2)]">
@@ -289,7 +358,7 @@ export default function ResourceViewer() {
                     preload="metadata"
                     className="max-h-[45vh] w-full rounded object-contain bg-black"
                   >
-                    <source src={url} />
+                    <source src={displayUrl} type={primaryAsset?.type || 'video/mp4'} />
                     Your browser does not support the video tag.
                   </video>
                 )}
@@ -316,7 +385,7 @@ export default function ResourceViewer() {
         )}
 
         {/* 5. PDF / FILE FALLBACK */}
-        {(resourceType === 'pdf' || resourceType === 'file') && (
+        {!assetLoading && !assetError && (resourceType === 'pdf' || resourceType === 'file') && (
           <div className="flex flex-col items-center justify-center flex-1 min-h-0 p-4 text-center space-y-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accretion/15 border border-accretion/40 text-accretion">
               <FileDown className="h-6 w-6" />
@@ -331,7 +400,7 @@ export default function ResourceViewer() {
             </div>
             {hasValidUrl ? (
               <a
-                href={url}
+                href={displayUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex min-h-[40px] items-center gap-2 rounded border border-accretion bg-accretion/20 px-4 py-2 font-orbitron text-xs tracking-wider uppercase text-accretion transition-all hover:bg-accretion hover:text-black active:scale-95 shadow-[0_0_12px_rgba(209,155,131,0.25)]"
@@ -377,7 +446,7 @@ export default function ResourceViewer() {
             </div>
             <div className="flex items-center justify-center max-h-[82vh] overflow-auto">
               <img
-                src={url}
+                src={displayUrl}
                 alt={assetName || "Enlarged Inspection"}
                 className="max-h-[80vh] w-auto max-w-full object-contain rounded"
               />
