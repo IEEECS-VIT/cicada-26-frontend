@@ -1155,69 +1155,56 @@ export default function AdminModals() {
                           url: `https://assets.cicada.org/uploads/${encodeURIComponent(file.name)}`
                         }));
                         setNewChallengeAssets([...newChallengeAssets, ...newAssets]);
-                      }
-                    }}
-                  />
-                </div>
+                  }
+                }}
+              />
+            </div>
 
-                {/* Current Assets list */}
-                {newChallengeAssets.length > 0 && (
-                  <div className="space-y-1 mb-2 max-h-24 overflow-y-auto font-mono">
-                    {newChallengeAssets.map((asset, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-black border border-white/10/40 px-2 py-1 rounded text-[10px]">
-                        <span className="truncate max-w-[150px] text-starlight font-semibold">
-                          {asset.name}
-                          {asset.asset_set ? <span className="ml-1 text-[8px] text-copper tracking-widest">[SET {asset.asset_set}]</span> : null}
-                        </span>
-                        <span className="truncate max-w-[120px] text-gray-500 text-[9px]">{asset.url}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveAssetFromChallenge(idx)}
-                          className="text-red-400 hover:text-red-300 font-bold uppercase text-[9px] cursor-pointer"
-                        >
-                          Remove
-                        </button>
+            {/* Current Assets list */}
+            {newChallengeAssets.length > 0 && (
+              <div className="space-y-1 mb-2 max-h-48 overflow-y-auto font-mono">
+                {newChallengeAssets.map((asset, idx) => (
+                  <div key={idx} className="flex justify-between items-center bg-black border border-white/10/40 px-2 py-1 rounded text-[10px]">
+                    <div className="flex flex-col min-w-0 flex-1 mr-2">
+                      <span className="truncate text-starlight font-semibold">
+                        {asset.name}
+                      </span>
+                      <span className="truncate text-gray-500 text-[9px]">{asset.url}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-copper/60 text-[9px] uppercase">Set:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="All"
+                          className="w-12 bg-black border border-copper/30 rounded px-1 py-0.5 text-center text-starlight text-[10px] outline-none focus:border-accretion"
+                          value={asset.asset_set || ''}
+                          onChange={(e) => {
+                            const newAssets = [...newChallengeAssets];
+                            if (e.target.value) {
+                              newAssets[idx].asset_set = parseInt(e.target.value, 10);
+                            } else {
+                              delete newAssets[idx].asset_set;
+                            }
+                            setNewChallengeAssets(newAssets);
+                          }}
+                          title="Leave empty to give to all teams. Enter a number to restrict to a specific set."
+                        />
                       </div>
-                    ))}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAssetFromChallenge(idx)}
+                        className="text-red-400 hover:text-red-300 font-bold uppercase text-[9px] cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                )}
-
-                <div className="space-y-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Asset Name (e.g. file.zip)"
-                      className="w-full border border-copper/25 bg-black/50 p-2.5 text-xs text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                      value={tempAssetName}
-                      onChange={(e) => setTempAssetName(e.target.value)}
-                    />
-                    <input
-                      type="text"
-                      placeholder="URL (optional)"
-                      className="w-full border border-copper/25 bg-black/50 p-2.5 text-xs text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                      value={tempAssetUrl}
-                      onChange={(e) => setTempAssetUrl(e.target.value)}
-                    />
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="Set # (Opt)"
-                      className="w-full border border-copper/25 bg-black/50 p-2.5 text-xs text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                      value={tempAssetSet || ''}
-                      onChange={(e) => setTempAssetSet(e.target.value)}
-                      title="Leave empty to share with all teams"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddAssetToChallenge}
-                    className="w-full py-2 bg-accretion/10 hover:bg-accretion/20 border border-accretion/40 text-accretion text-[10px] uppercase tracking-widest rounded font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Asset to List</span>
-                  </button>
-                </div>
+                ))}
               </div>
+            )}
+          </div>
 
               <div className="pt-4 flex gap-3">
                 <button
