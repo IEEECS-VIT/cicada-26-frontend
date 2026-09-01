@@ -1141,13 +1141,20 @@ export function useAdminDashboard() {
     const assetIdentifier = activeAsset.id || activeAsset.name;
 
     try {
+      const parsedSet = parseInt(editAssetSet, 10);
       const res = await editAsset(targetChallengeId, assetIdentifier, {
         name: editAssetName.trim(),
         url: editAssetUrl.trim() || undefined,
+        ...(parsedSet > 0 ? { asset_set: parsedSet } : { asset_set: null })
       });
 
       if (Array.isArray(res?.data)) {
-        const updatedAssets = res.data.map((a) => ({ id: a.id, name: a.name || 'asset', url: a.url || '#' }));
+        const updatedAssets = res.data.map((a) => ({ 
+          id: a.id, 
+          name: a.name || 'asset', 
+          url: a.url || '#',
+          ...(a.asset_set ? { asset_set: a.asset_set } : {})
+        }));
         setChallenges(challenges.map((c) => (c.id === activeAssetChallengeId ? { ...c, assets: updatedAssets } : c)));
       }
       pushLocalLog({
@@ -1161,6 +1168,7 @@ export function useAdminDashboard() {
       setActiveAssetChallengeId('');
       setEditAssetName('');
       setEditAssetUrl('');
+      setEditAssetSet('');
       refreshLiveInBackground();
     } catch (err) {
       console.error('Failed to edit asset on backend:', err);

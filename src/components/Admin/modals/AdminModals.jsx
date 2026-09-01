@@ -1447,6 +1447,18 @@ export default function AdminModals() {
                 />
               </div>
 
+              <div>
+                <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Set # (Optional)</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Leave blank for all teams"
+                  className="w-full border border-copper/25 bg-black/50 p-2.5 text-sm text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
+                  value={editAssetSet || ''}
+                  onChange={(e) => setEditAssetSet(e.target.value)}
+                />
+              </div>
+
               <div className="pt-4 flex gap-3">
                 <button
                   type="button"

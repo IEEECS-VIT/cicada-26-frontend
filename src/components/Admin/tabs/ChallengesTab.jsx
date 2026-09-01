@@ -41,6 +41,7 @@ export default function ChallengesTab() {
     setActiveAssetChallengeId,
     setEditAssetName,
     setEditAssetUrl,
+    setEditAssetSet,
     dragOverChallengeId,
     setDragOverChallengeId,
     safeguardActive,
@@ -383,6 +384,7 @@ export default function ChallengesTab() {
                                         setActiveAssetChallengeId(challenge.id);
                                         setEditAssetName(asset.name);
                                         setEditAssetUrl(asset.url);
+                                        setEditAssetSet(asset.asset_set ? String(asset.asset_set) : '');
                                         setShowEditAssetModal(true);
                                       }}
                                       className="text-gray-400 hover:text-accretion cursor-pointer"
