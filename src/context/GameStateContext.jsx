@@ -78,6 +78,15 @@ function buildChallengeData(challenges, progress, roundList = [], teamName = "",
     groupedByRound[round].push({ ch, originalArchive: archive });
   });
 
+    let currentRoundOrder = 1;
+  if (progress && progress.current_challenge_order) {
+    const currentChal = sorted.find(c => c.order_number === progress.current_challenge_order);
+    if (currentChal) {
+      const parsed = parseChallengeHierarchy(currentChal, sorted.indexOf(currentChal));
+      currentRoundOrder = parsed.round;
+    }
+  }
+
   const rounds = {};
 
   Object.entries(groupedByRound).forEach(([rStr, chList]) => {
@@ -89,10 +98,11 @@ function buildChallengeData(challenges, progress, roundList = [], teamName = "",
       totalPhases: chList.length,
       // Round limits are configured in minutes by the admin panel.
       timeLimitSeconds: Math.max(0, Number(roundByOrder.get(round)?.time_limit || 0) * 60),
-      startedAt: roundByOrder.get(round)?.started_at || null,
+      startedAt: round === currentRoundOrder ? (progress?.round_started_at || roundByOrder.get(round)?.started_at || null) : (roundByOrder.get(round)?.started_at || null),
       isPaused: roundByOrder.get(round)?.is_paused || false,
       pausedAt: roundByOrder.get(round)?.paused_at || null,
-      bonusSeconds: progress?.round_bonus_seconds || 0,
+      bonusSeconds: round === currentRoundOrder ? (progress?.round_bonus_seconds || 0) : 0,
+      isCompleted: round < currentRoundOrder,
       phases: {},
     };
 

@@ -34,6 +34,7 @@ export default function LeftSidebar({ onNavigate }) {
   const startedAtIso = roundData.startedAt;
   const bonusSeconds = roundData.bonusSeconds || 0;
   const isPaused = roundData.isPaused;
+  const isCompleted = roundData.isCompleted;
   const pausedAtIso = roundData.pausedAt;
   
   const [remaining, setRemaining] = useState(roundLimit);
@@ -111,7 +112,7 @@ export default function LeftSidebar({ onNavigate }) {
       <div className="mb-2.5 shrink-0 border border-accretion/30 bg-black/40 p-2 sm:p-3 rounded-lg">
         <div className="flex justify-between items-center gap-2">
           <p className="label-mono text-[10px] sm:text-xs uppercase tracking-wider text-accretion/80">Round Time</p>
-          <p className="font-orbitron text-sm sm:text-base text-accretion tabular-nums tracking-widest">{formatDuration(remaining)}</p>
+          <p className="font-orbitron text-sm sm:text-base text-accretion tabular-nums tracking-widest">{isCompleted ? "COMPLETED" : formatDuration(remaining)}</p>
         </div>
       </div>
 
