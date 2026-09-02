@@ -6,7 +6,7 @@ import {
   listUsers, getAdminChallenges, getAdminProgress, getLeaderboard,
   approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
   createChallenge, updateChallenge, addAsset, editAsset, deleteAsset, deleteChallenge, adminOverride,
-  removeTeamMember, deleteTeam, adjustScore, updateTeam, toggleHint,
+  removeTeamMember, deleteTeam, adjustScore, updateTeam, toggleHint, addHint, deleteHint,
   getIpTrackingStatus, toggleIpTracking, getAdminActivityLogs,
   getAdminRounds, createRound, updateRound, deleteRound, reorderRounds, startRoundAdmin,
   pauseRoundAdmin,
