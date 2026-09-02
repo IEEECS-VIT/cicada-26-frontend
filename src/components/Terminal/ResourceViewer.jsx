@@ -130,7 +130,7 @@ export default function ResourceViewer() {
   } else if (rawType.includes('pdf') || EXT_PATTERNS.pdf.test(url) || EXT_PATTERNS.pdf.test(assetName)) {
     resourceType = 'pdf';
   } else if (rawType.includes('text')) {
-    if (hasValidUrl && !primaryAsset?.content && !phaseData?.content && !fragment?.content) {
+    if (primaryAsset && hasValidUrl) {
       resourceType = 'file';
     } else {
       resourceType = 'text';
