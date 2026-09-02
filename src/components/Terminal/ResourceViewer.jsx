@@ -46,14 +46,9 @@ export default function ResourceViewer() {
     setActiveAssetIdx(0);
   }, [currentRound, currentPhase]);
 
-  // Backend assets are masked behind /api/challenges/assets/masked, which
-  // requires the Authorization header. Fetch them through the authenticated
-  // API and expose a blob URL the media elements can actually load.
   useEffect(() => {
     setAssetSrc(null);
     setAssetError(false);
-    let objectUrl = null;
-    let cancelled = false;
 
     if (!phaseData) return undefined;
     const assetsList = phaseData.assets || [];
@@ -66,24 +61,8 @@ export default function ResourceViewer() {
       return undefined;
     }
 
-    setAssetLoading(true);
-    fetchMaskedAssetFile(url)
-      .then((blob) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        setAssetSrc(objectUrl);
-      })
-      .catch(() => {
-        if (!cancelled) setAssetError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setAssetLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
+    setAssetSrc(`${API_URL}${url}`);
+    return undefined;
   }, [phaseData?.assets, phaseData?.resourceUrl, activeAssetIdx, currentRound, currentPhase]);
 
   const handleCopy = (text) => {
