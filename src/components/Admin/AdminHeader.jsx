@@ -102,10 +102,12 @@ export default function AdminHeader() {
           </button>
           <button
             type="button"
-            onClick={async () => {
-              handleLogout();
+            onClick={async (e) => {
+              const btn = e.currentTarget;
+              btn.disabled = true;
+              btn.innerHTML = '<span class="animate-pulse">SIGNING OUT...</span>';
               await logout();
-              navigate("/");
+              handleLogout();
             }}
             className="inline-flex items-center gap-2 border border-copper/30 px-4 py-2.5 font-rajdhani text-[11px] tracking-[0.22em] text-copper hover:border-accretion hover:text-accretion transition"
           >

@@ -129,7 +129,13 @@ export default function ResourceViewer() {
     resourceType = 'image';
   } else if (rawType.includes('pdf') || EXT_PATTERNS.pdf.test(url) || EXT_PATTERNS.pdf.test(assetName)) {
     resourceType = 'pdf';
-  } else if (rawType.includes('text') || (!primaryAsset && content)) {
+  } else if (rawType.includes('text')) {
+    if (primaryAsset && hasValidUrl) {
+      resourceType = 'file';
+    } else {
+      resourceType = 'text';
+    }
+  } else if (!primaryAsset && content) {
     resourceType = 'text';
   } else if (hasValidUrl) {
     resourceType = 'file';

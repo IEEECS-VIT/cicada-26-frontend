@@ -20,6 +20,7 @@ export default function ChallengesTab() {
     handleStartCicada,
     handlePauseCicada,
     handleResumeCicada,
+    handleResetCicada,
     isCicadaStarted,
     isCicadaPaused,
     setActiveChallenge,
@@ -183,6 +184,14 @@ export default function ChallengesTab() {
               </button>
             )}
         </div>
+              {isCicadaStarted && (
+                <button
+                  onClick={handleResetCicada}
+                  className="rounded border border-red-500/50 bg-red-500/20 px-6 py-2 font-orbitron font-bold tracking-widest text-red-400 hover:bg-red-500 hover:text-black transition-colors"
+                >
+                  RESET EVENT
+                </button>
+              )}
       </div>
       
       {/* Tab Header */}

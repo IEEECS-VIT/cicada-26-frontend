@@ -78,6 +78,20 @@ function buildChallengeData(challenges, progress, roundList = [], teamName = "",
     groupedByRound[round].push({ ch, originalArchive: archive });
   });
 
+    let currentRoundOrder = 1;
+  if (progress && progress.current_challenge_order) {
+    const currentChal = sorted.find(c => c.order_number === progress.current_challenge_order);
+    if (currentChal) {
+      const parsed = parseChallengeHierarchy(currentChal, sorted.indexOf(currentChal));
+      currentRoundOrder = parsed.round;
+    } else {
+      const maxOrder = sorted.reduce((max, c) => Math.max(max, c.order_number || 0), 0);
+      if (progress.current_challenge_order > maxOrder && maxOrder > 0) {
+        currentRoundOrder = Infinity;
+      }
+    }
+  }
+
   const rounds = {};
 
   Object.entries(groupedByRound).forEach(([rStr, chList]) => {
@@ -89,6 +103,11 @@ function buildChallengeData(challenges, progress, roundList = [], teamName = "",
       totalPhases: chList.length,
       // Round limits are configured in minutes by the admin panel.
       timeLimitSeconds: Math.max(0, Number(roundByOrder.get(round)?.time_limit || 0) * 60),
+      startedAt: round === currentRoundOrder ? (progress?.round_started_at || roundByOrder.get(round)?.started_at || null) : (roundByOrder.get(round)?.started_at || null),
+      isPaused: roundByOrder.get(round)?.is_paused || false,
+      pausedAt: roundByOrder.get(round)?.paused_at || null,
+      bonusSeconds: round === currentRoundOrder ? (progress?.round_bonus_seconds || 0) : 0,
+      isCompleted: round < currentRoundOrder,
       phases: {},
     };
 
@@ -302,14 +321,24 @@ export function GameStateProvider({ children }) {
       if (unlockedR.length === 0 && allRounds.length > 0) unlockedR.push(allRounds[0]);
 
       setUnlockedRounds(unlockedR);
-      if (silent !== 'poll') {
-        setCurrentRound((prev) => (unlockedR.includes(prev) ? prev : teamCurrentRound));
-        setCurrentPhase(targetPhase);
-      }
-      setUnlockedPhases((prev) => ({
-        ...prev,
-        [teamCurrentRound]: Math.max(prev[teamCurrentRound] || 1, targetPhase),
-      }));
+      setUnlockedPhases((prev) => {
+        const prevPhaseForRound = prev[teamCurrentRound] || 1;
+        const isNewRound = !prev.hasOwnProperty(teamCurrentRound);
+        const didAdvance = targetPhase > prevPhaseForRound || isNewRound;
+        
+        if (silent !== 'poll' || didAdvance) {
+          setCurrentRound((prevRound) => {
+             if (didAdvance) return teamCurrentRound;
+             return unlockedR.includes(prevRound) ? prevRound : teamCurrentRound;
+          });
+          setCurrentPhase(targetPhase);
+        }
+        
+        return {
+          ...prev,
+          [teamCurrentRound]: Math.max(prevPhaseForRound, targetPhase),
+        };
+      });
 
               const collectedRaw = [];
         for (const rKey of Object.keys(data)) {

@@ -1,8 +1,4 @@
-import {
-  startCicadaAdmin,
-  pauseCicadaAdmin,
-  resumeCicadaAdmin,
-  resetCicadaAdmin, useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabase';
@@ -10,11 +6,15 @@ import {
   listUsers, getAdminChallenges, getAdminProgress, getLeaderboard,
   approveAdmin, toggleRole, deleteUser, bulkImportAdmins,
   createChallenge, updateChallenge, addAsset, editAsset, deleteAsset, deleteChallenge, adminOverride,
-  removeTeamMember, deleteTeam, adjustScore, updateTeam, toggleHint,
+  removeTeamMember, deleteTeam, adjustScore, updateTeam, toggleHint, addHint, deleteHint,
   getIpTrackingStatus, toggleIpTracking, getAdminActivityLogs,
   getAdminRounds, createRound, updateRound, deleteRound, reorderRounds, startRoundAdmin,
   pauseRoundAdmin,
   resumeRoundAdmin,
+  startCicadaAdmin,
+  pauseCicadaAdmin,
+  resumeCicadaAdmin,
+  resetCicadaAdmin,
 } from '../../../api/admin';
 import {
   INITIAL_TEAMS,
@@ -47,6 +47,25 @@ export const parseRoundAndArchive = (x, index = 0) => {
 
   return { round, archiveNumber: archive };
 };
+
+function mapMimeTypeToEnum(mimeType) {
+  if (!mimeType) return 'file';
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType === 'application/pdf') return 'pdf';
+  if (mimeType === 'text/plain') return 'text';
+  if (
+    mimeType.includes('msword') ||
+    mimeType.includes('wordprocessingml') ||
+    mimeType.includes('document') ||
+    mimeType.includes('pdf')
+  ) {
+    return 'document';
+  }
+  return 'file';
+}
+
 
 export function useAdminDashboard() {
   const { user: authUser, logout } = useAuth();
@@ -613,7 +632,7 @@ export function useAdminDashboard() {
 
   const handleAddHint = async (e) => {
     e.preventDefault();
-    if (!newHintText.trim()) return toast.error('Hint text required');
+    if (!newHintText.trim()) return alert('Hint text required');
     try {
       const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints`, {
         method: 'POST',
@@ -632,9 +651,9 @@ export function useAdminDashboard() {
       setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
       setNewHintText('');
       setNewHintUnlockMinutes(0);
-      toast.success('Hint added');
+      alert('Hint added');
     } catch (err) {
-      toast.error(err.message || 'Failed to add hint');
+      alert(err.message || 'Failed to add hint');
     }
   };
 
@@ -646,9 +665,9 @@ export function useAdminDashboard() {
         challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints || data } : c))
       );
       setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints || data }));
-      toast.success('Hint deleted');
+      alert('Hint deleted');
     } catch (err) {
-      toast.error(err.message || 'Failed to delete hint');
+      alert(err.message || 'Failed to delete hint');
     }
   };
 
@@ -663,9 +682,9 @@ export function useAdminDashboard() {
         challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints || data } : c))
       );
       setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints || data }));
-      toast.success('Hint visibility toggled');
+      alert('Hint visibility toggled');
     } catch (err) {
-      toast.error(err.message || 'Failed to toggle hint visibility');
+      alert(err.message || 'Failed to toggle hint visibility');
     }
   };
 
@@ -1159,7 +1178,7 @@ export function useAdminDashboard() {
           .getPublicUrl(filePath);
 
           newAsset = {
-            type: fileOrAsset.type || 'file',
+            type: typeof mapMimeTypeToEnum === "function" ? mapMimeTypeToEnum(fileOrAsset.type) : 'file',
           name: fileOrAsset.name,
           url: publicUrlData.publicUrl
         };
@@ -1834,11 +1853,10 @@ export function useAdminDashboard() {
     if (window.confirm("PAUSE ROUND? This will freeze the global timer for this round and stop submissions.")) {
       try {
         await pauseRoundAdmin(roundId);
-        toast.success("Round paused!");
-        const updated = await getAdminRounds();
-        setRounds(updated);
+        alert("Round paused!");
+        
       } catch (err) {
-        toast.error(err.message || "Failed to pause round");
+        alert(err.message || "Failed to pause round");
       }
     }
   };
@@ -1847,11 +1865,10 @@ export function useAdminDashboard() {
     if (window.confirm("RESUME ROUND? This will unfreeze the timer and shift everyone's leftover time.")) {
       try {
         await resumeRoundAdmin(roundId);
-        toast.success("Round resumed!");
-        const updated = await getAdminRounds();
-        setRounds(updated);
+        alert("Round resumed!");
+        
       } catch (err) {
-        toast.error(err.message || "Failed to resume round");
+        alert(err.message || "Failed to resume round");
       }
     }
   };
@@ -1866,10 +1883,10 @@ export function useAdminDashboard() {
     if (window.confirm("RESET CICADA? This will CLEAR all team progress, completed challenges, and reset all timers to zero! THIS CANNOT BE UNDONE.")) {
       try {
         await resetCicadaAdmin();
-        toast.success("Cicada Event Reset!");
+        alert("Cicada Event Reset!");
         refreshLiveInBackground();
       } catch (err) {
-        toast.error(err.message || "Failed to reset Cicada");
+        alert(err.message || "Failed to reset Cicada");
       }
     }
   };
@@ -1878,12 +1895,11 @@ export function useAdminDashboard() {
     if (window.confirm("PAUSE CICADA? This will freeze ALL timers and lock ALL rounds immediately.")) {
       try {
         await pauseCicadaAdmin();
-        toast.success("Cicada Event Paused!");
-        const updated = await getAdminRounds();
-        setRounds(updated);
+        alert("Cicada Event Paused!");
+        
         refreshLiveInBackground();
       } catch (err) {
-        toast.error(err.message || "Failed to pause Cicada");
+        alert(err.message || "Failed to pause Cicada");
       }
     }
   };
@@ -1892,12 +1908,11 @@ export function useAdminDashboard() {
     if (window.confirm("RESUME CICADA? This will unfreeze ALL timers and shift everyone's leftover time.")) {
       try {
         await resumeCicadaAdmin();
-        toast.success("Cicada Event Resumed!");
-        const updated = await getAdminRounds();
-        setRounds(updated);
+        alert("Cicada Event Resumed!");
+        
         refreshLiveInBackground();
       } catch (err) {
-        toast.error(err.message || "Failed to resume Cicada");
+        alert(err.message || "Failed to resume Cicada");
       }
     }
   };
@@ -1906,10 +1921,10 @@ export function useAdminDashboard() {
     if (window.confirm("START CICADA? This will begin the Round 1 timer for EVERY team. Do this when the event officially begins.")) {
       try {
         await startCicadaAdmin();
-        toast.success("Cicada Event Started!");
+        alert("Cicada Event Started!");
         refreshLiveInBackground();
       } catch (err) {
-        toast.error(err.message || "Failed to start Cicada");
+        alert(err.message || "Failed to start Cicada");
       }
     }
   };
@@ -1918,12 +1933,11 @@ export function useAdminDashboard() {
     if (window.confirm(`START ROUND? This will set the started_at timestamp and begin the global timer for this round.`)) {
       try {
         await startRoundAdmin(roundId);
-        toast.success('Round started!');
+        alert('Round started!');
         // Refresh rounds
-        const updated = await getAdminRounds();
-        setRounds(updated);
+        
       } catch (err) {
-        toast.error(err.message || 'Failed to start round');
+        alert(err.message || 'Failed to start round');
       }
     }
   };
@@ -2333,7 +2347,15 @@ export function useAdminDashboard() {
     handlePrint,
     unlockedCount,
     highScore,
+    
+    isCicadaStarted,
+    isCicadaPaused,
+    handleStartCicada,
+    handlePauseCicada,
+    handleResumeCicada,
+    handleResetCicada,
     showHintModal, setShowHintModal,
+
     newHintText, setNewHintText,
     newHintUnlockMinutes, setNewHintUnlockMinutes,
     handleOpenHintModal, handleAddHint, handleDeleteHint, handleToggleHintVisibility
