@@ -2305,7 +2305,15 @@ export function useAdminDashboard() {
     handlePrint,
     unlockedCount,
     highScore,
+    
+    isCicadaStarted,
+    isCicadaPaused,
+    handleStartCicada,
+    handlePauseCicada,
+    handleResumeCicada,
+    handleResetCicada,
     showHintModal, setShowHintModal,
+
     newHintText, setNewHintText,
     newHintUnlockMinutes, setNewHintUnlockMinutes,
     handleOpenHintModal, handleAddHint, handleDeleteHint, handleToggleHintVisibility
