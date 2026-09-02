@@ -1,4 +1,5 @@
 import { api, setAdminKey } from "./client";
+import { supabase } from "../lib/supabase";
 
 export async function loginWithToken(accessToken) {
   const data = await api("/api/auth/login", { method: "POST", body: { access_token: accessToken } });
@@ -17,6 +18,7 @@ export async function fetchMe() {
 export async function logout() {
   setAdminKey(null);
   try {
+    await supabase.auth.signOut();
     return await api("/api/auth/logout", { method: "POST" });
   } catch {
     return null;
