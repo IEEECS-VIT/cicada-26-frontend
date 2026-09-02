@@ -9,10 +9,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import { Link } from "react-router-dom";
-
-/* Five of these are the chapter's live accounts, carried over from the FAQ
-   app's footer. Medium is a placeholder — swap the href, nothing else. */
+/* Chapter social accounts. */
 const SOCIALS = [
   {
     name: "Instagram",
@@ -40,14 +37,8 @@ const SOCIALS = [
     path: "M12 .3a12 12 0 0 0-3.79 23.4c.6.1.82-.26.82-.58l-.01-2.04c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.75.09-.73.09-.73 1.2.08 1.83 1.24 1.83 1.24 1.07 1.83 2.81 1.3 3.5.99.1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.01 0c2.29-1.55 3.3-1.23 3.3-1.23.65 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.8 5.63-5.48 5.92.43.37.81 1.1.81 2.22l-.01 3.29c0 .32.22.69.83.58A12 12 0 0 0 12 .3",
   },
   {
-    name: "Medium",
-    href: "#",
-    path: "M13.54 12a6.8 6.8 0 0 1-6.77 6.82A6.8 6.8 0 0 1 0 12a6.8 6.8 0 0 1 6.77-6.82A6.8 6.8 0 0 1 13.54 12m7.42 0c0 3.54-1.51 6.41-3.38 6.41-1.87 0-3.39-2.87-3.39-6.41s1.52-6.41 3.39-6.41S20.96 8.46 20.96 12M24 12c0 3.17-.53 5.75-1.19 5.75-.66 0-1.19-2.58-1.19-5.75s.53-5.75 1.19-5.75C23.47 6.25 24 8.83 24 12",
-  },
-  {
     name: "Discord",
-    href: "/discord",
-    internal: true,
+    href: "https://discord.gg/BZFNt9qem",
     path: "M20.32 4.37A19.8 19.8 0 0 0 15.89 3c-.2.36-.43.85-.59 1.23a18.27 18.27 0 0 0-4.6 0C10.54 3.85 10.3 3.36 10.1 3A19.7 19.7 0 0 0 5.67 4.38C1.73 10.06.88 15.6 1.3 21.07a19.94 19.94 0 0 0 6.05 3.03c.48-.67.91-1.37 1.28-2.12a13.1 13.1 0 0 1-2.01-.96c.17-.12.33-.25.49-.38a14.1 14.1 0 0 0 12.08 0c.16.14.32.26.49.38-.64.38-1.32.7-2.02.96.37.75.8 1.45 1.28 2.12a19.9 19.9 0 0 0 6.06-3.03c.5-6.34-.83-11.83-3.68-16.7M8.02 16.17c-1.18 0-2.15-1.08-2.15-2.4 0-1.33.95-2.41 2.15-2.41s2.18 1.09 2.15 2.41c0 1.32-.95 2.4-2.15 2.4m7.96 0c-1.18 0-2.15-1.08-2.15-2.4 0-1.33.95-2.41 2.15-2.41 1.2 0 2.18 1.09 2.15 2.41 0 1.32-.95 2.4-2.15 2.4",
   },
 ];
@@ -91,24 +82,18 @@ export default function SiteFooter() {
         </div>
 
         <nav className="flex flex-wrap justify-center gap-1" aria-label="Social links">
-          {SOCIALS.map(({ name, href, path, internal }) =>
-            internal ? (
-              <Link key={name} to={href} aria-label={name} className={socialClass}>
-                {icon(path)}
-              </Link>
-            ) : (
-              <a
-                key={name}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={name}
-                className={socialClass}
-              >
-                {icon(path)}
-              </a>
-            )
-          )}
+          {SOCIALS.map(({ name, href, path }) => (
+            <a
+              key={name}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={name}
+              className={socialClass}
+            >
+              {icon(path)}
+            </a>
+          ))}
         </nav>
       </div>
     </footer>

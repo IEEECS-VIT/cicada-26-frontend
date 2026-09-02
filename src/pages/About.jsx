@@ -1,299 +1,257 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef } from "react";
 import Navbar from "../landing/Navbar";
 import SiteFooter from "../landing/SiteFooter";
-import BlackHoleBackground from "../components/BlackHoleBackground";
-import {
-  Globe,
-  Layers,
-  Radio,
-  MessageSquare,
-  Terminal,
-  Clock,
-  FoldVertical,
-} from "lucide-react";
+import DashboardBackground from "../components/DashboardBackground";
+
+const ACCENT = "#e0a279";
 
 const EVENT_FLOW_STEPS = [
   {
     number: "01",
     title: "Website Access",
-    icon: Globe,
     text: "Participants will receive access to the CICADA 2067 website at the beginning of the event.",
   },
   {
     number: "02",
     title: "Central Platform",
-    icon: Terminal,
     text: "The website will serve as the primary platform for accessing challenges, entering answers, progressing through checkpoints, and receiving event updates.",
   },
   {
     number: "03",
     title: "Three Rounds of Challenges",
-    icon: Layers,
     text: "Participants will progress through three rounds of challenges, with each round introducing increasingly difficult puzzles.",
   },
   {
     number: "04",
     title: "Simultaneous Hints",
-    icon: Radio,
     text: "Hints cannot be individually requested. Standardised hints will be released to all participants simultaneously at regular intervals.",
   },
   {
     number: "05",
     title: "Organizer Communications",
-    icon: MessageSquare,
     text: "Participants may communicate with organizers through the official Discord server for doubts, technical issues, or assistance at designated checkpoints.",
   },
   {
     number: "06",
     title: "Answer Submissions",
-    icon: Terminal,
     text: "Answers and submissions must be entered through the official event website unless specifically instructed otherwise.",
   },
   {
     number: "07",
     title: "Event Close",
-    icon: Clock,
     text: "The competition and all submissions close at 5:00 PM.",
     highlight: true,
   },
 ];
 
-// Accordion fold card that unfolds in 3D as it enters the viewport
-function AccordionFoldCard({ step, index }) {
-  const [isHovered, setIsHovered] = useState(false);
-  const Icon = step.icon;
-
-  // Alternate fold angles for an accordion-style effect
-  const initialRotateX = index % 2 === 0 ? -65 : -48;
-
-  return (
-    <div className="relative [perspective:1400px]">
-      {/* Accordion hinge joint and perforation line */}
-      {index > 0 && (
-        <motion.div
-          initial={{ opacity: 0, scaleX: 0 }}
-          whileInView={{ opacity: 1, scaleX: 1 }}
-          viewport={{ once: true, margin: "-20px" }}
-          transition={{ duration: 0.5, delay: index * 0.08 }}
-          className="relative my-1 flex items-center justify-between px-6 py-1"
-        >
-          <div className="h-px flex-1 border-t border-dashed border-accretion/30" />
-
-          <div className="flex items-center gap-2 px-3 font-mono text-[9px] uppercase tracking-[0.25em] text-accretion/60">
-            <span>HINGE // 0{index}</span>
-            <span className="h-1 w-1 rounded-full bg-accretion animate-pulse" />
-            <span>FOLD SEAM</span>
-          </div>
-
-          <div className="h-px flex-1 border-t border-dashed border-accretion/30" />
-        </motion.div>
-      )}
-
-      {/* 3D folding paper leaf */}
-      <motion.div
-        initial={{
-          rotateX: initialRotateX,
-          opacity: 0,
-          y: -24,
-          scale: 0.94,
-        }}
-        whileInView={{
-          rotateX: 0,
-          opacity: 1,
-          y: 0,
-          scale: 1,
-        }}
-        viewport={{ once: true, margin: "-40px" }}
-        transition={{
-          duration: 0.85,
-          delay: index * 0.1,
-          ease: [0.16, 1, 0.3, 1],
-        }}
-        whileHover={{
-          y: -4,
-          scale: 1.015,
-          transition: { duration: 0.25 },
-        }}
-        onHoverStart={() => setIsHovered(true)}
-        onHoverEnd={() => setIsHovered(false)}
-        style={{
-          transformOrigin: "top center",
-          transformStyle: "preserve-3d",
-        }}
-        className={`group relative overflow-hidden rounded-xl border p-5 sm:p-6 backdrop-blur-xl transition-all duration-300 ${
-          step.highlight
-            ? "border-red-500/50 bg-gradient-to-r from-red-950/35 via-black/75 to-black/85 shadow-[0_12px_36px_rgba(239,68,68,0.25)]"
-            : isHovered
-              ? "border-accretion bg-black/80 shadow-[0_12px_36px_rgba(244,162,51,0.3)]"
-              : "border-accretion/25 bg-black/60 shadow-[0_8px_24px_rgba(0,0,0,0.5)] hover:border-accretion/60 hover:bg-black/75"
-        }`}
-      >
-        {/* Fold crease shadow that dissolves as the card straightens */}
-        <motion.div
-          initial={{ opacity: 0.8 }}
-          whileInView={{ opacity: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7, delay: index * 0.1 }}
-          className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-b from-black/80 via-black/30 to-transparent"
-        />
-
-        {/* Top edge reflection */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-accretion/60 to-transparent opacity-75" />
-
-        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-          {/* Number badge */}
-          <div className="flex shrink-0 items-center gap-4">
-            <motion.span
-              animate={isHovered ? { scale: 1.1 } : { scale: 1 }}
-              className={`flex h-11 w-11 items-center justify-center rounded-lg border font-mono text-sm font-bold transition-colors sm:h-12 sm:w-12 ${
-                step.highlight
-                  ? "border-red-500/60 bg-red-500/15 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.3)]"
-                  : isHovered
-                    ? "border-accretion bg-accretion text-black shadow-[0_0_20px_rgba(244,162,51,0.6)]"
-                    : "border-accretion/35 bg-accretion/10 text-accretion-bright"
-              }`}
-            >
-              {step.number}
-            </motion.span>
-
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white/5 text-copper sm:hidden">
-              <Icon className="h-4 w-4" />
-            </div>
-          </div>
-
-          {/* Text body */}
-          <div className="flex-1">
-            <div className="flex items-center justify-between">
-              <h3 className="font-orbitron text-sm font-bold tracking-[0.14em] text-starlight transition-colors group-hover:text-accretion-bright sm:text-base">
-                {step.title}
-              </h3>
-
-              <div className="flex items-center gap-2">
-                <span className="hidden font-mono text-[10px] text-copper/50 sm:inline">
-                  FOLD #{step.number}
-                </span>
-
-                <Icon
-                  className={`hidden h-4 w-4 transition-transform group-hover:scale-110 sm:block ${
-                    step.highlight ? "text-red-400" : "text-accretion"
-                  }`}
-                />
-              </div>
-            </div>
-
-            <p className="mt-1.5 text-base leading-relaxed text-copper sm:text-[17px]">
-              {step.text}
-            </p>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
 export default function About() {
+  const clockRef = useRef(null);
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const pad = (n) => String(n).padStart(2, "0");
+    const tick = () => {
+      const d = new Date();
+      if (clockRef.current) {
+        clockRef.current.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      }
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+
+    const sigilVideo = videoRef.current;
+    const kick = () => {
+      if (!sigilVideo) return;
+      const play = sigilVideo.play();
+      if (play) play.catch(() => {});
+    };
+    kick();
+    sigilVideo?.addEventListener("canplay", kick, { once: true });
+    const kickEvents = ["pointerdown", "keydown"];
+    kickEvents.forEach((evt) => document.addEventListener(evt, kick, { once: true, passive: true }));
+
+    return () => {
+      clearInterval(timer);
+      sigilVideo?.removeEventListener("canplay", kick);
+      kickEvents.forEach((evt) => document.removeEventListener(evt, kick));
+    };
+  }, []);
+
   return (
-    <div className="relative min-h-screen bg-transparent font-rajdhani text-starlight selection:bg-accretion/30 selection:text-starlight">
-      {/* Black hole + shooting star background */}
-      <BlackHoleBackground />
-
+    <>
       <Navbar />
+      <style>{`
+        @keyframes cd-scan { 0% { transform: translateY(-10%) } 100% { transform: translateY(1100%) } }
+        @keyframes cd-blink { 0%, 45% { opacity: 1 } 50%, 95% { opacity: 0 } 100% { opacity: 1 } }
+        @keyframes cd-bar { 0%, 100% { transform: scaleY(.18) } 50% { transform: scaleY(1) } }
+        @keyframes cd-rise { 0% { opacity: 0; transform: translateY(14px) } 100% { opacity: 1; transform: translateY(0) } }
+        @keyframes cd-glow { 0%, 100% { opacity: .32; transform: scale(1) } 50% { opacity: .6; transform: scale(1.06) } }
+      `}</style>
+      <div
+        className="relative min-h-screen bg-[radial-gradient(120%_90%_at_82%_42%,#17100c_0%,#0b0709_42%,#07050a_100%)] text-[#e9dcd2] font-['Chakra_Petch',system-ui,sans-serif] overflow-x-hidden box-border selection:bg-[#e0a279]/30"
+        style={{ "--acc": ACCENT }}
+      >
+        <DashboardBackground />
 
-      <main className="relative z-10 pt-[var(--nav-height)]">
-        {/* ================================================================
-            CICADA 2067 SECTION
-        ================================================================= */}
-        <section className="relative mx-auto max-w-5xl px-5 pb-16 pt-12 sm:px-8 md:pb-24 md:pt-20 lg:px-10">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="inline-flex items-center gap-3 font-rajdhani text-xs font-semibold uppercase tracking-[0.4em] text-accretion sm:text-sm">
-              <span className="h-px w-6 bg-accretion shadow-[0_0_8px_#F4A233]" />
+        <div className="pointer-events-none absolute left-4 top-[calc(var(--nav-height)+1rem)] z-[1] h-8 w-8 border-l border-t border-[#e0a279]/50 sm:left-6 sm:h-10 sm:w-10" aria-hidden="true" />
+        <div className="pointer-events-none absolute right-4 top-[calc(var(--nav-height)+1rem)] z-[1] h-8 w-8 border-r border-t border-[#e0a279]/50 sm:right-6 sm:h-10 sm:w-10" aria-hidden="true" />
+        <div className="pointer-events-none absolute bottom-6 left-4 z-[1] hidden h-8 w-8 border-b border-l border-[#e0a279]/50 sm:left-6 sm:h-10 sm:w-10 lg:block" aria-hidden="true" />
+        <div className="pointer-events-none absolute bottom-6 right-4 z-[1] hidden h-8 w-8 border-b border-r border-[#e0a279]/50 sm:right-6 sm:h-10 sm:w-10 lg:block" aria-hidden="true" />
 
-              INTERSTELLAR TRANSMISSION
-
-              <span className="h-px w-6 bg-accretion shadow-[0_0_8px_#F4A233]" />
-            </p>
-
-            <h1 className="mt-4 font-orbitron text-[clamp(2.8rem,8vw,5.5rem)] font-black leading-[0.95] tracking-[0.05em]">
-              <span className="bg-gradient-to-r from-starlight via-accretion-bright to-accretion bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(244,162,51,0.35)]">
-                CICADA 2067
-              </span>
-            </h1>
-
-            <p className="mt-6 font-orbitron text-lg font-bold tracking-[0.18em] text-accretion-bright sm:text-xl">
-              The signal was never meant to reach us.
-            </p>
-          </div>
-
-          <div className="mt-10 space-y-6 rounded-2xl border border-accretion/25 bg-black/60 p-6 text-base leading-relaxed text-copper/90 shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl sm:p-10 sm:text-lg">
-            <p>
-              Buried beneath layers of noise, corrupted data, fragmented
-              transmissions, and impossible patterns lies a message waiting to
-              be decoded.{" "}
-              <strong className="font-semibold text-starlight">
-                CICADA 2067
-              </strong>{" "}
-              is an interstellar technical puzzle hunt that sends participants
-              through three increasingly difficult rounds of ciphers, hidden
-              data, digital forensics, steganography, and unconventional
-              problem-solving.
-            </p>
-
-            <p className="border-l-2 border-accretion pl-4 font-medium italic text-starlight sm:pl-6">
-              Every file could be a clue. Every anomaly could be intentional.
-              Every answer takes you one step deeper into the transmission.
-            </p>
-
-            <p className="text-copper">
-              You are free to use every resource available to you, from code
-              and forensic tools to search engines and AI agents. What matters
-              is whether you can recognise the signal before the clock runs
-              out.
-            </p>
-          </div>
-        </section>
-
-        {/* ================================================================
-            EVENT FLOW
-        ================================================================= */}
-        <section className="relative border-t border-accretion/20 bg-black/40 py-16 backdrop-blur-md sm:py-24">
-          <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-10">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.6 }}
-              className="mx-auto mb-14 max-w-2xl text-center"
-            >
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accretion/30 bg-accretion/10 px-3.5 py-1 font-mono text-[11px] uppercase tracking-[0.28em] text-accretion">
-                <FoldVertical className="h-3.5 w-3.5" />
-                <span>UNFOLDING FLIGHT DOSSIER</span>
+        <main className="relative z-[2] mx-auto flex w-full max-w-[1280px] flex-col gap-5 px-4 pb-16 pt-[calc(var(--nav-height)+1rem)] sm:px-8 sm:pb-20">
+          <div className="flex items-center justify-between gap-6 px-1">
+            <div className="flex items-center gap-6 font-mono sm:gap-8">
+              <div className="flex flex-col gap-1">
+                <div className="text-[11px] tracking-[0.28em] text-[#b3a191]">SHIP TIME</div>
+                <div ref={clockRef} className="text-xl font-light tracking-[0.14em] text-[#f0e2d5] sm:text-2xl">
+                  --:--:--
+                </div>
               </div>
-
-              <h2 className="font-orbitron text-3xl font-black tracking-[0.08em] text-starlight sm:text-4xl">
-                EVENT FLOW
-              </h2>
-
-              <p className="mt-2 font-mono text-sm tracking-wider text-copper/70">
-                SCROLL TO UNRAVEL PROTOCOL CHECKPOINTS
-              </p>
-            </motion.div>
-
-            {/* Accordion unfolding list */}
-            <div className="space-y-0.5">
-              {EVENT_FLOW_STEPS.map((step, index) => (
-                <AccordionFoldCard
-                  key={step.number}
-                  step={step}
-                  index={index}
-                />
-              ))}
+              <div className="h-10 w-px bg-[#e0a279]/18" />
+              <div className="flex flex-col gap-1">
+                <div className="text-[11px] tracking-[0.28em] text-[#b3a191]">SIGNAL</div>
+                <div className="flex h-[22px] items-end gap-[3px]">
+                  <span className="h-full w-[3px] origin-bottom bg-[#e0a279]/85 animate-[cd-bar_1.4s_ease-in-out_infinite]" />
+                  <span className="h-full w-[3px] origin-bottom bg-[#e0a279]/85 animate-[cd-bar_1.4s_ease-in-out_infinite] [animation-delay:0.18s]" />
+                  <span className="h-full w-[3px] origin-bottom bg-[#e0a279]/85 animate-[cd-bar_1.4s_ease-in-out_infinite] [animation-delay:0.36s]" />
+                  <span className="h-full w-[3px] origin-bottom bg-[#e0a279]/85 animate-[cd-bar_1.4s_ease-in-out_infinite] [animation-delay:0.54s]" />
+                  <span className="h-full w-[3px] origin-bottom bg-[#e0a279]/85 animate-[cd-bar_1.4s_ease-in-out_infinite] [animation-delay:0.72s]" />
+                </div>
+              </div>
+            </div>
+            <div className="hidden flex-col items-end gap-1 font-mono sm:flex">
+              <div className="text-[11px] tracking-[0.28em] text-[#b3a191]">FILE</div>
+              <div className="text-[12px] tracking-[0.22em] text-[#e0a279]">ABOUT / OPEN</div>
             </div>
           </div>
-        </section>
-      </main>
 
-      <SiteFooter />
-    </div>
+          <section className="relative grid w-full grid-cols-1 gap-px overflow-hidden rounded-md border border-[#e0a279]/18 bg-[#e0a279]/14 shadow-[0_40px_120px_-40px_rgba(0,0,0,.9),inset_0_1px_0_rgba(255,225,200,.05)] backdrop-blur-[3px] animate-[cd-rise_.9s_ease-out_both] md:grid-cols-[1.55fr_0.95fr] [@media(prefers-reduced-motion:reduce)]:animate-none">
+            <div className="pointer-events-none absolute inset-0 z-[3] overflow-hidden">
+              <div className="absolute left-0 right-0 top-0 h-[9%] bg-[linear-gradient(180deg,transparent,rgba(232,178,130,.055)_50%,transparent)] animate-[cd-scan_9s_linear_infinite] [@media(prefers-reduced-motion:reduce)]:animate-none" />
+            </div>
+
+            <div className="relative flex flex-col justify-between gap-7 bg-[linear-gradient(150deg,rgba(28,20,16,.72)_0%,rgba(14,10,12,.78)_60%,rgba(10,7,10,.82)_100%)] p-8 sm:p-11">
+              <div className="flex flex-col gap-3.5">
+                <div className="font-mono text-[11px] tracking-[0.32em] text-[#a89685]">TRANSMISSION</div>
+                <div className="flex items-baseline gap-3">
+                  <h1 className="text-[clamp(26px,5vw,42px)] font-light leading-none tracking-[0.09em] text-[#f6e9dd]">
+                    CICADA 2067
+                  </h1>
+                  <span className="h-[26px] w-[9px] bg-[#e0a279] animate-[cd-blink_1.15s_step-end_infinite]" />
+                </div>
+                <div className="flex items-center gap-3.5 font-mono text-[11px] tracking-[0.26em] text-[#e0a279]">
+                  <span>THE SIGNAL WAS NEVER MEANT TO REACH US</span>
+                  <span className="h-px flex-1 bg-gradient-to-r from-[#e0a279]/50 to-transparent" />
+                </div>
+              </div>
+
+              <div className="space-y-5 text-[15px] font-light leading-7 tracking-[0.02em] text-[#d5c2b4] sm:text-[16px] sm:leading-8">
+                <p>
+                  Buried beneath layers of noise, corrupted data, fragmented transmissions, and impossible patterns lies a
+                  message waiting to be decoded.{" "}
+                  <strong className="font-medium text-[#f6e9dd]">CICADA 2067</strong> is an interstellar technical puzzle hunt
+                  that sends participants through three increasingly difficult rounds of ciphers, hidden data, digital
+                  forensics, steganography, and unconventional problem-solving.
+                </p>
+                <p className="border-l border-[#e0a279]/55 pl-4 text-[#f0e2d5] sm:pl-5">
+                  Every file could be a clue. Every anomaly could be intentional. Every answer takes you one step deeper
+                  into the transmission.
+                </p>
+                <p>
+                  You are free to use every resource available to you, from code and forensic tools to search engines and
+                  AI agents. What matters is whether you can recognise the signal before the clock runs out.
+                </p>
+              </div>
+            </div>
+
+            <div className="relative flex flex-col items-center justify-center gap-7 bg-[linear-gradient(200deg,rgba(18,13,14,.7)_0%,rgba(9,6,9,.82)_100%)] p-8 sm:p-11">
+              <div className="relative flex h-[190px] w-[190px] flex-none items-center justify-center sm:h-[210px] sm:w-[210px]">
+                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(232,168,116,.16),transparent_66%)] animate-[cd-glow_7s_ease-in-out_infinite] [@media(prefers-reduced-motion:reduce)]:animate-none" />
+                <video
+                  ref={videoRef}
+                  className="pointer-events-none absolute -inset-[32px] h-[calc(100%+64px)] w-[calc(100%+64px)] rounded-full object-cover mix-blend-screen contrast-[1.08] sepia-[.34] saturate-[1.55] brightness-[1.04] -hue-rotate-[8deg] [mask-image:radial-gradient(circle_closest-side_at_50%_50%,#000_54%,transparent_100%)] [-webkit-mask-image:radial-gradient(circle_closest-side_at_50%_50%,#000_54%,transparent_100%)]"
+                  src="/assets/dashboard-blackhole.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="auto"
+                  disablePictureInPicture
+                  aria-hidden="true"
+                />
+                <div className="absolute inset-0 rounded-full border border-[#e0a279]/20" />
+                <div className="absolute inset-[22px] animate-[spin_40s_linear_infinite] rounded-full border border-dashed border-[#e0a279]/30" />
+              </div>
+
+              <div className="grid w-full max-w-[260px] grid-cols-1 gap-px bg-[#e0a279]/12">
+                <div className="flex flex-col gap-1.5 bg-[#0c090b]/55 px-5 py-4 text-center">
+                  <div className="font-mono text-[11px] tracking-[0.28em] text-[#a89685]">ROUNDS</div>
+                  <div className="font-mono text-[17px] font-light tracking-[0.12em] text-[#eddfd3]">03</div>
+                </div>
+                <div className="flex flex-col gap-1.5 bg-[#0c090b]/55 px-5 py-4 text-center">
+                  <div className="font-mono text-[11px] tracking-[0.28em] text-[#a89685]">HINTS</div>
+                  <div className="font-mono text-[17px] font-light tracking-[0.12em] text-[#eddfd3]">SIMULTANEOUS</div>
+                </div>
+                <div className="flex flex-col gap-1.5 bg-[#0c090b]/55 px-5 py-4 text-center">
+                  <div className="font-mono text-[11px] tracking-[0.28em] text-[#a89685]">CLOSE</div>
+                  <div className="font-mono text-[17px] font-light tracking-[0.12em] text-[#eddfd3]">17:00</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="relative overflow-hidden rounded-md border border-[#e0a279]/18 bg-[#e0a279]/14 shadow-[0_40px_120px_-40px_rgba(0,0,0,.9),inset_0_1px_0_rgba(255,225,200,.05)] backdrop-blur-[3px] animate-[cd-rise_.9s_ease-out_both] [animation-delay:120ms] [@media(prefers-reduced-motion:reduce)]:animate-none">
+            <div className="bg-[linear-gradient(150deg,rgba(28,20,16,.72)_0%,rgba(14,10,12,.78)_60%,rgba(10,7,10,.82)_100%)]">
+              <div className="flex flex-col gap-3 border-b border-[#e0a279]/14 px-8 py-7 sm:flex-row sm:items-end sm:justify-between sm:px-11">
+                <div className="flex flex-col gap-2">
+                  <div className="font-mono text-[11px] tracking-[0.32em] text-[#a89685]">PROTOCOL</div>
+                  <h2 className="text-[clamp(22px,3.4vw,32px)] font-light tracking-[0.12em] text-[#f6e9dd]">EVENT FLOW</h2>
+                </div>
+                <div className="font-mono text-[11px] tracking-[0.22em] text-[#b3a191]">07 CHECKPOINTS · HARD LOCK AT 17:00</div>
+              </div>
+
+              <div className="relative">
+                <span
+                  className="pointer-events-none absolute bottom-10 left-[3.85rem] top-10 hidden w-px bg-gradient-to-b from-[#e0a279]/35 via-[#e0a279]/18 to-[#e0a279]/08 sm:block"
+                  aria-hidden="true"
+                />
+                <ol className="m-0 list-none p-0">
+                  {EVENT_FLOW_STEPS.map((step) => (
+                    <li
+                      key={step.number}
+                      className={`grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-2 border-b border-[#e0a279]/10 px-8 py-6 last:border-b-0 sm:grid-cols-[4.5rem_minmax(0,13rem)_1fr] sm:gap-x-8 sm:px-11 sm:py-7 ${
+                        step.highlight ? "bg-[linear-gradient(90deg,rgba(160,48,32,.16),transparent_62%)]" : ""
+                      }`}
+                    >
+                      <span
+                        className={`relative z-[1] flex h-10 w-10 items-center justify-center border font-mono text-[12px] tracking-[0.12em] ${
+                          step.highlight
+                            ? "border-[#e07a62]/70 bg-[#e07a62]/15 text-[#f3b8a8]"
+                            : "border-[#e0a279]/40 bg-[#0c090b]/70 text-[#e0a279]"
+                        }`}
+                      >
+                        {step.number}
+                      </span>
+                      <h3
+                        className={`self-center font-mono text-[13px] tracking-[0.16em] sm:self-start sm:pt-2 sm:text-[14px] ${
+                          step.highlight ? "text-[#f3b8a8]" : "text-[#e0a279]"
+                        }`}
+                      >
+                        {step.title.toUpperCase()}
+                      </h3>
+                      <p className="col-span-2 max-w-3xl text-[15px] font-light leading-7 text-[#d5c2b4] sm:col-span-1 sm:pt-1.5 sm:text-[16px] sm:leading-8">
+                        {step.text}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <SiteFooter />
+      </div>
+    </>
   );
 }

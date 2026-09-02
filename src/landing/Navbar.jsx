@@ -29,7 +29,7 @@ export default function Navbar() {
       user
         ? { label: "DASHBOARD", href: "/dashboard" }
         : { label: "LOGIN", href: "/login" },
-      { label: "DISCORD", href: "/discord" },
+      { label: "DISCORD", href: "https://discord.gg/BZFNt9qem", external: true },
     ],
     [user, isParticipant, teamName]
   );
@@ -113,19 +113,31 @@ export default function Navbar() {
 
         <nav aria-label="Main navigation">
           <ul className="hidden items-center gap-[clamp(1.5rem,3vw,2.5rem)] md:flex">
-            {navLinks.map(({ label, href }) => {
+            {navLinks.map(({ label, href, external }) => {
               const active = isActive(href, label);
               return (
                 <li key={label}>
-                  <Link
-                    to={href}
-                    id={`nav-${label.toLowerCase()}`}
-                    className={linkClass(active)}
-                    aria-current={active ? "page" : undefined}
-                    onClick={href === "/#faq" ? scrollToFaq : undefined}
-                  >
-                    {label}
-                  </Link>
+                  {external ? (
+                    <a
+                      href={href}
+                      id={`nav-${label.toLowerCase()}`}
+                      className={linkClass(false)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {label}
+                    </a>
+                  ) : (
+                    <Link
+                      to={href}
+                      id={`nav-${label.toLowerCase()}`}
+                      className={linkClass(active)}
+                      aria-current={active ? "page" : undefined}
+                      onClick={href === "/#faq" ? scrollToFaq : undefined}
+                    >
+                      {label}
+                    </Link>
+                  )}
                 </li>
               );
             })}
@@ -157,15 +169,30 @@ export default function Navbar() {
         }`}
         aria-hidden={!menuOpen}
       >
-        {navLinks.map(({ label, href }) => {
+        {navLinks.map(({ label, href, external }) => {
           const active = isActive(href, label);
+          const className = `block border-b border-accretion/8 py-4 font-rajdhani text-lg font-semibold uppercase tracking-[0.25em] last:border-0 ${
+            active ? "text-accretion" : "text-starlight-dim hover:text-accretion-bright"
+          }`;
+          if (external) {
+            return (
+              <a
+                key={label}
+                href={href}
+                className={className}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMenuOpen(false)}
+              >
+                {label}
+              </a>
+            );
+          }
           return (
             <Link
               key={label}
               to={href}
-              className={`block border-b border-accretion/8 py-4 font-rajdhani text-lg font-semibold uppercase tracking-[0.25em] last:border-0 ${
-                active ? "text-accretion" : "text-starlight-dim hover:text-accretion-bright"
-              }`}
+              className={className}
               aria-current={active ? "page" : undefined}
               onClick={(e) => {
                 if (href === "/#faq") scrollToFaq(e);
