@@ -1,4 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import {
+  startCicadaAdmin,
+  pauseCicadaAdmin,
+  resumeCicadaAdmin,
+  resetCicadaAdmin, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabase';
@@ -8,7 +12,9 @@ import {
   createChallenge, updateChallenge, addAsset, editAsset, deleteAsset, deleteChallenge, adminOverride,
   removeTeamMember, deleteTeam, adjustScore, updateTeam, toggleHint,
   getIpTrackingStatus, toggleIpTracking, getAdminActivityLogs,
-  getAdminRounds, createRound, updateRound, deleteRound, reorderRounds,
+  getAdminRounds, createRound, updateRound, deleteRound, reorderRounds, startRoundAdmin,
+  pauseRoundAdmin,
+  resumeRoundAdmin,
 } from '../../../api/admin';
 import {
   INITIAL_TEAMS,
@@ -20,43 +26,19 @@ import {
 } from '../constants';
 
 export const parseRoundAndArchive = (x, index = 0) => {
-  let round = x.round ?? x.round_number;
+  let round = x.round ?? x.round_number ?? x.round_order;
   let archive = x.archiveNumber ?? x.archive_number ?? x.archive ?? x.phase;
 
-  // 1. Check round_id
-  if (!round && x.round_id) {
-    if (x.round_id === '7db4150a-3259-4ef3-b9d6-d7ccd1d4f24f') {
-      round = 2;
-    } else if (x.round_id === '85d491a1-53d9-46fa-a1cb-98a7da15fd1b') {
-      round = 1;
-    }
-  }
-
-  // 2. Title and string parsing
-  if (!round || !archive) {
+  // 1. Title and string parsing for archive if missing
+  if (!archive) {
     if (x.order_number >= 100) {
-      round = round || Math.floor(x.order_number / 100);
-      archive = archive || (x.order_number % 100);
+      archive = (x.order_number % 100);
     } else {
       const str = `${x.name || ''} ${x.title || ''}`;
-      const roundMatch = str.match(/round\s*(\d+)/i);
-      if (roundMatch && !round) {
-        round = parseInt(roundMatch[1], 10);
-      }
       const archiveMatch = str.match(/archive\s*0?(\d+)/i) || str.match(/phase\s*0?(\d+)/i);
-      if (archiveMatch && !archive) {
+      if (archiveMatch) {
         archive = parseInt(archiveMatch[1], 10);
       }
-    }
-  }
-
-  // 3. Fallback based on challenge order: Challenges 1..6 -> Round 1; Challenges 7+ -> Round 2
-  if (!round) {
-    if (x.order_number) {
-      if (x.order_number <= 6) round = 1;
-      else round = 2;
-    } else {
-      round = 1;
     }
   }
 
@@ -469,7 +451,10 @@ export function useAdminDashboard() {
           is_active: x.is_active,
           created_at: x.created_at,
           updated_at: x.updated_at,
-        })));
+            started_at: x.started_at,
+            is_paused: x.is_paused,
+            paused_at: x.paused_at,
+          })));
       }
 
       if (Array.isArray(u?.data)) {
@@ -512,7 +497,7 @@ export function useAdminDashboard() {
             isLocked: x.is_active === false,
             hints: x.hints || [],
              hintsEnabled: (x.hints || []).length > 0 && (x.hints || []).some((h) => h.is_visible),
-             solvedCount: solvedCountsByRound[x.order_number] || solvedCountsByRound[round] || 0,
+             solvedCount: solvedCountsByRound[x.order_number] || 0,
              timeLimit: x.time_limit || 0,
              assets: (x.assets || []).map((a) => ({
                  id: a.id, 
@@ -587,16 +572,14 @@ export function useAdminDashboard() {
         // teams.points (via the admin score-adjustment endpoint) is the source of truth when
         // available; the public leaderboard's challenges_completed count is only a fallback for
         // teams the score endpoint hasn't touched yet.
-        const finalPoints = teamRecord && typeof teamRecord.points === 'number'
-          ? teamRecord.points
-          : (lbMap[teamName] != null ? lbMap[teamName] : (progRecord.challenges_solved || 0));
+        const finalPoints = (teamRecord && typeof teamRecord.points === 'number' ? teamRecord.points : 0) + (lbMap[teamName] != null ? lbMap[teamName] : ((progRecord.challenges_solved || 0) * 100));
 
         return {
           id: resolvedUuid || teamName,
           uuid: resolvedUuid,
           name: teamName,
           members: (resolvedUuid ? membersByTeamId[resolvedUuid] : null) || membersByTeamName[teamName] || [],
-          round: progRecord.current_challenge_order || 1,
+          round: progRecord.current_round_order || 1,
           points: finalPoints,
           status: teamRecord?.is_disqualified ? 'disqualified' : 'active',
         };
@@ -657,17 +640,12 @@ export function useAdminDashboard() {
 
   const handleDeleteHint = async (hintId) => {
     try {
-      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
+      const data = await deleteHint(activeChallenge.id, hintId);
 
       setChallenges(
-        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints || data } : c))
       );
-      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints || data }));
       toast.success('Hint deleted');
     } catch (err) {
       toast.error(err.message || 'Failed to delete hint');
@@ -679,17 +657,12 @@ export function useAdminDashboard() {
       const hintToUpdate = activeChallenge.hints.find(h => h.id === hintId);
       if (!hintToUpdate) return;
 
-      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}/toggle`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
+      const data = await toggleHint(activeChallenge.id, hintId);
 
       setChallenges(
-        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints || data } : c))
       );
-      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints || data }));
       toast.success('Hint visibility toggled');
     } catch (err) {
       toast.error(err.message || 'Failed to toggle hint visibility');
@@ -1856,6 +1829,105 @@ export function useAdminDashboard() {
     }
   };
 
+  
+  const handlePauseRound = async (roundId) => {
+    if (window.confirm("PAUSE ROUND? This will freeze the global timer for this round and stop submissions.")) {
+      try {
+        await pauseRoundAdmin(roundId);
+        toast.success("Round paused!");
+        const updated = await getAdminRounds();
+        setRounds(updated);
+      } catch (err) {
+        toast.error(err.message || "Failed to pause round");
+      }
+    }
+  };
+
+  const handleResumeRound = async (roundId) => {
+    if (window.confirm("RESUME ROUND? This will unfreeze the timer and shift everyone's leftover time.")) {
+      try {
+        await resumeRoundAdmin(roundId);
+        toast.success("Round resumed!");
+        const updated = await getAdminRounds();
+        setRounds(updated);
+      } catch (err) {
+        toast.error(err.message || "Failed to resume round");
+      }
+    }
+  };
+
+  
+  
+  const isCicadaStarted = rounds.length > 0 && rounds.some(r => r.order_number === 1 && r.started_at);
+  const isCicadaPaused = rounds.length > 0 && rounds.every(r => r.is_paused);
+
+  
+  const handleResetCicada = async () => {
+    if (window.confirm("RESET CICADA? This will CLEAR all team progress, completed challenges, and reset all timers to zero! THIS CANNOT BE UNDONE.")) {
+      try {
+        await resetCicadaAdmin();
+        toast.success("Cicada Event Reset!");
+        refreshLiveInBackground();
+      } catch (err) {
+        toast.error(err.message || "Failed to reset Cicada");
+      }
+    }
+  };
+
+  const handlePauseCicada = async () => {
+    if (window.confirm("PAUSE CICADA? This will freeze ALL timers and lock ALL rounds immediately.")) {
+      try {
+        await pauseCicadaAdmin();
+        toast.success("Cicada Event Paused!");
+        const updated = await getAdminRounds();
+        setRounds(updated);
+        refreshLiveInBackground();
+      } catch (err) {
+        toast.error(err.message || "Failed to pause Cicada");
+      }
+    }
+  };
+
+  const handleResumeCicada = async () => {
+    if (window.confirm("RESUME CICADA? This will unfreeze ALL timers and shift everyone's leftover time.")) {
+      try {
+        await resumeCicadaAdmin();
+        toast.success("Cicada Event Resumed!");
+        const updated = await getAdminRounds();
+        setRounds(updated);
+        refreshLiveInBackground();
+      } catch (err) {
+        toast.error(err.message || "Failed to resume Cicada");
+      }
+    }
+  };
+
+  const handleStartCicada = async () => {
+    if (window.confirm("START CICADA? This will begin the Round 1 timer for EVERY team. Do this when the event officially begins.")) {
+      try {
+        await startCicadaAdmin();
+        toast.success("Cicada Event Started!");
+        refreshLiveInBackground();
+      } catch (err) {
+        toast.error(err.message || "Failed to start Cicada");
+      }
+    }
+  };
+
+  const handleStartRound = async (roundId) => {
+    if (window.confirm(`START ROUND? This will set the started_at timestamp and begin the global timer for this round.`)) {
+      try {
+        await startRoundAdmin(roundId);
+        toast.success('Round started!');
+        // Refresh rounds
+        const updated = await getAdminRounds();
+        setRounds(updated);
+      } catch (err) {
+        toast.error(err.message || 'Failed to start round');
+      }
+    }
+  };
+
   const handleReorderRound = async (roundId, direction) => {
     const sorted = [...rounds].sort((a, b) => (a.order_number || 0) - (b.order_number || 0));
     const idx = sorted.findIndex((r) => r.id === roundId);
@@ -2019,6 +2091,11 @@ export function useAdminDashboard() {
   const highScore = teams.length > 0 ? Math.max(...teams.map((t) => t.points)) : 0;
 
   return {
+    handleStartCicada,
+    handlePauseCicada,
+    handleResumeCicada,
+    isCicadaStarted,
+    isCicadaPaused,
     logout,
     authUser,
     isAuthenticated,
@@ -2042,7 +2119,9 @@ export function useAdminDashboard() {
     setActiveRound,
     newRoundName,
     setNewRoundName,
-    newRoundOrder,
+      newRoundTimeLimit,
+      setNewRoundTimeLimit,
+      newRoundOrder,
     setNewRoundOrder,
     newRoundIsActive,
     setNewRoundIsActive,
@@ -2260,3 +2339,4 @@ export function useAdminDashboard() {
     handleOpenHintModal, handleAddHint, handleDeleteHint, handleToggleHintVisibility
   };
 }
+

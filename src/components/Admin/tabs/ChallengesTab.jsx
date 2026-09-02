@@ -17,6 +17,11 @@ export default function ChallengesTab() {
   const {
     challenges,
     rounds,
+    handleStartCicada,
+    handlePauseCicada,
+    handleResumeCicada,
+    isCicadaStarted,
+    isCicadaPaused,
     setActiveChallenge,
     setShowCreateChallengeModal,
     handleOpenCreateRound,
@@ -128,7 +133,60 @@ export default function ChallengesTab() {
 
   return (
     <div>
+      <div className={`mb-6 rounded border p-4 flex items-center justify-between ${
+        isCicadaPaused ? 'border-yellow-500/30 bg-yellow-500/5' : 
+        isCicadaStarted ? 'border-red-500/30 bg-red-500/5' : 
+        'border-green-500/30 bg-green-500/5'
+      }`}>
+        <div>
+          <h3 className={`font-orbitron font-bold ${
+            isCicadaPaused ? 'text-yellow-400' : 
+            isCicadaStarted ? 'text-red-400' : 
+            'text-green-400'
+          }`}>
+            {isCicadaPaused ? 'EVENT PAUSED' : isCicadaStarted ? 'EVENT IN PROGRESS' : 'EVENT STANDBY'}
+          </h3>
+          <p className="font-rajdhani text-sm text-starlight/70">
+            {isCicadaPaused ? 'All timers are currently frozen and challenges are locked.' : 
+             isCicadaStarted ? 'The event is running. Pausing will freeze all timers and lock all challenges.' : 
+             'Initialize the global event timer. This will begin the Round 1 timer for all teams.'}
+          </p>
+        </div>
+        
+        <div className="flex gap-4">
+            {!isCicadaStarted && (
+              <button
+                onClick={async () => {
+                  await handleStartCicada();
+                }}
+                className="rounded border border-green-500/50 bg-green-500/20 px-6 py-2 font-orbitron font-bold tracking-widest text-green-400 hover:bg-green-500 hover:text-black transition-colors"
+              >
+                START CICADA
+              </button>
+            )}
+            
+            {isCicadaStarted && !isCicadaPaused && (
+              <button
+                onClick={handlePauseCicada}
+                className="rounded border border-yellow-500/50 bg-yellow-500/20 px-6 py-2 font-orbitron font-bold tracking-widest text-yellow-400 hover:bg-yellow-500 hover:text-black transition-colors"
+              >
+                PAUSE CICADA
+              </button>
+            )}
+
+            {isCicadaStarted && isCicadaPaused && (
+              <button
+                onClick={handleResumeCicada}
+                className="rounded border border-green-500/50 bg-green-500/20 px-6 py-2 font-orbitron font-bold tracking-widest text-green-400 hover:bg-green-500 hover:text-black transition-colors"
+              >
+                RESUME CICADA
+              </button>
+            )}
+        </div>
+      </div>
+      
       {/* Tab Header */}
+
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -261,8 +319,11 @@ export default function ChallengesTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
+                    
+                      <button
+
                       type="button"
+
                       onClick={() => roundObj && handleOpenEditRound(roundObj)}
                       className="inline-flex items-center gap-1.5 rounded border border-copper/40 bg-copper/10 px-3 py-1.5 font-orbitron text-[10px] tracking-[0.16em] text-copper hover:bg-copper hover:text-black transition-colors"
                     >
@@ -328,28 +389,6 @@ export default function ChallengesTab() {
                             >
                               <Edit className="h-3 w-3" />
                               EDIT
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Time Limit */}
-                        <div className="mb-4 border-t border-accretion/15 pt-4 text-sm">
-                          <div className="mb-1 font-rajdhani text-[11px] tracking-[0.22em] text-copper">TIME LIMIT</div>
-                          <div className="flex items-center justify-between gap-2 text-starlight">
-                            <span className="font-mono">
-                              {challenge.timeLimit && challenge.timeLimit < 99999 ? `${challenge.timeLimit} min` : 'Unlimited'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveChallenge(challenge);
-                                setEditTimeLimitValue(challenge.timeLimit && challenge.timeLimit < 99999 ? challenge.timeLimit : 0);
-                                setShowTimeLimitModal(true);
-                              }}
-                              className="inline-flex shrink-0 items-center gap-1 font-rajdhani text-[11px] tracking-[0.18em] text-copper hover:text-accretion"
-                            >
-                              <Edit className="h-3 w-3" />
-                              SET
                             </button>
                           </div>
                         </div>

@@ -20,45 +20,10 @@ const ASSET_TYPE_LABEL = {
 
 // Map backend challenges into the Rounds -> Archive (Phase) shape
 function parseChallengeHierarchy(ch, index) {
-  let round = ch.round || ch.round_number;
-  let archive = ch.archive_number || ch.archive || ch.phase;
-
-  // 1. If round_id matches known round IDs
-  if (!round && ch.round_id) {
-    if (ch.round_id === '7db4150a-3259-4ef3-b9d6-d7ccd1d4f24f') {
-      round = 2;
-    } else if (ch.round_id === '85d491a1-53d9-46fa-a1cb-98a7da15fd1b') {
-      round = 1;
-    }
-  }
-
-  // 2. Title and string parsing
-  if (!round || !archive) {
-    if (ch.order_number >= 100) {
-      round = round || Math.floor(ch.order_number / 100);
-      archive = archive || (ch.order_number % 100);
-    } else {
-      const str = `${ch.name || ''} ${ch.title || ''}`;
-      const roundMatch = str.match(/round\s*(\d+)/i);
-      if (roundMatch && !round) round = parseInt(roundMatch[1], 10);
-      const archiveMatch = str.match(/archive\s*0?(\d+)/i) || str.match(/phase\s*0?(\d+)/i);
-      if (archiveMatch && !archive) archive = parseInt(archiveMatch[1], 10);
-    }
-  }
-
-  // 3. Fallback: Challenges 1..6 -> Round 1; Challenges 7+ -> Round 2
-  if (!round) {
-    if (ch.order_number) {
-      if (ch.order_number <= 6) round = 1;
-      else round = 2;
-    } else {
-      round = 1;
-    }
-  }
-
-  round = parseInt(round, 10) || 1;
-  archive = parseInt(archive, 10) || (ch.order_number ? ((ch.order_number - 1) % 6 + 1) : (index + 1));
-
+  let round = ch.round_order || ch.round || ch.round_number;
+  if (!round && ch.order_number >= 100) round = Math.floor(ch.order_number / 100);
+  if (!round) round = ch.order_number && ch.order_number <= 6 ? 1 : 2;
+  let archive = ch.archive_number || ch.archive || ch.phase || index + 1;
   return { round, archive };
 }
 
@@ -161,7 +126,8 @@ function buildChallengeData(challenges, progress, roundList = [], teamName = "",
         phaseNumber: phaseNum,
         is_locked: ch.is_locked !== undefined ? ch.is_locked : (ch.is_active === false),
         is_active: ch.is_active !== undefined ? ch.is_active : (ch.is_locked === false),
-        story_fragment: {
+          hints: ch.hints || [],
+          story_fragment: {
           title: fragmentTitle,
           content: fragmentContent,
         },
@@ -292,22 +258,33 @@ export function GameStateProvider({ children }) {
       const allRounds = Object.keys(data).map(Number).sort((a, b) => a - b);
       const targetOrder = prog?.data?.current_challenge_order;
 
-      let teamCurrentRound = prog?.data?.round || prog?.data?.current_round;
+      let teamCurrentRound = prog?.data?.current_round_order || prog?.data?.round || prog?.data?.current_round;
       let targetPhase = 1;
 
-      if (targetOrder) {
-        const matchingChal = (chals.data || []).find((c) => c.order_number === targetOrder);
-        if (matchingChal) {
-          const hierarchy = parseChallengeHierarchy(matchingChal, 0);
-          teamCurrentRound = teamCurrentRound || hierarchy.round;
-          targetPhase = hierarchy.archive;
-        } else if (targetOrder >= 100) {
-          teamCurrentRound = teamCurrentRound || Math.floor(targetOrder / 100);
-          targetPhase = targetOrder % 100;
-        } else {
-          targetPhase = targetOrder;
+              if (targetOrder) {
+          let foundRound = null;
+          let foundPhase = null;
+          for (const rKey of Object.keys(data)) {
+            for (const pKey of Object.keys(data[rKey].phases)) {
+              if (data[rKey].phases[pKey].order_number === targetOrder) {
+                foundRound = parseInt(rKey, 10);
+                foundPhase = parseInt(pKey, 10);
+                break;
+              }
+            }
+            if (foundRound) break;
+          }
+
+          if (foundPhase) {
+            teamCurrentRound = teamCurrentRound || foundRound;
+            targetPhase = foundPhase;
+          } else if (targetOrder >= 100) {
+            teamCurrentRound = teamCurrentRound || Math.floor(targetOrder / 100);
+            targetPhase = targetOrder % 100;
+          } else {
+            targetPhase = targetOrder;
+          }
         }
-      }
 
       teamCurrentRound = teamCurrentRound || 1;
 
@@ -316,32 +293,48 @@ export function GameStateProvider({ children }) {
       // 2. Any round <= teamCurrentRound.
       // 3. Any round where at least one challenge is active/unlocked.
       const unlockedR = allRounds.filter((r) => {
-        if (r === 1) return true;
         if (r <= teamCurrentRound) return true;
-        const roundPhases = Object.values(data[r]?.phases || {});
-        return roundPhases.some((p) => p.is_locked === false || p.is_active === true);
+        // Always unlock round 1 by default, and any round the team has reached.
+        // We DO NOT rely on is_active because all challenges are generally active globally.
+        return r === 1;
       });
 
       if (unlockedR.length === 0 && allRounds.length > 0) unlockedR.push(allRounds[0]);
 
       setUnlockedRounds(unlockedR);
-      setCurrentRound((prev) => (unlockedR.includes(prev) ? prev : teamCurrentRound));
-      setCurrentPhase(targetPhase);
+      if (silent !== 'poll') {
+        setCurrentRound((prev) => (unlockedR.includes(prev) ? prev : teamCurrentRound));
+        setCurrentPhase(targetPhase);
+      }
       setUnlockedPhases((prev) => ({
         ...prev,
         [teamCurrentRound]: Math.max(prev[teamCurrentRound] || 1, targetPhase),
       }));
 
-      const collected = [];
-      (chals.data || []).forEach((ch) => {
-        const { round } = parseChallengeHierarchy(ch, 0);
-        (ch.hints || []).forEach((h) => {
-          if (h.is_visible !== false) {
-            collected.push({ id: h.id, round: round, text: h.text, timestamp: Date.now() });
+              const collectedRaw = [];
+        for (const rKey of Object.keys(data)) {
+          const rData = data[rKey];
+          for (const pKey of Object.keys(rData.phases)) {
+            const phaseData = rData.phases[pKey];
+            (phaseData.hints || []).forEach((h) => {
+              if (h.is_visible !== false) {
+                collectedRaw.push({
+                  id: h.id,
+                  round: parseInt(rKey, 10),
+                  phase: parseInt(pKey, 10),
+                  text: h.text,
+                  timestamp: Date.now()
+                });
+              }
+            });
           }
+        }
+        setHints(prev => {
+          return collectedRaw.map(c => {
+            const existing = prev.find(p => p.id === c.id);
+            return existing ? { ...c, timestamp: existing.timestamp } : c;
+          });
         });
-      });
-      setHints(collected);
     } catch (err) {
       console.error("Failed to load mission data:", err);
       setError(err.message || "Failed to load mission data.");
@@ -352,6 +345,13 @@ export function GameStateProvider({ children }) {
 
   useEffect(() => {
     refresh();
+    
+    // Poll dynamically for hints and external unlocks every 10 seconds
+    const interval = setInterval(() => {
+      refresh('poll');
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, [refresh]);
 
   const addTerminalCommand = useCallback((command, response) => {

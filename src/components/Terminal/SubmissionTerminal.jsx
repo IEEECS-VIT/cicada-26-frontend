@@ -129,10 +129,15 @@ Q: How do hints work? -> Intercepted telemetry updates appear on the right sideb
             response = "Transmission Error: Invalid characters detected. Use alphanumeric only.";
             addTerminalCommand(cmd, response);
           } else {
-            addTerminalCommand(cmd, "Transmitting answer for decryption...");
-            submitAnswer(answer).then((res) => {
-              addTerminalCommand(`submit ${answer}`, res);
-            });
+             addTerminalCommand(cmd, "Transmitting answer for decryption...");
+             submitAnswer(answer).then((res) => {
+               addTerminalCommand(`submit ${answer}`, res);
+               if (res.includes("Correct") && !res.includes("already completed")) {
+                 setTimeout(() => {
+                   setIsTerminalOpen(false);
+                 }, 2000);
+               }
+             });
           }
         }
         break;

@@ -19,7 +19,20 @@ import {
   Upload,
 } from 'lucide-react';
 
+
+const mapMimeTypeToEnum = (mimeType) => {
+  if (!mimeType) return 'file';
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType === 'application/pdf') return 'pdf';
+  if (mimeType.startsWith('text/')) return 'text';
+  if (mimeType.includes('document') || mimeType.includes('msword') || mimeType.includes('officedocument')) return 'document';
+  return 'file';
+};
+
 export default function AdminModals() {
+
   const [isUploading, setIsUploading] = useState(false);
   const {
     newChallengeHints,
@@ -216,17 +229,23 @@ export default function AdminModals() {
                       <p className="text-sm text-starlight/80">Hint {idx + 1}: {hint.text}</p>
                       <p className="text-xs text-copper mt-1">Unlocks in: {hint.unlock_minutes} mins</p>
                     </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleToggleHintVisibility(hint.id, hint.is_visible)}
-                        className={`px-3 py-1 text-xs border ${hint.is_visible ? 'border-accretion text-accretion' : 'border-copper/50 text-copper/50'}`}
-                      >
-                        {hint.is_visible ? 'VISIBLE' : 'HIDDEN'}
-                      </button>
-                      <button onClick={() => handleDeleteHint(hint.id)} className="px-3 py-1 text-xs border border-red-500/50 text-red-500">
-                        DELETE
-                      </button>
-                    </div>
+                                          <div className="flex items-center gap-4">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="sr-only peer" 
+                            checked={hint.is_visible !== false} 
+                            onChange={() => handleToggleHintVisibility(hint.id, hint.is_visible)} 
+                          />
+                          <div className="w-9 h-5 bg-copper/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accretion"></div>
+                          <span className={`ml-3 text-xs font-rajdhani tracking-widest ${hint.is_visible ? 'text-accretion' : 'text-copper/50'}`}>
+                            {hint.is_visible ? 'VISIBLE' : 'HIDDEN'}
+                          </span>
+                        </label>
+                        <button onClick={() => handleDeleteHint(hint.id)} className="px-3 py-1 text-xs border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-colors">
+                          DELETE
+                        </button>
+                      </div>
                   </div>
                 ))
               ) : (
@@ -1176,8 +1195,8 @@ export default function AdminModals() {
                     <label className="mb-1.5 block font-rajdhani text-[11px] tracking-[0.22em] text-copper">Set-Specific Solution Keys</label>
                     {uniqueSets.map(setNum => {
                       const currentVal = answerObj[setNum];
-                      const displayVal = isHash(currentVal) ? '' : (currentVal || '');
-                      const placeholderStr = isHash(currentVal) ? 'ENCRYPTED (SET) - Type to overwrite' : `e.g. flag_for_set_${setNum}`;
+                      const displayVal = currentVal || '';
+                      const placeholderStr = `e.g. flag_for_set_${setNum}`;
                       
                       return (
                       <div key={setNum} className="flex items-center gap-3">
@@ -1199,8 +1218,8 @@ export default function AdminModals() {
               }
 
               const globalVal = answerObj['global'] || newChallengeAnswer;
-              const displayVal = isHash(globalVal) ? '' : (globalVal || '');
-              const placeholderStr = isHash(globalVal) ? 'ENCRYPTED (SET) - Type to overwrite' : 'e.g. c1c4d4_fl4g_value';
+              const displayVal = globalVal || '';
+              const placeholderStr = 'e.g. c1c4d4_fl4g_value';
 
               return (
                 <div>
@@ -1270,7 +1289,7 @@ export default function AdminModals() {
                           const { error } = await supabase.storage.from('assets').upload(filePath, file, { upsert: true });
                           if (error) throw error;
                           const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-                           uploadedAssets.push({ name: file.name, type: file.type || 'file', url: data.publicUrl });
+                           uploadedAssets.push({ name: file.name, type: mapMimeTypeToEnum(file.type), url: data.publicUrl });
                         }
                         setNewChallengeAssets([...newChallengeAssets, ...uploadedAssets]);
                       } catch (err) {
@@ -1311,7 +1330,7 @@ export default function AdminModals() {
                             const { error } = await supabase.storage.from('assets').upload(filePath, file, { upsert: true });
                             if (error) throw error;
                             const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-                           uploadedAssets.push({ name: file.name, type: file.type || 'file', url: data.publicUrl });
+                           uploadedAssets.push({ name: file.name, type: mapMimeTypeToEnum(file.type), url: data.publicUrl });
                           }
                           setNewChallengeAssets([...newChallengeAssets, ...uploadedAssets]);
                         } catch (err) {
@@ -1454,39 +1473,7 @@ export default function AdminModals() {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Asset Name (e.g. file.zip)"
-                      className="w-full border border-copper/25 bg-black/50 p-2.5 text-xs text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                      value={tempAssetName}
-                      onChange={(e) => setTempAssetName(e.target.value)}
-                    />
-                    <input
-                      type="text"
-                      placeholder="URL (optional)"
-                      className="w-full border border-copper/25 bg-black/50 p-2.5 text-xs text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                      value={tempAssetUrl}
-                      onChange={(e) => setTempAssetUrl(e.target.value)}
-                    />
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="Set # (Opt)"
-                      className="w-full border border-copper/25 bg-black/50 p-2.5 text-xs text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                      value={tempAssetSet || ''}
-                      onChange={(e) => setTempAssetSet(e.target.value)}
-                      title="Leave empty to share with all teams"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddAssetToChallenge}
-                    className="w-full py-2 bg-accretion/10 hover:bg-accretion/20 border border-accretion/40 text-accretion text-[10px] uppercase tracking-widest rounded font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Asset to List</span>
-                  </button>
+                  
                 </div>
               </div>
 
