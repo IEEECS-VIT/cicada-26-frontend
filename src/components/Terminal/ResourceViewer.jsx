@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGameState } from '../../context/GameStateContext';
-import { fetchMaskedAssetFile, isMaskedAssetUrl } from '../../api/challenges';
+import { isMaskedAssetUrl } from '../../api/challenges';
+import { API_URL } from '../../api/client';
 import {
   Copy,
   Check,
@@ -263,7 +264,7 @@ export default function ResourceViewer() {
           <div className="flex flex-col items-center justify-center flex-1 min-h-0 space-y-2">
             {hasValidUrl ? (
               <div className="relative group max-w-full flex items-center justify-center rounded-lg overflow-hidden border border-accretion/40 bg-black/70 shadow-[0_0_20px_rgba(209,155,131,0.15)]">
-                <img
+                <img crossOrigin="use-credentials" crossOrigin="use-credentials"
                   src={displayUrl}
                   alt={assetName || "Mission Clue"}
                   className="max-h-[42vh] sm:max-h-[48vh] w-auto max-w-full object-contain rounded cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
@@ -324,7 +325,7 @@ export default function ResourceViewer() {
 
               {hasValidUrl ? (
                 <div className="w-full">
-                  <audio
+                  <audio crossOrigin="use-credentials" crossOrigin="use-credentials"
                     controls
                     preload="metadata"
                     className="w-full h-10 rounded outline-none border border-accretion/40 bg-black"
@@ -358,7 +359,7 @@ export default function ResourceViewer() {
                     />
                   </div>
                 ) : (
-                  <video
+                  <video crossOrigin="use-credentials" crossOrigin="use-credentials"
                     controls
                     playsInline
                     preload="metadata"
@@ -451,7 +452,7 @@ export default function ResourceViewer() {
               </button>
             </div>
             <div className="flex items-center justify-center max-h-[82vh] overflow-auto">
-              <img
+              <img crossOrigin="use-credentials" crossOrigin="use-credentials"
                 src={displayUrl}
                 alt={assetName || "Enlarged Inspection"}
                 className="max-h-[80vh] w-auto max-w-full object-contain rounded"
