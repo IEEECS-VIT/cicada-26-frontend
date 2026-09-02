@@ -293,14 +293,24 @@ export function GameStateProvider({ children }) {
       if (unlockedR.length === 0 && allRounds.length > 0) unlockedR.push(allRounds[0]);
 
       setUnlockedRounds(unlockedR);
-      if (silent !== 'poll') {
-        setCurrentRound((prev) => (unlockedR.includes(prev) ? prev : teamCurrentRound));
-        setCurrentPhase(targetPhase);
-      }
-      setUnlockedPhases((prev) => ({
-        ...prev,
-        [teamCurrentRound]: Math.max(prev[teamCurrentRound] || 1, targetPhase),
-      }));
+      setUnlockedPhases((prev) => {
+        const prevPhaseForRound = prev[teamCurrentRound] || 1;
+        const isNewRound = !prev.hasOwnProperty(teamCurrentRound);
+        const didAdvance = targetPhase > prevPhaseForRound || isNewRound;
+        
+        if (silent !== 'poll' || didAdvance) {
+          setCurrentRound((prevRound) => {
+             if (didAdvance) return teamCurrentRound;
+             return unlockedR.includes(prevRound) ? prevRound : teamCurrentRound;
+          });
+          setCurrentPhase(targetPhase);
+        }
+        
+        return {
+          ...prev,
+          [teamCurrentRound]: Math.max(prevPhaseForRound, targetPhase),
+        };
+      });
 
               const collectedRaw = [];
         for (const rKey of Object.keys(data)) {
