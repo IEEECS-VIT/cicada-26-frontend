@@ -15,6 +15,7 @@ import {
   pauseCicadaAdmin,
   resumeCicadaAdmin,
   resetCicadaAdmin,
+  uploadAssetToChallenge,
 } from '../../../api/admin';
 import {
   INITIAL_TEAMS,
@@ -47,25 +48,6 @@ export const parseRoundAndArchive = (x, index = 0) => {
 
   return { round, archiveNumber: archive };
 };
-
-function mapMimeTypeToEnum(mimeType) {
-  if (!mimeType) return 'file';
-  if (mimeType.startsWith('image/')) return 'image';
-  if (mimeType.startsWith('audio/')) return 'audio';
-  if (mimeType.startsWith('video/')) return 'video';
-  if (mimeType === 'application/pdf') return 'pdf';
-  if (mimeType === 'text/plain') return 'text';
-  if (
-    mimeType.includes('msword') ||
-    mimeType.includes('wordprocessingml') ||
-    mimeType.includes('document') ||
-    mimeType.includes('pdf')
-  ) {
-    return 'document';
-  }
-  return 'file';
-}
-
 
 export function useAdminDashboard() {
   const { user: authUser, logout } = useAuth();
@@ -1163,32 +1145,31 @@ export function useAdminDashboard() {
   // API Endpoint: POST Add Asset
   const handleAddAssetToChallengeDirect = async (challengeId, fileOrAsset) => {
     try {
-      let newAsset;
       if (fileOrAsset.name && fileOrAsset.size !== undefined) {
-        // Actually upload to Supabase Storage (requires a public 'assets' bucket)
-        const filePath = `challenges/${challengeId}/${Date.now()}_${fileOrAsset.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('assets')
-          .upload(filePath, fileOrAsset, { upsert: true });
+        // Upload file to R2 through the backend, which also attaches it to the challenge
+        const res = await uploadAssetToChallenge(challengeId, fileOrAsset);
+        const updatedAssets = res?.data;
+        if (!Array.isArray(updatedAssets)) {
+          throw new Error('Upload succeeded but returned no asset list');
+        }
 
-        if (uploadError) throw new Error("Upload failed: " + uploadError.message);
+        const targetChallenge = challenges.find(c => c.id === challengeId);
+        setChallenges(challenges.map(c => (c.id === challengeId ? { ...c, assets: updatedAssets } : c)));
+        pushLocalLog({
+          teamName: 'SYSTEM',
+          challengeTitle: 'Add Asset',
+          answer: `Asset "${fileOrAsset.name}" added to challenge "${targetChallenge?.title || challengeId}"`,
+        });
 
-        const { data: publicUrlData } = supabase.storage
-          .from('assets')
-          .getPublicUrl(filePath);
-
-          newAsset = {
-            type: typeof mapMimeTypeToEnum === "function" ? mapMimeTypeToEnum(fileOrAsset.type) : 'file',
-          name: fileOrAsset.name,
-          url: publicUrlData.publicUrl
-        };
-      } else {
-        newAsset = {
-          type: 'file',
-          name: fileOrAsset.name,
-          url: fileOrAsset.url || '#'
-        };
+        refreshLiveInBackground();
+        return;
       }
+
+      const newAsset = {
+        type: 'file',
+        name: fileOrAsset.name,
+        url: fileOrAsset.url || '#'
+      };
 
       await addAsset(challengeId, newAsset);
 

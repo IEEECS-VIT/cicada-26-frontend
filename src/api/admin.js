@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { api, API_URL, getValidToken, getAdminKey } from "./client";
 
 export async function listUsers() {
   return api("/api/admin/auth/users", { admin: true });
@@ -157,4 +157,55 @@ export async function resumeCicadaAdmin() {
 
 export async function resetCicadaAdmin() {
   return api('/api/admin/challenges/reset-cicada', { method: "POST", admin: true });
+}
+
+async function submitAssetUpload(path, file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const headers = {};
+  const token = await getValidToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const adminKey = getAdminKey();
+  if (adminKey) headers["x-admin-key"] = adminKey;
+
+  let res;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: formData,
+    });
+  } catch (netErr) {
+    throw new Error(`[Network Error: POST ${path}] Unable to connect to backend server at ${API_URL}. Details: ${netErr.message}`);
+  }
+
+  let json = null;
+  try {
+    json = await res.json();
+  } catch {
+    /* non-JSON response */
+  }
+
+  if (!res.ok) {
+    const msg = json?.error || json?.message || res.statusText || "Request failed";
+    const err = new Error(`[HTTP ${res.status} on POST ${path}] ${msg}`);
+    err.status = res.status;
+    err.data = json;
+    throw err;
+  }
+  return json;
+}
+
+// POST /api/admin/challenges/:id/assets/upload — uploads file to R2 and attaches it to the challenge.
+// Response: { success, message, data: assets[] } (updated asset list for the challenge).
+export async function uploadAssetToChallenge(challengeId, file) {
+  return submitAssetUpload(`/api/admin/challenges/${encodeURIComponent(challengeId)}/assets/upload`, file);
+}
+
+// POST /api/admin/challenges/assets/upload — uploads file to R2 without attaching it to a challenge yet.
+// Response: { success, message, data: { name, type, url } }.
+export async function uploadStandaloneAsset(file) {
+  return submitAssetUpload("/api/admin/challenges/assets/upload", file);
 }
