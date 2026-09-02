@@ -563,16 +563,14 @@ export function useAdminDashboard() {
         // teams.points (via the admin score-adjustment endpoint) is the source of truth when
         // available; the public leaderboard's challenges_completed count is only a fallback for
         // teams the score endpoint hasn't touched yet.
-        const finalPoints = teamRecord && typeof teamRecord.points === 'number'
-          ? teamRecord.points
-          : (lbMap[teamName] != null ? lbMap[teamName] : (progRecord.challenges_solved || 0));
+        const finalPoints = (teamRecord && typeof teamRecord.points === 'number' ? teamRecord.points : 0) + (lbMap[teamName] != null ? lbMap[teamName] : ((progRecord.challenges_solved || 0) * 100));
 
         return {
           id: resolvedUuid || teamName,
           uuid: resolvedUuid,
           name: teamName,
           members: (resolvedUuid ? membersByTeamId[resolvedUuid] : null) || membersByTeamName[teamName] || [],
-          round: progRecord.current_challenge_order || 1,
+          round: progRecord.current_round_order || 1,
           points: finalPoints,
           status: teamRecord?.is_disqualified ? 'disqualified' : 'active',
         };
@@ -633,17 +631,12 @@ export function useAdminDashboard() {
 
   const handleDeleteHint = async (hintId) => {
     try {
-      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
+      const data = await deleteHint(activeChallenge.id, hintId);
 
       setChallenges(
-        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints || data } : c))
       );
-      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints || data }));
       toast.success('Hint deleted');
     } catch (err) {
       toast.error(err.message || 'Failed to delete hint');
@@ -655,17 +648,12 @@ export function useAdminDashboard() {
       const hintToUpdate = activeChallenge.hints.find(h => h.id === hintId);
       if (!hintToUpdate) return;
 
-      const res = await fetch(`/api/admin/challenges/${activeChallenge.id}/hints/${hintId}/toggle`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
+      const data = await toggleHint(activeChallenge.id, hintId);
 
       setChallenges(
-        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints } : c))
+        challenges.map((c) => (c.id === activeChallenge.id ? { ...c, hints: data.data || data.hints || data } : c))
       );
-      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints }));
+      setActiveChallenge(prev => ({ ...prev, hints: data.data || data.hints || data }));
       toast.success('Hint visibility toggled');
     } catch (err) {
       toast.error(err.message || 'Failed to toggle hint visibility');

@@ -84,6 +84,14 @@ export async function toggleHint(challengeId, hintId) {
   return api(`/api/admin/challenges/${challengeId}/hints/${encodeURIComponent(hintId)}/toggle`, { method: "PATCH", admin: true });
 }
 
+export async function addHint(challengeId, text, is_visible, unlock_minutes) {
+  return api(`/api/admin/challenges/${challengeId}/hints`, { method: "POST", admin: true, body: { text, is_visible, unlock_minutes } });
+}
+
+export async function deleteHint(challengeId, hintId) {
+  return api(`/api/admin/challenges/${challengeId}/hints/${encodeURIComponent(hintId)}`, { method: "DELETE", admin: true });
+}
+
 export async function adminOverride({ team_name, target_challenge_order, completed_challenges, reset_completed }) {
   const body = {
     team_name,

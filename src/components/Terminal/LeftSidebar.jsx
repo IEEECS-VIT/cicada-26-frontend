@@ -163,7 +163,7 @@ export default function LeftSidebar({ onNavigate }) {
 
                   {Object.entries(roundData.phases).map(([phaseIdStr, phaseData]) => {
                     const phaseId = parseInt(phaseIdStr);
-                    const isPhaseUnlocked = isUnlocked && ((unlockedPhases[roundId] || 1) >= phaseId || !phaseData.is_locked || Boolean(phaseData.is_active));
+                    const isPhaseUnlocked = isUnlocked && ((unlockedPhases[roundId] || 1) >= phaseId || !phaseData.is_locked);
                     const isPhaseActive = currentRound === roundId && currentPhase === phaseId;
 
                     return (
@@ -182,7 +182,7 @@ export default function LeftSidebar({ onNavigate }) {
                         disabled={!isPhaseUnlocked}
                         className={`w-full text-left min-h-[36px] p-2 rounded-md flex items-center gap-2 transition-all text-xs ${isPhaseUnlocked ? 'cursor-pointer hover:bg-accretion/20' : 'opacity-40 cursor-not-allowed'} ${isPhaseActive && activeTab === 'overview' ? 'bg-accretion/25 text-accretion border border-accretion/60 font-semibold' : 'text-foreground/75'}`}
                       >
-                        {isPhaseUnlocked ? <div className="w-1.5 h-1.5 rounded-full bg-accretion shrink-0 shadow-[0_0_4px_#D19B83]" /> : <div className="w-1.5 h-1.5 rounded-full border border-muted-foreground shrink-0" />}
+                        {isPhaseUnlocked ? <div className="w-1.5 h-1.5 rounded-full bg-accretion shrink-0 shadow-[0_0_4px_#D19B83]" /> : <Lock className="w-2.5 h-2.5 text-muted-foreground/60 shrink-0" />}
                         <span className="truncate">{phaseData.title}</span>
                       </button>
                     );
