@@ -130,3 +130,31 @@ export async function toggleIpTracking(enabled) {
     body: enabled !== undefined ? { enabled } : undefined,
   });
 }
+
+export async function startRoundAdmin(roundId) {
+  return api(`/api/admin/challenges/rounds/${roundId}/start`, { method: "POST", admin: true });
+}
+
+export async function pauseRoundAdmin(roundId) {
+  return api(`/api/admin/challenges/rounds/${roundId}/pause`, { method: "POST", admin: true });
+}
+
+export async function resumeRoundAdmin(roundId) {
+  return api(`/api/admin/challenges/rounds/${roundId}/resume`, { method: "POST", admin: true });
+}
+
+export async function startCicadaAdmin() {
+  return api('/api/admin/challenges/start-cicada', { method: "POST", admin: true });
+}
+
+export async function pauseCicadaAdmin() {
+  return api('/api/admin/challenges/pause-cicada', { method: "POST", admin: true });
+}
+
+export async function resumeCicadaAdmin() {
+  return api('/api/admin/challenges/resume-cicada', { method: "POST", admin: true });
+}
+
+export async function resetCicadaAdmin() {
+  return api('/api/admin/challenges/reset-cicada', { method: "POST", admin: true });
+}
