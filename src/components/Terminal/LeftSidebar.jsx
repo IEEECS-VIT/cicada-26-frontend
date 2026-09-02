@@ -28,28 +28,53 @@ export default function LeftSidebar({ onNavigate }) {
     challengeData,
     completedChallenges,
   } = useGameState();
-  const [expandedRound, setExpandedRound] = useState(currentRound);
-  const roundLimit = challengeData?.[currentRound]?.timeLimitSeconds || 0;
-  const [remaining, setRemaining] = useState(roundLimit);
+    const [expandedRound, setExpandedRound] = useState(currentRound);
+  const roundData = challengeData?.[currentRound] || {};
+  const roundLimit = roundData.timeLimitSeconds || 0;
+  const startedAtIso = roundData.startedAt;
+  const bonusSeconds = roundData.bonusSeconds || 0;
+  const isPaused = roundData.isPaused;
+  const pausedAtIso = roundData.pausedAt;
+  
+  const [remaining, setRemaining] = useState(0);
 
   useEffect(() => {
     setExpandedRound(currentRound);
   }, [currentRound]);
 
   useEffect(() => {
-    if (!roundLimit) {
+    if (!roundLimit || !startedAtIso) {
       setRemaining(0);
       return undefined;
     }
 
-    const startedAt = Date.now();
+    const startedAt = new Date(startedAtIso).getTime();
+    const totalAllowedSeconds = roundLimit + bonusSeconds;
+
     const tick = () => {
-      setRemaining(Math.max(0, roundLimit - Math.floor((Date.now() - startedAt) / 1000)));
+      let elapsed = 0;
+      if (isPaused && pausedAtIso) {
+          elapsed = Math.floor((new Date(pausedAtIso).getTime() - startedAt) / 1000);
+      } else {
+          elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      }
+      
+      if (totalAllowedSeconds > 0 && elapsed > totalAllowedSeconds && !window.hasReloadedForTimeout) {
+          window.hasReloadedForTimeout = true;
+          window.location.reload();
+      }
+      
+      setRemaining(Math.max(0, totalAllowedSeconds - elapsed));
     };
     tick();
+    
+    if (isPaused) {
+        return undefined;
+    }
+    
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [currentRound, roundLimit]);
+  }, [currentRound, roundLimit, startedAtIso, bonusSeconds, isPaused, pausedAtIso]);
 
   const handleRoundClick = (roundId) => {
     if (unlockedRounds.includes(roundId)) {
