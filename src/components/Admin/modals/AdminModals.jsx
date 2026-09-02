@@ -19,7 +19,20 @@ import {
   Upload,
 } from 'lucide-react';
 
+
+const mapMimeTypeToEnum = (mimeType) => {
+  if (!mimeType) return 'file';
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType === 'application/pdf') return 'pdf';
+  if (mimeType.startsWith('text/')) return 'text';
+  if (mimeType.includes('document') || mimeType.includes('msword') || mimeType.includes('officedocument')) return 'document';
+  return 'file';
+};
+
 export default function AdminModals() {
+
   const [isUploading, setIsUploading] = useState(false);
   const {
     newChallengeHints,
@@ -1276,7 +1289,7 @@ export default function AdminModals() {
                           const { error } = await supabase.storage.from('assets').upload(filePath, file, { upsert: true });
                           if (error) throw error;
                           const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-                           uploadedAssets.push({ name: file.name, type: file.type || 'file', url: data.publicUrl });
+                           uploadedAssets.push({ name: file.name, type: mapMimeTypeToEnum(file.type), url: data.publicUrl });
                         }
                         setNewChallengeAssets([...newChallengeAssets, ...uploadedAssets]);
                       } catch (err) {
@@ -1317,7 +1330,7 @@ export default function AdminModals() {
                             const { error } = await supabase.storage.from('assets').upload(filePath, file, { upsert: true });
                             if (error) throw error;
                             const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-                           uploadedAssets.push({ name: file.name, type: file.type || 'file', url: data.publicUrl });
+                           uploadedAssets.push({ name: file.name, type: mapMimeTypeToEnum(file.type), url: data.publicUrl });
                           }
                           setNewChallengeAssets([...newChallengeAssets, ...uploadedAssets]);
                         } catch (err) {
