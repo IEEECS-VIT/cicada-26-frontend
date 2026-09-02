@@ -84,6 +84,14 @@ export async function toggleHint(challengeId, hintId) {
   return api(`/api/admin/challenges/${challengeId}/hints/${encodeURIComponent(hintId)}/toggle`, { method: "PATCH", admin: true });
 }
 
+export async function addHint(challengeId, text, is_visible, unlock_minutes) {
+  return api(`/api/admin/challenges/${challengeId}/hints`, { method: "POST", admin: true, body: { text, is_visible, unlock_minutes } });
+}
+
+export async function deleteHint(challengeId, hintId) {
+  return api(`/api/admin/challenges/${challengeId}/hints/${encodeURIComponent(hintId)}`, { method: "DELETE", admin: true });
+}
+
 export async function adminOverride({ team_name, target_challenge_order, completed_challenges, reset_completed }) {
   const body = {
     team_name,
@@ -121,4 +129,32 @@ export async function toggleIpTracking(enabled) {
     admin: true,
     body: enabled !== undefined ? { enabled } : undefined,
   });
+}
+
+export async function startRoundAdmin(roundId) {
+  return api(`/api/admin/challenges/rounds/${roundId}/start`, { method: "POST", admin: true });
+}
+
+export async function pauseRoundAdmin(roundId) {
+  return api(`/api/admin/challenges/rounds/${roundId}/pause`, { method: "POST", admin: true });
+}
+
+export async function resumeRoundAdmin(roundId) {
+  return api(`/api/admin/challenges/rounds/${roundId}/resume`, { method: "POST", admin: true });
+}
+
+export async function startCicadaAdmin() {
+  return api('/api/admin/challenges/start-cicada', { method: "POST", admin: true });
+}
+
+export async function pauseCicadaAdmin() {
+  return api('/api/admin/challenges/pause-cicada', { method: "POST", admin: true });
+}
+
+export async function resumeCicadaAdmin() {
+  return api('/api/admin/challenges/resume-cicada', { method: "POST", admin: true });
+}
+
+export async function resetCicadaAdmin() {
+  return api('/api/admin/challenges/reset-cicada', { method: "POST", admin: true });
 }
