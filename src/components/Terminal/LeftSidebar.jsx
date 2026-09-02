@@ -27,54 +27,14 @@ export default function LeftSidebar({ onNavigate }) {
     setActiveTab,
     challengeData,
     completedChallenges,
+    roundTimeLeft,
+    roundExpired,
   } = useGameState();
-    const [expandedRound, setExpandedRound] = useState(currentRound);
-  const roundData = challengeData?.[currentRound] || {};
-  const roundLimit = roundData.timeLimitSeconds || 0;
-  const startedAtIso = roundData.startedAt;
-  const bonusSeconds = roundData.bonusSeconds || 0;
-  const isPaused = roundData.isPaused;
-  const pausedAtIso = roundData.pausedAt;
-  
-  const [remaining, setRemaining] = useState(0);
+  const [expandedRound, setExpandedRound] = useState(currentRound);
 
   useEffect(() => {
     setExpandedRound(currentRound);
   }, [currentRound]);
-
-  useEffect(() => {
-    if (!roundLimit || !startedAtIso) {
-      setRemaining(0);
-      return undefined;
-    }
-
-    const startedAt = new Date(startedAtIso).getTime();
-    const totalAllowedSeconds = roundLimit + bonusSeconds;
-
-    const tick = () => {
-      let elapsed = 0;
-      if (isPaused && pausedAtIso) {
-          elapsed = Math.floor((new Date(pausedAtIso).getTime() - startedAt) / 1000);
-      } else {
-          elapsed = Math.floor((Date.now() - startedAt) / 1000);
-      }
-      
-      if (totalAllowedSeconds > 0 && elapsed > totalAllowedSeconds && !window.hasReloadedForTimeout) {
-          window.hasReloadedForTimeout = true;
-          window.location.reload();
-      }
-      
-      setRemaining(Math.max(0, totalAllowedSeconds - elapsed));
-    };
-    tick();
-    
-    if (isPaused) {
-        return undefined;
-    }
-    
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [currentRound, roundLimit, startedAtIso, bonusSeconds, isPaused, pausedAtIso]);
 
   const handleRoundClick = (roundId) => {
     if (unlockedRounds.includes(roundId)) {
@@ -111,7 +71,7 @@ export default function LeftSidebar({ onNavigate }) {
       <div className="mb-2.5 shrink-0 border border-accretion/30 bg-black/40 p-2 sm:p-3 rounded-lg">
         <div className="flex justify-between items-center gap-2">
           <p className="label-mono text-[10px] sm:text-xs uppercase tracking-wider text-accretion/80">Round Time</p>
-          <p className="font-orbitron text-sm sm:text-base text-accretion tabular-nums tracking-widest">{formatDuration(remaining)}</p>
+          <p className={`font-orbitron text-sm sm:text-base tabular-nums tracking-widest ${roundExpired ? 'text-red-400' : 'text-accretion'}`}>{formatDuration(roundTimeLeft)}</p>
         </div>
       </div>
 

@@ -1760,6 +1760,33 @@ export function useAdminDashboard() {
     }
   };
 
+  /**
+   * Inline round-timer save from the Transmissions round bar. Sends ONLY the
+   * round name + time_limit (minutes) so the ROUND timer value (the clock the
+   * terminal counts down) is updated without touching anything else — and
+   * immediately refreshes live data so the bar reflects the new value.
+   */
+  const handleUpdateRoundTimer = async (roundId, minutes) => {
+    const targetRound = rounds.find((r) => r.id === roundId);
+    if (!targetRound) return false;
+    const limitVal = Math.max(0, Math.round(Number(minutes) || 0));
+    try {
+      await updateRound(roundId, { name: targetRound.name, time_limit: limitVal });
+      setRounds(rounds.map((r) => (r.id === roundId ? { ...r, time_limit: limitVal } : r)));
+      pushLocalLog({
+        teamName: 'SYSTEM',
+        challengeTitle: 'Edit Round',
+        answer: `Round "${targetRound.name}" time limit set to ${limitVal > 0 ? `${limitVal} min` : 'Unlimited'}.`,
+      });
+      refreshLiveInBackground();
+      return true;
+    } catch (err) {
+      console.error('Failed to update round timer:', err);
+      alert('Failed to update round timer: ' + (err.message || 'Unknown error'));
+      return false;
+    }
+  };
+
   const handleOpenDeleteRound = (round) => {
     setActiveRound(round);
     setDeleteRoundId('');
@@ -2111,6 +2138,7 @@ export function useAdminDashboard() {
     handleOpenCreateRound,
     handleOpenEditRound,
     handleSaveRound,
+    handleUpdateRoundTimer,
     handleOpenDeleteRound,
     handleDeleteRound,
     handleReorderRound,

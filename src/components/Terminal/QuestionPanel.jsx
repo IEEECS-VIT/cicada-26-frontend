@@ -14,7 +14,7 @@ const PANE_CONFIG = [
 ];
 
 export default function QuestionPanel() {
-  const { setIsTerminalOpen, activeTab, hints, currentRound } = useGameState();
+  const { setIsTerminalOpen, activeTab, hints, currentRound, roundExpired } = useGameState();
   const [pane, setPane] = useState("brief");
 
   const currentHintsCount = (hints || []).filter((h) => h.round === currentRound).length;
@@ -70,12 +70,19 @@ export default function QuestionPanel() {
         <div className="mt-2.5 shrink-0 sm:mt-4">
           <button
             type="button"
-            onClick={() => setIsTerminalOpen(true)}
-            className="group relative flex min-h-[42px] w-full items-center justify-between gap-2 overflow-hidden rounded-lg border border-accretion bg-accretion/10 px-3 py-2 font-orbitron text-[11px] uppercase tracking-[0.14em] text-accretion transition-all hover:bg-accretion hover:text-black sm:min-h-12 sm:px-4 sm:text-sm sm:tracking-[0.2em] shadow-[0_0_12px_rgba(209,155,131,0.2)] hover:shadow-[0_0_20px_rgba(209,155,131,0.5)]"
+            onClick={() => !roundExpired && setIsTerminalOpen(true)}
+            disabled={roundExpired}
+            className={`group relative flex min-h-[42px] w-full items-center justify-between gap-2 overflow-hidden rounded-lg border px-3 py-2 font-orbitron text-[11px] uppercase tracking-[0.14em] transition-all sm:min-h-12 sm:px-4 sm:text-sm sm:tracking-[0.2em] ${
+              roundExpired
+                ? 'cursor-not-allowed border-red-500/50 bg-red-500/10 text-red-400'
+                : 'border-accretion bg-accretion/10 text-accretion hover:bg-accretion hover:text-black shadow-[0_0_12px_rgba(209,155,131,0.2)] hover:shadow-[0_0_20px_rgba(209,155,131,0.5)]'
+            }`}
           >
             <div className="flex items-center gap-2">
               <TerminalIcon className="h-4 w-4 shrink-0 transition-transform group-hover:scale-110" />
-              <span className="text-left font-bold">Initialize Submission Terminal</span>
+              <span className="text-left font-bold">
+                {roundExpired ? 'Round Time Expired — Submissions Closed' : 'Initialize Submission Terminal'}
+              </span>
             </div>
             <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
           </button>
