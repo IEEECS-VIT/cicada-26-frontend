@@ -27,29 +27,14 @@ export default function LeftSidebar({ onNavigate }) {
     setActiveTab,
     challengeData,
     completedChallenges,
+    roundTimeLeft,
+    roundExpired,
   } = useGameState();
   const [expandedRound, setExpandedRound] = useState(currentRound);
-  const roundLimit = challengeData?.[currentRound]?.timeLimitSeconds || 0;
-  const [remaining, setRemaining] = useState(roundLimit);
 
   useEffect(() => {
     setExpandedRound(currentRound);
   }, [currentRound]);
-
-  useEffect(() => {
-    if (!roundLimit) {
-      setRemaining(0);
-      return undefined;
-    }
-
-    const startedAt = Date.now();
-    const tick = () => {
-      setRemaining(Math.max(0, roundLimit - Math.floor((Date.now() - startedAt) / 1000)));
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [currentRound, roundLimit]);
 
   const handleRoundClick = (roundId) => {
     if (unlockedRounds.includes(roundId)) {
@@ -86,7 +71,7 @@ export default function LeftSidebar({ onNavigate }) {
       <div className="mb-2.5 shrink-0 border border-accretion/30 bg-black/40 p-2 sm:p-3 rounded-lg">
         <div className="flex justify-between items-center gap-2">
           <p className="label-mono text-[10px] sm:text-xs uppercase tracking-wider text-accretion/80">Round Time</p>
-          <p className="font-orbitron text-sm sm:text-base text-accretion tabular-nums tracking-widest">{formatDuration(remaining)}</p>
+          <p className={`font-orbitron text-sm sm:text-base tabular-nums tracking-widest ${roundExpired ? 'text-red-400' : 'text-accretion'}`}>{formatDuration(roundTimeLeft)}</p>
         </div>
       </div>
 
