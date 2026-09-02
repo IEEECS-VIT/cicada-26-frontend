@@ -1473,39 +1473,7 @@ export default function AdminModals() {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Asset Name (e.g. file.zip)"
-                      className="w-full border border-copper/25 bg-black/50 p-2.5 text-xs text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                      value={tempAssetName}
-                      onChange={(e) => setTempAssetName(e.target.value)}
-                    />
-                    <input
-                      type="text"
-                      placeholder="URL (optional)"
-                      className="w-full border border-copper/25 bg-black/50 p-2.5 text-xs text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                      value={tempAssetUrl}
-                      onChange={(e) => setTempAssetUrl(e.target.value)}
-                    />
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="Set # (Opt)"
-                      className="w-full border border-copper/25 bg-black/50 p-2.5 text-xs text-starlight outline-none placeholder:text-copper/40 focus:border-accretion"
-                      value={tempAssetSet || ''}
-                      onChange={(e) => setTempAssetSet(e.target.value)}
-                      title="Leave empty to share with all teams"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddAssetToChallenge}
-                    className="w-full py-2 bg-accretion/10 hover:bg-accretion/20 border border-accretion/40 text-accretion text-[10px] uppercase tracking-widest rounded font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Asset to List</span>
-                  </button>
+                  
                 </div>
               </div>
 
