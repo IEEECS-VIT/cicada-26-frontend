@@ -1808,8 +1808,7 @@ export function useAdminDashboard() {
       try {
         await pauseRoundAdmin(roundId);
         toast.success("Round paused!");
-        const updated = await getAdminRounds();
-        setRounds(updated);
+        
       } catch (err) {
         toast.error(err.message || "Failed to pause round");
       }
@@ -1821,8 +1820,7 @@ export function useAdminDashboard() {
       try {
         await resumeRoundAdmin(roundId);
         toast.success("Round resumed!");
-        const updated = await getAdminRounds();
-        setRounds(updated);
+        
       } catch (err) {
         toast.error(err.message || "Failed to resume round");
       }
@@ -1852,8 +1850,7 @@ export function useAdminDashboard() {
       try {
         await pauseCicadaAdmin();
         toast.success("Cicada Event Paused!");
-        const updated = await getAdminRounds();
-        setRounds(updated);
+        
         refreshLiveInBackground();
       } catch (err) {
         toast.error(err.message || "Failed to pause Cicada");
@@ -1866,8 +1863,7 @@ export function useAdminDashboard() {
       try {
         await resumeCicadaAdmin();
         toast.success("Cicada Event Resumed!");
-        const updated = await getAdminRounds();
-        setRounds(updated);
+        
         refreshLiveInBackground();
       } catch (err) {
         toast.error(err.message || "Failed to resume Cicada");
@@ -1893,8 +1889,7 @@ export function useAdminDashboard() {
         await startRoundAdmin(roundId);
         toast.success('Round started!');
         // Refresh rounds
-        const updated = await getAdminRounds();
-        setRounds(updated);
+        
       } catch (err) {
         toast.error(err.message || 'Failed to start round');
       }
