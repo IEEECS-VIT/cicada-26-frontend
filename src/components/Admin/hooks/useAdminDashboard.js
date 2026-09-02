@@ -48,6 +48,25 @@ export const parseRoundAndArchive = (x, index = 0) => {
   return { round, archiveNumber: archive };
 };
 
+function mapMimeTypeToEnum(mimeType) {
+  if (!mimeType) return 'file';
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType === 'application/pdf') return 'pdf';
+  if (mimeType === 'text/plain') return 'text';
+  if (
+    mimeType.includes('msword') ||
+    mimeType.includes('wordprocessingml') ||
+    mimeType.includes('document') ||
+    mimeType.includes('pdf')
+  ) {
+    return 'document';
+  }
+  return 'file';
+}
+
+
 export function useAdminDashboard() {
   const { user: authUser, logout } = useAuth();
   const navigate = useNavigate();
@@ -1159,7 +1178,7 @@ export function useAdminDashboard() {
           .getPublicUrl(filePath);
 
           newAsset = {
-            type: fileOrAsset.type || 'file',
+            type: typeof mapMimeTypeToEnum === "function" ? mapMimeTypeToEnum(fileOrAsset.type) : 'file',
           name: fileOrAsset.name,
           url: publicUrlData.publicUrl
         };
