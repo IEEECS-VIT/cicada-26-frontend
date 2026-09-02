@@ -28,28 +28,53 @@ export default function LeftSidebar({ onNavigate }) {
     challengeData,
     completedChallenges,
   } = useGameState();
-  const [expandedRound, setExpandedRound] = useState(currentRound);
-  const roundLimit = challengeData?.[currentRound]?.timeLimitSeconds || 0;
-  const [remaining, setRemaining] = useState(roundLimit);
+    const [expandedRound, setExpandedRound] = useState(currentRound);
+  const roundData = challengeData?.[currentRound] || {};
+  const roundLimit = roundData.timeLimitSeconds || 0;
+  const startedAtIso = roundData.startedAt;
+  const bonusSeconds = roundData.bonusSeconds || 0;
+  const isPaused = roundData.isPaused;
+  const pausedAtIso = roundData.pausedAt;
+  
+  const [remaining, setRemaining] = useState(0);
 
   useEffect(() => {
     setExpandedRound(currentRound);
   }, [currentRound]);
 
   useEffect(() => {
-    if (!roundLimit) {
+    if (!roundLimit || !startedAtIso) {
       setRemaining(0);
       return undefined;
     }
 
-    const startedAt = Date.now();
+    const startedAt = new Date(startedAtIso).getTime();
+    const totalAllowedSeconds = roundLimit + bonusSeconds;
+
     const tick = () => {
-      setRemaining(Math.max(0, roundLimit - Math.floor((Date.now() - startedAt) / 1000)));
+      let elapsed = 0;
+      if (isPaused && pausedAtIso) {
+          elapsed = Math.floor((new Date(pausedAtIso).getTime() - startedAt) / 1000);
+      } else {
+          elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      }
+      
+      if (totalAllowedSeconds > 0 && elapsed > totalAllowedSeconds && !window.hasReloadedForTimeout) {
+          window.hasReloadedForTimeout = true;
+          window.location.reload();
+      }
+      
+      setRemaining(Math.max(0, totalAllowedSeconds - elapsed));
     };
     tick();
+    
+    if (isPaused) {
+        return undefined;
+    }
+    
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [currentRound, roundLimit]);
+  }, [currentRound, roundLimit, startedAtIso, bonusSeconds, isPaused, pausedAtIso]);
 
   const handleRoundClick = (roundId) => {
     if (unlockedRounds.includes(roundId)) {
@@ -163,7 +188,7 @@ export default function LeftSidebar({ onNavigate }) {
 
                   {Object.entries(roundData.phases).map(([phaseIdStr, phaseData]) => {
                     const phaseId = parseInt(phaseIdStr);
-                    const isPhaseUnlocked = isUnlocked && ((unlockedPhases[roundId] || 1) >= phaseId || !phaseData.is_locked || Boolean(phaseData.is_active));
+                    const isPhaseUnlocked = isUnlocked && ((unlockedPhases[roundId] || 1) >= phaseId || !phaseData.is_locked);
                     const isPhaseActive = currentRound === roundId && currentPhase === phaseId;
 
                     return (
@@ -182,7 +207,7 @@ export default function LeftSidebar({ onNavigate }) {
                         disabled={!isPhaseUnlocked}
                         className={`w-full text-left min-h-[36px] p-2 rounded-md flex items-center gap-2 transition-all text-xs ${isPhaseUnlocked ? 'cursor-pointer hover:bg-accretion/20' : 'opacity-40 cursor-not-allowed'} ${isPhaseActive && activeTab === 'overview' ? 'bg-accretion/25 text-accretion border border-accretion/60 font-semibold' : 'text-foreground/75'}`}
                       >
-                        {isPhaseUnlocked ? <div className="w-1.5 h-1.5 rounded-full bg-accretion shrink-0 shadow-[0_0_4px_#D19B83]" /> : <div className="w-1.5 h-1.5 rounded-full border border-muted-foreground shrink-0" />}
+                        {isPhaseUnlocked ? <div className="w-1.5 h-1.5 rounded-full bg-accretion shrink-0 shadow-[0_0_4px_#D19B83]" /> : <Lock className="w-2.5 h-2.5 text-muted-foreground/60 shrink-0" />}
                         <span className="truncate">{phaseData.title}</span>
                       </button>
                     );

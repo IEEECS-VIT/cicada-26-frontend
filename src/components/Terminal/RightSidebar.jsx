@@ -3,11 +3,11 @@ import { useGameState } from '../../context/GameStateContext';
 import { Bell, AlertTriangle } from 'lucide-react';
 
 export default function RightSidebar() {
-  const { currentRound, hints } = useGameState();
+  const { currentRound, currentPhase, hints } = useGameState();
 
   // Filter hints for the currently selected round, sort descending
   const currentHints = (hints || [])
-    .filter(hint => hint.round === currentRound)
+    .filter(hint => hint.round === currentRound && hint.phase === currentPhase)
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   return (
