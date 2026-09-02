@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { getChallenges, getProgress, getRounds, submitAnswer as apiSubmit } from "../api/challenges";
@@ -199,6 +199,29 @@ export function GameStateProvider({ children }) {
   const [hints, setHints] = useState([]);
   const [roundTransition, setRoundTransition] = useState(null);
 
+  // Round clock — single source of truth for the countdown. The limit comes
+  // from the round (not the phase); the countdown restarts when the round or
+  // its limit changes, and submissions are blocked once it hits zero.
+  const roundLimitSeconds = challengeData?.[currentRound]?.timeLimitSeconds || 0;
+  const [roundTimeLeft, setRoundTimeLeft] = useState(roundLimitSeconds);
+  const roundStartRef = useRef(Date.now());
+
+  useEffect(() => {
+    if (!roundLimitSeconds) {
+      setRoundTimeLeft(0);
+      return undefined;
+    }
+    roundStartRef.current = Date.now();
+    const tick = () => {
+      setRoundTimeLeft(Math.max(0, roundLimitSeconds - Math.floor((Date.now() - roundStartRef.current) / 1000)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [currentRound, roundLimitSeconds]);
+
+  const roundExpired = roundLimitSeconds > 0 && roundTimeLeft <= 0;
+
   // Load team-scoped terminal history when teamName is available
   useEffect(() => {
     if (!teamName) return;
@@ -395,6 +418,10 @@ export function GameStateProvider({ children }) {
       const phase = challengeData?.[currentRound]?.phases?.[activePhase];
       if (!phase) return "Error: No active challenge.";
 
+      if (roundExpired) {
+        return "Round time expired. Submissions for this round are closed.";
+      }
+
       try {
         const res = await apiSubmit(phase.order_number, answer);
 
@@ -481,7 +508,7 @@ export function GameStateProvider({ children }) {
         return err.message || "Transmission error. Please try again.";
       }
     },
-    [challengeData, unlockedPhases, currentPhase, currentRound, addTerminalCommand, refresh, findPhaseData]
+    [challengeData, unlockedPhases, currentPhase, currentRound, addTerminalCommand, refresh, findPhaseData, roundExpired]
   );
 
   const changeRound = useCallback((roundNum) => {
@@ -523,8 +550,11 @@ export function GameStateProvider({ children }) {
       refresh,
       roundTransition,
       dismissRoundTransition,
+      roundTimeLeft,
+      roundLimitSeconds,
+      roundExpired,
     }),
-    [teamName, challengeData, progress, completedChallenges, loading, error, unlockedRounds, unlockedPhases, currentRound, changeRound, currentPhase, activeTab, isTerminalOpen, terminalHistory, addTerminalCommand, clearTerminal, submitAnswer, hints, refresh, roundTransition, dismissRoundTransition]
+    [teamName, challengeData, progress, completedChallenges, loading, error, unlockedRounds, unlockedPhases, currentRound, changeRound, currentPhase, activeTab, isTerminalOpen, terminalHistory, addTerminalCommand, clearTerminal, submitAnswer, hints, refresh, roundTransition, dismissRoundTransition, roundTimeLeft, roundLimitSeconds, roundExpired]
   );
 
   return <GameStateContext.Provider value={value}>{children}</GameStateContext.Provider>;

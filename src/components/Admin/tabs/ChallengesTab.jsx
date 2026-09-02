@@ -10,6 +10,7 @@ import {
   File,
   Layers,
   FolderArchive,
+  Timer,
 } from 'lucide-react';
 
 export default function ChallengesTab() {
@@ -27,6 +28,7 @@ export default function ChallengesTab() {
     handleOpenCreateRound,
     handleOpenEditRound,
     handleOpenDeleteRound,
+    handleUpdateRoundTimer,
     setEditingChallenge,
     handleOpenEditChallenge,
     setNewChallengeTitle,
@@ -67,6 +69,8 @@ export default function ChallengesTab() {
   } = useAdmin();
 
   const [selectedRoundFilter, setSelectedRoundFilter] = useState('all');
+  const [roundTimerDraft, setRoundTimerDraft] = useState(null); // { roundId, value }
+  const [savingRoundTimer, setSavingRoundTimer] = useState(false);
 
   // Group challenges by Round -> Archive
   const groupedByRound = useMemo(() => {
@@ -274,11 +278,53 @@ export default function ChallengesTab() {
                       <h3 className="font-orbitron text-base font-bold tracking-[0.18em] text-starlight">
                         {displayName}
                       </h3>
-                      <p className="font-rajdhani text-xs tracking-wider text-copper">
-                        {roundChallenges.length} {roundChallenges.length === 1 ? 'TRANSMISSION ARCHIVE' : 'TRANSMISSION ARCHIVES'} CONFIGURED
-                          {roundObj && roundObj.time_limit ? ` • ${roundObj.time_limit} MINS` : ' • UNLIMITED TIME'}
-                          {roundObj && roundObj.started_at ? ` • STARTED` : ' • NOT STARTED'}
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <p className="font-rajdhani text-xs tracking-wider text-copper">
+                          {roundChallenges.length} {roundChallenges.length === 1 ? 'TRANSMISSION ARCHIVE' : 'TRANSMISSION ARCHIVES'} CONFIGURED
                         </p>
+                        {roundTimerDraft?.roundId === roundObj?.id ? (
+                          <span className="inline-flex items-center gap-1.5 rounded border border-accretion/40 bg-accretion/5 px-1.5 py-0.5">
+                            <Timer className="h-2.5 w-2.5 text-accretion" />
+                            <input
+                              type="number"
+                              min="0"
+                              value={roundTimerDraft.value}
+                              onChange={(e) => setRoundTimerDraft({ roundId: roundObj.id, value: e.target.value })}
+                              className="w-14 bg-black/60 border border-accretion/40 rounded px-1 py-0.5 font-orbitron text-[9px] tracking-wider text-accretion outline-none focus:border-accretion"
+                            />
+                            <span className="font-orbitron text-[9px] tracking-[0.1em] text-copper/70">MIN</span>
+                            <button
+                              type="button"
+                              disabled={savingRoundTimer}
+                              onClick={async () => {
+                                setSavingRoundTimer(true);
+                                const ok = await handleUpdateRoundTimer(roundObj.id, roundTimerDraft.value);
+                                setSavingRoundTimer(false);
+                                if (ok) setRoundTimerDraft(null);
+                              }}
+                              className="rounded border border-accretion bg-accretion px-1.5 py-0.5 font-orbitron text-[9px] font-bold tracking-wider text-black hover:bg-accretion-bright disabled:opacity-50"
+                            >
+                              SAVE
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setRoundTimerDraft({ roundId: roundObj.id, value: String(Number(roundObj?.time_limit) || 0) })}
+                            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-orbitron text-[9px] tracking-[0.14em] transition-colors ${
+                              Number(roundObj?.time_limit) > 0
+                                ? 'border-accretion/50 bg-accretion/10 text-accretion hover:bg-accretion/25'
+                                : 'border-copper/30 bg-black/40 text-copper/70 hover:border-accretion/40 hover:text-accretion'
+                            }`}
+                            title="Click to set the round countdown. This drives the terminal ROUND TIME (not the per-phase limit)."
+                          >
+                            <Timer className="h-2.5 w-2.5" />
+                            {Number(roundObj?.time_limit) > 0
+                              ? `ROUND TIMER: ${Number(roundObj.time_limit)} MIN — CHANGE`
+                              : 'ROUND TIMER: UNLIMITED — SET'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

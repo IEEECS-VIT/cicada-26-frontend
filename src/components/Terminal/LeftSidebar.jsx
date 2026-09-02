@@ -27,6 +27,8 @@ export default function LeftSidebar({ onNavigate }) {
     setActiveTab,
     challengeData,
     completedChallenges,
+    roundTimeLeft,
+    roundExpired,
   } = useGameState();
     const [expandedRound, setExpandedRound] = useState(currentRound);
   const roundData = challengeData?.[currentRound] || {};
@@ -112,7 +114,7 @@ export default function LeftSidebar({ onNavigate }) {
       <div className="mb-2.5 shrink-0 border border-accretion/30 bg-black/40 p-2 sm:p-3 rounded-lg">
         <div className="flex justify-between items-center gap-2">
           <p className="label-mono text-[10px] sm:text-xs uppercase tracking-wider text-accretion/80">Round Time</p>
-          <p className="font-orbitron text-sm sm:text-base text-accretion tabular-nums tracking-widest">{isCompleted ? "COMPLETED" : formatDuration(remaining)}</p>
+          <p className={`font-orbitron text-sm sm:text-base tabular-nums tracking-widest ${remaining <= 0 && !isCompleted ? "text-red-400" : "text-accretion"}`}>{isCompleted ? "COMPLETED" : formatDuration(remaining)}</p>
         </div>
       </div>
 
