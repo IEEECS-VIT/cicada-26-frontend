@@ -84,6 +84,11 @@ function buildChallengeData(challenges, progress, roundList = [], teamName = "",
     if (currentChal) {
       const parsed = parseChallengeHierarchy(currentChal, sorted.indexOf(currentChal));
       currentRoundOrder = parsed.round;
+    } else {
+      const maxOrder = sorted.reduce((max, c) => Math.max(max, c.order_number || 0), 0);
+      if (progress.current_challenge_order > maxOrder && maxOrder > 0) {
+        currentRoundOrder = Infinity;
+      }
     }
   }
 
