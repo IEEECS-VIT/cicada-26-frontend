@@ -497,7 +497,7 @@ export function useAdminDashboard() {
             isLocked: x.is_active === false,
             hints: x.hints || [],
              hintsEnabled: (x.hints || []).length > 0 && (x.hints || []).some((h) => h.is_visible),
-             solvedCount: solvedCountsByRound[x.order_number] || solvedCountsByRound[round] || 0,
+             solvedCount: solvedCountsByRound[x.order_number] || 0,
              timeLimit: x.time_limit || 0,
              assets: (x.assets || []).map((a) => ({
                  id: a.id, 
