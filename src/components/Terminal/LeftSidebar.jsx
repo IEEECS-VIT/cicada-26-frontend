@@ -36,7 +36,7 @@ export default function LeftSidebar({ onNavigate }) {
   const isPaused = roundData.isPaused;
   const pausedAtIso = roundData.pausedAt;
   
-  const [remaining, setRemaining] = useState(0);
+  const [remaining, setRemaining] = useState(roundLimit);
 
   useEffect(() => {
     setExpandedRound(currentRound);
@@ -44,7 +44,7 @@ export default function LeftSidebar({ onNavigate }) {
 
   useEffect(() => {
     if (!roundLimit || !startedAtIso) {
-      setRemaining(0);
+      setRemaining(roundLimit);
       return undefined;
     }
 

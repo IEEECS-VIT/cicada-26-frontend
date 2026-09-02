@@ -89,6 +89,10 @@ function buildChallengeData(challenges, progress, roundList = [], teamName = "",
       totalPhases: chList.length,
       // Round limits are configured in minutes by the admin panel.
       timeLimitSeconds: Math.max(0, Number(roundByOrder.get(round)?.time_limit || 0) * 60),
+      startedAt: roundByOrder.get(round)?.started_at || null,
+      isPaused: roundByOrder.get(round)?.is_paused || false,
+      pausedAt: roundByOrder.get(round)?.paused_at || null,
+      bonusSeconds: progress?.round_bonus_seconds || 0,
       phases: {},
     };
 
