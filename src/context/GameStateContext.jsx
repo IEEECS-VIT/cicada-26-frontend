@@ -20,7 +20,9 @@ const ASSET_TYPE_LABEL = {
 
 // Map backend challenges into the Rounds -> Archive (Phase) shape
 function parseChallengeHierarchy(ch, index) {
-  let round = ch.round || ch.round_number;
+  // Backend flattens the joined rounds row into round_id/round_name/round_order
+  // (round_order = rounds.order_number). Prefer it over legacy scalar fields.
+  let round = ch.round ?? ch.round_number ?? ch.round_order;
   let archive = ch.archive_number || ch.archive || ch.phase;
 
   // 1. If round_id matches known round IDs
