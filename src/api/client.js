@@ -56,7 +56,12 @@ export async function getValidToken() {
 }
 
 export async function api(path, { method = "GET", body, admin = false } = {}) {
-  const headers = { "Content-Type": "application/json" };
+  const headers = {};
+
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
 
   const token = await getValidToken();
   if (token) {
@@ -74,7 +79,7 @@ export async function api(path, { method = "GET", body, admin = false } = {}) {
       method,
       headers,
       credentials: "include",
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
     });
   } catch (netErr) {
     throw new Error(`[Network Error: ${method} ${path}] Unable to connect to backend server at ${API_URL}. Details: ${netErr.message}`);

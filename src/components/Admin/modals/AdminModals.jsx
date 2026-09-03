@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../../../lib/supabase.js';
+import { uploadStandaloneAssetFile } from '../../../api/admin';
 import { useAdmin } from '../AdminContext';
 import {
   INITIAL_TEAMS,
@@ -1285,11 +1285,9 @@ export default function AdminModals() {
                       try {
                         const uploadedAssets = [];
                         for (const file of files) {
-                          const filePath = `challenges/new_${Date.now()}_${file.name}`;
-                          const { error } = await supabase.storage.from('assets').upload(filePath, file, { upsert: true });
-                          if (error) throw error;
-                          const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-                           uploadedAssets.push({ name: file.name, type: mapMimeTypeToEnum(file.type), url: data.publicUrl });
+                          const res = await uploadStandaloneAssetFile(file);
+                          const asset = res?.data || {};
+                          uploadedAssets.push({ name: asset.name || file.name, type: asset.type || mapMimeTypeToEnum(file.type), url: asset.url || '#' });
                         }
                         setNewChallengeAssets([...newChallengeAssets, ...uploadedAssets]);
                       } catch (err) {
@@ -1306,7 +1304,7 @@ export default function AdminModals() {
                   {isUploading ? (
                     <>
                       <div className="w-5 h-5 border-2 border-accretion border-t-transparent rounded-full animate-spin"></div>
-                      <span>UPLOADING TO SUPABASE...</span>
+                      <span>UPLOADING TO R2...</span>
                     </>
                   ) : (
                     <>
@@ -1326,11 +1324,9 @@ export default function AdminModals() {
                         try {
                           const uploadedAssets = [];
                           for (const file of files) {
-                            const filePath = `challenges/new_${Date.now()}_${file.name}`;
-                            const { error } = await supabase.storage.from('assets').upload(filePath, file, { upsert: true });
-                            if (error) throw error;
-                            const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-                           uploadedAssets.push({ name: file.name, type: mapMimeTypeToEnum(file.type), url: data.publicUrl });
+                            const res = await uploadStandaloneAssetFile(file);
+                            const asset = res?.data || {};
+                            uploadedAssets.push({ name: asset.name || file.name, type: asset.type || mapMimeTypeToEnum(file.type), url: asset.url || '#' });
                           }
                           setNewChallengeAssets([...newChallengeAssets, ...uploadedAssets]);
                         } catch (err) {
