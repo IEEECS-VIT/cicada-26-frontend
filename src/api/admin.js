@@ -68,6 +68,18 @@ export async function addAsset(challengeId, payload) {
   return api(`/api/admin/challenges/${challengeId}/assets`, { method: "POST", admin: true, body: payload });
 }
 
+export async function uploadAssetFileToChallenge(challengeId, file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api(`/api/admin/challenges/${challengeId}/assets/upload`, { method: "POST", admin: true, body: formData });
+}
+
+export async function uploadStandaloneAssetFile(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api("/api/admin/assets/upload", { method: "POST", admin: true, body: formData });
+}
+
 export async function deleteChallenge(id) {
   return api(`/api/admin/challenges/${id}`, { method: "DELETE", admin: true });
 }
