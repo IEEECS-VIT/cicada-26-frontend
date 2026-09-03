@@ -98,18 +98,34 @@ export default function Navbar() {
           aria-hidden="true"
         />
         <div className="pointer-events-auto relative z-10 flex h-20 items-center justify-between px-[clamp(1.5rem,5vw,4rem)]">
-        <Link
-          to="/"
-          className="flex shrink-0 items-center"
-          aria-label="Cicada 2067 — Home"
-          onClick={() => setMenuOpen(false)}
-        >
-          <img
-            src="/assets/cicada_logo.jpg"
-            alt="Cicada 2067"
-            className="h-10 w-auto object-cover object-[50%_45%] mix-blend-screen contrast-125 brightness-105 [aspect-ratio:120/52] [mask-image:radial-gradient(118%_118%_at_50%_50%,#000_50%,transparent_100%)] sm:h-[52px]"
-          />
-        </Link>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Link
+              to="/"
+              className="flex shrink-0 items-center"
+              aria-label="Cicada 2067 — Home"
+              onClick={() => setMenuOpen(false)}
+            >
+              <img
+                src="/assets/cicada_logo.jpg"
+                alt="Cicada 2067"
+                className="h-10 w-auto object-cover object-[50%_45%] mix-blend-screen contrast-125 brightness-105 [aspect-ratio:120/52] [mask-image:radial-gradient(118%_118%_at_50%_50%,#000_50%,transparent_100%)] sm:h-[52px]"
+              />
+            </Link>
+            <div className="h-7 w-px bg-white/20 sm:h-10" aria-hidden="true" />
+            <a
+              href="https://www.bankofbaroda.in/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex shrink-0 items-center translate-y-1 sm:translate-y-1.5 transition-opacity hover:opacity-80"
+              aria-label="Bank of Baroda"
+            >
+              <img
+                src="/assets/bob_logo.png"
+                alt="Bank of Baroda"
+                className="h-10 w-auto object-contain sm:h-14 md:h-[62px]"
+              />
+            </a>
+          </div>
 
         <nav aria-label="Main navigation">
           <ul className="hidden items-center gap-[clamp(1.5rem,3vw,2.5rem)] md:flex">
