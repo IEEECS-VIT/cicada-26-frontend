@@ -1142,7 +1142,7 @@ export function useAdminDashboard() {
 
   // --- DIRECT ASSET MANAGEMENT HANDLERS ---
 
-  // API Endpoint: POST /api/admin/challenges/:id/assets/upload (multipart → R2)
+  // API Endpoint: POST /api/admin/challenges/:id/assets/upload (multipart → S3)
   const handleAddAssetToChallengeDirect = async (challengeId, fileOrAsset) => {
     try {
       if (fileOrAsset.name && fileOrAsset.size !== undefined) {

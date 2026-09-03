@@ -1304,7 +1304,7 @@ export default function AdminModals() {
                   {isUploading ? (
                     <>
                       <div className="w-5 h-5 border-2 border-accretion border-t-transparent rounded-full animate-spin"></div>
-                      <span>UPLOADING TO R2...</span>
+                      <span>UPLOADING TO S3...</span>
                     </>
                   ) : (
                     <>
